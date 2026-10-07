@@ -36,7 +36,12 @@ func NewPersistent(serverID string, store Store) *Service {
 	return &Service{serverID: serverID, store: store}
 }
 
-func (s *Service) GetManifest(context.Context, *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
+func (s *Service) GetManifest(ctx context.Context, req *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
+	if source, ok := s.store.(interface {
+		GetManifest(context.Context, *pb.GetManifestRequest) (*pb.GetManifestResponse, error)
+	}); ok {
+		return source.GetManifest(ctx, req)
+	}
 	return &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: s.serverID,
 		Channels: []*pb.Channel{{Id: "general", Title: "Общий чат", Views: []*pb.View{{Id: "chat", Type: "chat"}}}}}, nil
 }

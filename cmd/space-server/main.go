@@ -7,8 +7,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,7 +33,25 @@ func run() error {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
+	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
+	originFlag := flag.String("origin", "", "Origin браузера, в том числе локальная сторона SSH-туннеля")
 	flag.Parse()
+	origin := "http://" + *port
+	if *originFlag != "" {
+		origin = *originFlag
+	}
+	parsed, parseErr := url.Parse(origin)
+	if parseErr != nil || parsed.Scheme != "http" || net.ParseIP(parsed.Hostname()) == nil || !net.ParseIP(parsed.Hostname()).IsLoopback() || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return fmt.Errorf("origin должен быть локальным HTTP origin без пути")
+	}
+	parsed.Path = ""
+	if parsed.Port() == "80" {
+		parsed.Host = parsed.Hostname()
+		if strings.Contains(parsed.Host, ":") {
+			parsed.Host = "[" + parsed.Host + "]"
+		}
+	}
+	origin = parsed.String()
 	host, _, err := net.SplitHostPort(*port)
 	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
 		return fmt.Errorf("прототип без авторизации разрешает только IP loopback, например 127.0.0.1:8080")
@@ -49,6 +69,19 @@ func run() error {
 	if store != nil {
 		defer store.Close()
 	}
+	if *setupCode {
+		if store == nil {
+			return fmt.Errorf("код настройки требует PostgreSQL")
+		}
+		limited, cancelCode := context.WithTimeout(ctx, 15*time.Second)
+		defer cancelCode()
+		code, err := store.CreateSetupCode(limited)
+		if err != nil {
+			return err
+		}
+		fmt.Println(code)
+		return nil
+	}
 	listener, err := net.Listen("tcp", *grpcAddress)
 	if err != nil {
 		return err
@@ -61,8 +94,9 @@ func run() error {
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	if store != nil {
-		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, identity.ServerID, "http://"+*port))
+		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, identity.ServerID, origin))
 		pb.RegisterSyncServiceServer(server, store)
+		pb.RegisterAdminServiceServer(server, store)
 	}
 	go func() {
 		if err := server.Serve(listener); err != nil {
@@ -80,6 +114,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	handler = transport.RestrictOrigin(handler, origin)
 	httpServer := &http.Server{Addr: *port, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() { failures <- httpServer.ListenAndServe() }()

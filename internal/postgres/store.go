@@ -30,6 +30,7 @@ type Identity struct {
 
 type Store struct {
 	pb.UnimplementedSyncServiceServer
+	pb.UnimplementedAdminServiceServer
 	pool        *pgxpool.Pool
 	streamSlots chan struct{}
 }
@@ -87,13 +88,13 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 2)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 3)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
-	for i, path := range []string{"001_initial.sql", "002_events_auth.sql"} {
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql"} {
 		if err := applyMigration(ctx, tx, i+1, path); err != nil {
 			return err
 		}
@@ -174,6 +175,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	if err := s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
+	if err := enabledChat(ctx, tx, true); err != nil {
+		return nil, err
+	}
 	var sequence int64
 	// Блокировка канала задаёт порядок фиксации сообщений, без дыр от rollback.
 	err = tx.QueryRow(ctx, "SELECT next_sequence FROM channels WHERE id=$1 FOR UPDATE", req.ChannelId).Scan(&sequence)
@@ -213,6 +217,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 }
 
 func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListContentResponse, error) {
+	if err := enabledChat(ctx, s.pool, false); err != nil {
+		return nil, err
+	}
 	var after int64
 	if req.After != "" {
 		err := s.pool.QueryRow(ctx, "SELECT sequence FROM contents WHERE channel_id=$1 AND id=$2", req.ChannelId, req.After).Scan(&after)

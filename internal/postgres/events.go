@@ -10,6 +10,9 @@ import (
 )
 
 func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.ListEventsResponse, error) {
+	if err := enabledChat(ctx, s.pool, false); err != nil {
+		return nil, err
+	}
 	if req.ChannelId != "general" {
 		return nil, status.Error(codes.NotFound, "Канал не найден")
 	}

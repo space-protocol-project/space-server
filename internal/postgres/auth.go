@@ -28,6 +28,17 @@ type AuthService struct {
 func NewAuth(store *Store, serverID, origin string) *AuthService {
 	return &AuthService{store: store, serverID: serverID, origin: origin}
 }
+func (s *AuthService) Logout(ctx context.Context, _ *pb.LogoutRequest) (*pb.LogoutResponse, error) {
+	token := authn.Token(ctx)
+	if token == "" {
+		return nil, denied()
+	}
+	hash := sha256.Sum256([]byte(token))
+	if _, err := s.store.pool.Exec(ctx, "DELETE FROM auth_sessions WHERE token_hash=$1", hash[:]); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	return &pb.LogoutResponse{}, nil
+}
 func randomString(prefix string) (string, error) {
 	random := make([]byte, 32)
 	if _, err := rand.Read(random); err != nil {
@@ -40,6 +51,9 @@ func denied() error {
 }
 
 func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
+	if req.Administrative && req.Purpose != "device.register" {
+		return nil, status.Error(codes.InvalidArgument, "Administrative разрешён только при регистрации устройства")
+	}
 	if req.Purpose != "device.register" && req.Purpose != "auth.login" && req.Purpose != "device.revoke" {
 		return nil, status.Error(codes.InvalidArgument, "Неизвестный purpose")
 	}
@@ -77,6 +91,9 @@ func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallen
 	transcript := authn.Transcript{Purpose: req.Purpose, Origin: s.origin, ServerID: s.serverID, Version: 1, AuthEpoch: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix(), Scopes: []string{"chat.read", "chat.write"}}
 	root, device := req.RootPublicKey, req.DevicePublicKey
 	if req.Purpose == "device.register" {
+		if req.Administrative {
+			transcript.Scopes = append(transcript.Scopes, "space.manage")
+		}
 		transcript.PrincipalID = authn.PrincipalID(root)
 		err = tx.QueryRow(ctx, "SELECT auth_epoch FROM principals WHERE id=$1", transcript.PrincipalID).Scan(&transcript.AuthEpoch)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -89,8 +106,8 @@ func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallen
 		transcript.GrantExpiresAt = now.Add(30 * 24 * time.Hour).Unix()
 	} else {
 		var grantExpiry time.Time
-		err = tx.QueryRow(ctx, `SELECT p.id,p.root_public_key,g.device_public_key,p.auth_epoch,g.expires_at FROM device_grants g JOIN principals p ON p.id=g.principal_id
-   WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`, req.GrantId).Scan(&transcript.PrincipalID, &root, &device, &transcript.AuthEpoch, &grantExpiry)
+		err = tx.QueryRow(ctx, `SELECT p.id,p.root_public_key,g.device_public_key,p.auth_epoch,g.expires_at,g.scopes FROM device_grants g JOIN principals p ON p.id=g.principal_id
+   WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`, req.GrantId).Scan(&transcript.PrincipalID, &root, &device, &transcript.AuthEpoch, &grantExpiry, &transcript.Scopes)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, denied()
 		}
@@ -183,6 +200,17 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 }
 
 func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte) error {
+	var policy string
+	if err := tx.QueryRow(ctx, "SELECT registration_policy FROM space_settings WHERE singleton=true FOR SHARE").Scan(&policy); err != nil {
+		return databaseError(ctx, err)
+	}
+	var existing bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principals WHERE id=$1)", t.PrincipalID).Scan(&existing); err != nil {
+		return databaseError(ctx, err)
+	}
+	if !existing && policy == "closed" {
+		return status.Error(codes.PermissionDenied, "Регистрация новых идентичностей закрыта")
+	}
 	root, _ := base64.RawURLEncoding.DecodeString(t.RootPublicKey)
 	device, _ := base64.RawURLEncoding.DecodeString(t.DevicePublicKey)
 	if _, err := tx.Exec(ctx, "INSERT INTO principals(id,root_public_key) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", t.PrincipalID, root); err != nil {
@@ -202,7 +230,7 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 	if count >= 32 {
 		return status.Error(codes.ResourceExhausted, "Лимит: 32 активных устройства")
 	}
-	_, err := tx.Exec(ctx, "INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature) VALUES($1,$2,$3,$4,$5,$6,$7)", t.GrantID, t.PrincipalID, device, t.AuthEpoch, time.Unix(t.GrantExpiresAt, 0), canonical, signature)
+	_, err := tx.Exec(ctx, "INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature,scopes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", t.GrantID, t.PrincipalID, device, t.AuthEpoch, time.Unix(t.GrantExpiresAt, 0), canonical, signature, t.Scopes)
 	if err != nil {
 		return databaseError(ctx, err)
 	}

@@ -265,6 +265,7 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	AuthService_Logout_FullMethodName            = "/space.v1.AuthService/Logout"
 	AuthService_CreateChallenge_FullMethodName   = "/space.v1.AuthService/CreateChallenge"
 	AuthService_CompleteChallenge_FullMethodName = "/space.v1.AuthService/CompleteChallenge"
 )
@@ -273,6 +274,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	CreateChallenge(ctx context.Context, in *CreateChallengeRequest, opts ...grpc.CallOption) (*CreateChallengeResponse, error)
 	CompleteChallenge(ctx context.Context, in *CompleteChallengeRequest, opts ...grpc.CallOption) (*CompleteChallengeResponse, error)
 }
@@ -283,6 +285,16 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, AuthService_Logout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) CreateChallenge(ctx context.Context, in *CreateChallengeRequest, opts ...grpc.CallOption) (*CreateChallengeResponse, error) {
@@ -309,6 +321,7 @@ func (c *authServiceClient) CompleteChallenge(ctx context.Context, in *CompleteC
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
+	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	CreateChallenge(context.Context, *CreateChallengeRequest) (*CreateChallengeResponse, error)
 	CompleteChallenge(context.Context, *CompleteChallengeRequest) (*CompleteChallengeResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
@@ -321,6 +334,9 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
+}
 func (UnimplementedAuthServiceServer) CreateChallenge(context.Context, *CreateChallengeRequest) (*CreateChallengeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateChallenge not implemented")
 }
@@ -346,6 +362,24 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_Logout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).Logout(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_CreateChallenge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -391,6 +425,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Logout",
+			Handler:    _AuthService_Logout_Handler,
+		},
 		{
 			MethodName: "CreateChallenge",
 			Handler:    _AuthService_CreateChallenge_Handler,
@@ -545,5 +583,221 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
+	Metadata: "space/v1/space.proto",
+}
+
+const (
+	AdminService_GetSetupStatus_FullMethodName = "/space.v1.AdminService/GetSetupStatus"
+	AdminService_ClaimOwner_FullMethodName     = "/space.v1.AdminService/ClaimOwner"
+	AdminService_GetSettings_FullMethodName    = "/space.v1.AdminService/GetSettings"
+	AdminService_UpdateSettings_FullMethodName = "/space.v1.AdminService/UpdateSettings"
+)
+
+// AdminServiceClient is the client API for AdminService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type AdminServiceClient interface {
+	GetSetupStatus(ctx context.Context, in *GetSetupStatusRequest, opts ...grpc.CallOption) (*GetSetupStatusResponse, error)
+	ClaimOwner(ctx context.Context, in *ClaimOwnerRequest, opts ...grpc.CallOption) (*ClaimOwnerResponse, error)
+	GetSettings(ctx context.Context, in *GetSettingsRequest, opts ...grpc.CallOption) (*GetSettingsResponse, error)
+	UpdateSettings(ctx context.Context, in *UpdateSettingsRequest, opts ...grpc.CallOption) (*UpdateSettingsResponse, error)
+}
+
+type adminServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewAdminServiceClient(cc grpc.ClientConnInterface) AdminServiceClient {
+	return &adminServiceClient{cc}
+}
+
+func (c *adminServiceClient) GetSetupStatus(ctx context.Context, in *GetSetupStatusRequest, opts ...grpc.CallOption) (*GetSetupStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSetupStatusResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetSetupStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) ClaimOwner(ctx context.Context, in *ClaimOwnerRequest, opts ...grpc.CallOption) (*ClaimOwnerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimOwnerResponse)
+	err := c.cc.Invoke(ctx, AdminService_ClaimOwner_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) GetSettings(ctx context.Context, in *GetSettingsRequest, opts ...grpc.CallOption) (*GetSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSettingsResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) UpdateSettings(ctx context.Context, in *UpdateSettingsRequest, opts ...grpc.CallOption) (*UpdateSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateSettingsResponse)
+	err := c.cc.Invoke(ctx, AdminService_UpdateSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AdminServiceServer is the server API for AdminService service.
+// All implementations must embed UnimplementedAdminServiceServer
+// for forward compatibility.
+type AdminServiceServer interface {
+	GetSetupStatus(context.Context, *GetSetupStatusRequest) (*GetSetupStatusResponse, error)
+	ClaimOwner(context.Context, *ClaimOwnerRequest) (*ClaimOwnerResponse, error)
+	GetSettings(context.Context, *GetSettingsRequest) (*GetSettingsResponse, error)
+	UpdateSettings(context.Context, *UpdateSettingsRequest) (*UpdateSettingsResponse, error)
+	mustEmbedUnimplementedAdminServiceServer()
+}
+
+// UnimplementedAdminServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedAdminServiceServer struct{}
+
+func (UnimplementedAdminServiceServer) GetSetupStatus(context.Context, *GetSetupStatusRequest) (*GetSetupStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSetupStatus not implemented")
+}
+func (UnimplementedAdminServiceServer) ClaimOwner(context.Context, *ClaimOwnerRequest) (*ClaimOwnerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClaimOwner not implemented")
+}
+func (UnimplementedAdminServiceServer) GetSettings(context.Context, *GetSettingsRequest) (*GetSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSettings not implemented")
+}
+func (UnimplementedAdminServiceServer) UpdateSettings(context.Context, *UpdateSettingsRequest) (*UpdateSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSettings not implemented")
+}
+func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
+func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
+
+// UnsafeAdminServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AdminServiceServer will
+// result in compilation errors.
+type UnsafeAdminServiceServer interface {
+	mustEmbedUnimplementedAdminServiceServer()
+}
+
+func RegisterAdminServiceServer(s grpc.ServiceRegistrar, srv AdminServiceServer) {
+	// If the following call pancis, it indicates UnimplementedAdminServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&AdminService_ServiceDesc, srv)
+}
+
+func _AdminService_GetSetupStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSetupStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetSetupStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetSetupStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetSetupStatus(ctx, req.(*GetSetupStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_ClaimOwner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimOwnerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ClaimOwner(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ClaimOwner_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ClaimOwner(ctx, req.(*ClaimOwnerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_GetSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetSettings(ctx, req.(*GetSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_UpdateSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).UpdateSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_UpdateSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).UpdateSettings(ctx, req.(*UpdateSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var AdminService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "space.v1.AdminService",
+	HandlerType: (*AdminServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetSetupStatus",
+			Handler:    _AdminService_GetSetupStatus_Handler,
+		},
+		{
+			MethodName: "ClaimOwner",
+			Handler:    _AdminService_ClaimOwner_Handler,
+		},
+		{
+			MethodName: "GetSettings",
+			Handler:    _AdminService_GetSettings_Handler,
+		},
+		{
+			MethodName: "UpdateSettings",
+			Handler:    _AdminService_UpdateSettings_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "space/v1/space.proto",
 }

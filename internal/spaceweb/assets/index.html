@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Space — управление пространством</title>
+    <link rel="stylesheet" href="/space/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="logo">s.</span>
+        <div>
+          <h1>Ваше пространство</h1>
+          <p>Управление независимым сервером</p>
+        </div>
+        <span class="badge">Локальная панель</span>
+      </header>
+      <section class="card" id="login">
+        <h2 id="login-title">Вход владельца</h2>
+        <p>Подпись ключом устройства. Пароль и центральный аккаунт не нужны.</p>
+        <button id="sign-in">Войти с ключами этого браузера</button>
+        <p class="note">
+          При первом входе создаётся отдельная идентичность в этом браузере. Она
+          отличается от идентичности Flutter-клиента. Ключи сохраняются в
+          IndexedDB; recovery пока не поддерживается. Не удаляйте профиль
+          браузера.
+        </p>
+        <details>
+          <summary>Первый запуск сервера</summary>
+          <p>Через локальную консоль или SSH выполните:</p>
+          <pre>space-server -setup-code</pre>
+          <p>
+            Команда использует SPACE_DATABASE_URL и выдаёт код на 15 минут. Сам
+            сервер не нуждается в браузере.
+          </p>
+        </details>
+        <details>
+          <summary>Разрешение устройства истекло или отозвано?</summary>
+          <p>
+            Можно явно выдать новое разрешение через сохранённый корневой ключ.
+            Это не восстановление потерянной идентичности; старые разрешения не
+            отзываются этим действием.
+          </p>
+          <button id="renew-grant" class="secondary">
+            Выдать новое разрешение устройства
+          </button>
+        </details>
+      </section>
+      <section class="card" id="claim" hidden>
+        <h2>Назначить первого владельца</h2>
+        <p>
+          Нужен одноразовый код из локальной команды сервера. Первый посетитель
+          страницы владельцем не становится.
+        </p>
+        <form id="claim-form">
+          <label
+            >Код первоначальной настройки<input
+              id="setup-code"
+              type="password"
+              autocomplete="off"
+              required
+              maxlength="100" /></label
+          ><button>Подтвердить владение</button>
+        </form>
+      </section>
+      <section id="management" hidden>
+        <form id="settings-form" class="card">
+          <div class="row">
+            <h2>Настройки пространства</h2>
+            <span class="badge" id="revision"></span>
+          </div>
+          <label
+            >Название пространства<input
+              id="title"
+              required
+              maxlength="80" /></label
+          ><label
+            >Название общего чата<input
+              id="chat-title"
+              required
+              maxlength="80" /></label
+          ><label class="check"
+            ><input id="chat-enabled" type="checkbox" /> Общий чат доступен
+            участникам</label
+          >
+          <p class="note">
+            Выключение закрывает чтение, отправку и подписку. Сообщения остаются
+            в базе.
+          </p>
+          <label
+            >Новые идентичности<select id="registration-policy">
+              <option value="open">Могут зарегистрироваться</option>
+              <option value="closed">Регистрация закрыта</option>
+            </select></label
+          >
+          <p class="note">
+            Закрытие регистрации не отзывает доступ существующих участников.
+            Приглашения и дополнительные роли появятся отдельно.
+          </p>
+          <div class="actions">
+            <button type="button" id="reload" class="secondary">
+              Загрузить заново</button
+            ><button>Сохранить изменения</button>
+          </div>
+        </form>
+        <section class="card">
+          <h2>Сессия управления</h2>
+          <p>
+            Каждое действие проверяет права владельца, разрешение устройства и
+            актуальность сессии на сервере.
+          </p>
+          <button id="sign-out" class="secondary">Выйти из панели</button>
+        </section>
+      </section>
+      <p id="status" role="status" aria-live="polite"></p>
+      <footer>
+        Экспериментальный профиль · /space · настройка без Docker на локальном
+        компьютере сервера
+      </footer>
+    </main>
+    <script type="module" src="/space/app.mjs"></script>
+  </body>
+</html>

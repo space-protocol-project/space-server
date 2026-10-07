@@ -10,6 +10,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	"github.com/space-protocol-project/space-protocol/server/internal/spaceweb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -46,8 +47,13 @@ func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serve
 	if err := pb.RegisterSyncServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
 	}
+	if err := pb.RegisterAdminServiceHandler(ctx, gateway, connection); err != nil {
+		return nil, err
+	}
 	mux := http.NewServeMux()
 	mux.Handle("/api/", gateway)
+	mux.Handle("/space", spaceweb.Handler())
+	mux.Handle("/space/", spaceweb.Handler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("GET /.well-known/space-protocol", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -30,7 +30,8 @@ type Identity struct {
 
 type Store struct {
 	pb.UnimplementedSyncServiceServer
-	pool *pgxpool.Pool
+	pool        *pgxpool.Pool
+	streamSlots chan struct{}
 }
 
 func Open(ctx context.Context, url string) (*Store, Identity, error) {
@@ -43,7 +44,7 @@ func Open(ctx context.Context, url string) (*Store, Identity, error) {
 	if err != nil {
 		return nil, Identity{}, errors.New("Не удалось создать пул PostgreSQL")
 	}
-	store := &Store{pool: pool}
+	store := &Store{pool: pool, streamSlots: make(chan struct{}, 64)}
 	identity, err := store.initialize(ctx)
 	if err != nil {
 		pool.Close()

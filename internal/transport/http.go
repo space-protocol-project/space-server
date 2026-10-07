@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey ...[]byte) (http.Handler, error) {
@@ -21,7 +24,16 @@ func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, 
 
 func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey []byte, endpoint string) (http.Handler, error) {
 	// Authorization прокидывается runtime отдельно; клиентская Grpc-Metadata-* не принимается.
-	gateway := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(string) (string, bool) { return "", false }))
+	gateway := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(string) (string, bool) { return "", false }), runtime.WithForwardResponseOption(func(_ context.Context, w http.ResponseWriter, message proto.Message) error {
+		if _, ok := message.(*pb.SubscribeResponse); !ok {
+			return nil
+		}
+		err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(20 * time.Second))
+		if errors.Is(err, http.ErrNotSupported) {
+			return nil
+		}
+		return err
+	}))
 	if err := pb.RegisterChannelServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
 	}

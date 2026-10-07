@@ -92,15 +92,39 @@ func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 		case "/space.v1.ChannelService/GetManifest", "/space.v1.AuthService/CreateChallenge", "/space.v1.AuthService/CompleteChallenge":
 			return handler(ctx, req)
 		}
-		values := metadata.ValueFromIncomingContext(ctx, "authorization")
-		if len(values) != 1 || !strings.HasPrefix(values[0], "Bearer ") {
-			return nil, status.Error(codes.Unauthenticated, "Нужен Bearer access token")
-		}
-		token := strings.TrimPrefix(values[0], "Bearer ")
-		id, err := verifier.Authenticate(ctx, token)
+		ctx, err := authorize(ctx, verifier)
 		if err != nil {
 			return nil, err
 		}
-		return handler(context.WithValue(context.WithValue(ctx, actorKey{}, id), tokenKey{}, token), req)
+		return handler(ctx, req)
+	}
+}
+
+func authorize(ctx context.Context, verifier Verifier) (context.Context, error) {
+	values := metadata.ValueFromIncomingContext(ctx, "authorization")
+	if len(values) != 1 || !strings.HasPrefix(values[0], "Bearer ") {
+		return nil, status.Error(codes.Unauthenticated, "Нужен Bearer access token")
+	}
+	token := strings.TrimPrefix(values[0], "Bearer ")
+	id, err := verifier.Authenticate(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return context.WithValue(context.WithValue(ctx, actorKey{}, id), tokenKey{}, token), nil
+}
+
+type authorizedStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *authorizedStream) Context() context.Context { return s.ctx }
+func StreamInterceptor(verifier Verifier) grpc.StreamServerInterceptor {
+	return func(service any, stream grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		ctx, err := authorize(stream.Context(), verifier)
+		if err != nil {
+			return err
+		}
+		return handler(service, &authorizedStream{ServerStream: stream, ctx: ctx})
 	}
 }

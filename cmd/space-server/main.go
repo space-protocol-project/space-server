@@ -55,7 +55,7 @@ func run() error {
 	}
 	options := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
 	if store != nil {
-		options = append(options, grpc.UnaryInterceptor(authn.Interceptor(store)))
+		options = append(options, grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
 	}
 	server := grpc.NewServer(options...)
 	pb.RegisterChannelServiceServer(server, service)

@@ -59,8 +59,8 @@ go vet ./...
 
 Работают одноразовые registration/login/revoke challenges, root/device Ed25519-подписи и opaque access tokens на 10 минут. Подробный формат и ограничения описаны в [ADR-016](../docs/adr/016-local-auth-events.md). Open registration даёт доступ только к одному общему чату; полноценные ACL, invites, роли, refresh, passkeys, vault и recovery пока отсутствуют.
 
-`GET /api/v1/channels/general/events?after=event-1` возвращает до 100 событий и `nextCursor`. Событие записывается атомарно с сообщением; retry не добавляет событие. Это polling/replay, а не уже реализованный server stream. Подпись manifest, outbox worker и realtime delivery ещё предстоит реализовать.
+`GET /api/v1/channels/general/events?after=event-1` возвращает до 100 событий и `nextCursor`. Событие записывается атомарно с сообщением; retry не добавляет событие. `Subscribe` передаёт replay/live events через gRPC и gateway endpoint `/api/v1/channels/general/events/subscribe`. Heartbeat, deadlines, revoke и ограничения описаны в [ADR-018](../docs/adr/018-event-stream.md). Сервер пока читает log каждые 500 ms; это не LISTEN/NOTIFY/outbox worker.
 
 Серверный seed хранится в базе без отдельного шифрования: доступ к базе или её backup даёт серверный ключ. Это не пользовательский recovery seed. До production нужен отдельный secret/key backend и проверка ротации/восстановления. Ограничьте доступ к базе и резервным копиям.
 
-Далее: Subscribe с replay и проверкой отзыва; ACL и invites; полноценный локальный vault и refresh; панель настройки и веб-клиент; полный Docker deployment. Сейчас Compose запускает только PostgreSQL, Go-сервер работает на хосте. Веб-интерфейс ещё не реализован.
+Далее: ACL и invites; полноценный локальный vault и refresh; event-driven wakeup и snapshot watermark; панель настройки и веб-клиент; полный Docker deployment. Сейчас Compose запускает только PostgreSQL, Go-сервер работает на хосте. Рабочая веб-панель ещё не реализована.

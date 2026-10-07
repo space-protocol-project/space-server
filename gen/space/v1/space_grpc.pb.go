@@ -265,15 +265,19 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	AuthService_Logout_FullMethodName            = "/space.v1.AuthService/Logout"
-	AuthService_CreateChallenge_FullMethodName   = "/space.v1.AuthService/CreateChallenge"
-	AuthService_CompleteChallenge_FullMethodName = "/space.v1.AuthService/CompleteChallenge"
+	AuthService_RevokeCurrentDevice_FullMethodName = "/space.v1.AuthService/RevokeCurrentDevice"
+	AuthService_ListDevices_FullMethodName         = "/space.v1.AuthService/ListDevices"
+	AuthService_Logout_FullMethodName              = "/space.v1.AuthService/Logout"
+	AuthService_CreateChallenge_FullMethodName     = "/space.v1.AuthService/CreateChallenge"
+	AuthService_CompleteChallenge_FullMethodName   = "/space.v1.AuthService/CompleteChallenge"
 )
 
 // AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
+	RevokeCurrentDevice(ctx context.Context, in *RevokeCurrentDeviceRequest, opts ...grpc.CallOption) (*RevokeCurrentDeviceResponse, error)
+	ListDevices(ctx context.Context, in *ListDevicesRequest, opts ...grpc.CallOption) (*ListDevicesResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	CreateChallenge(ctx context.Context, in *CreateChallengeRequest, opts ...grpc.CallOption) (*CreateChallengeResponse, error)
 	CompleteChallenge(ctx context.Context, in *CompleteChallengeRequest, opts ...grpc.CallOption) (*CompleteChallengeResponse, error)
@@ -285,6 +289,26 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) RevokeCurrentDevice(ctx context.Context, in *RevokeCurrentDeviceRequest, opts ...grpc.CallOption) (*RevokeCurrentDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeCurrentDeviceResponse)
+	err := c.cc.Invoke(ctx, AuthService_RevokeCurrentDevice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ListDevices(ctx context.Context, in *ListDevicesRequest, opts ...grpc.CallOption) (*ListDevicesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDevicesResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListDevices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
@@ -321,6 +345,8 @@ func (c *authServiceClient) CompleteChallenge(ctx context.Context, in *CompleteC
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
+	RevokeCurrentDevice(context.Context, *RevokeCurrentDeviceRequest) (*RevokeCurrentDeviceResponse, error)
+	ListDevices(context.Context, *ListDevicesRequest) (*ListDevicesResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	CreateChallenge(context.Context, *CreateChallengeRequest) (*CreateChallengeResponse, error)
 	CompleteChallenge(context.Context, *CompleteChallengeRequest) (*CompleteChallengeResponse, error)
@@ -334,6 +360,12 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) RevokeCurrentDevice(context.Context, *RevokeCurrentDeviceRequest) (*RevokeCurrentDeviceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevokeCurrentDevice not implemented")
+}
+func (UnimplementedAuthServiceServer) ListDevices(context.Context, *ListDevicesRequest) (*ListDevicesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDevices not implemented")
+}
 func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
@@ -362,6 +394,42 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_RevokeCurrentDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeCurrentDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RevokeCurrentDevice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RevokeCurrentDevice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RevokeCurrentDevice(ctx, req.(*RevokeCurrentDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ListDevices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDevicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListDevices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListDevices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListDevices(ctx, req.(*ListDevicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -425,6 +493,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RevokeCurrentDevice",
+			Handler:    _AuthService_RevokeCurrentDevice_Handler,
+		},
+		{
+			MethodName: "ListDevices",
+			Handler:    _AuthService_ListDevices_Handler,
+		},
 		{
 			MethodName: "Logout",
 			Handler:    _AuthService_Logout_Handler,

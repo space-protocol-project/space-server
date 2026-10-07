@@ -1,9 +1,11 @@
-import { request, newKeys, proof } from "./identity.mjs";
+import { request, newKeys, proof, url64 } from "./identity.mjs";
+import { createRecoveryCard, openCard, keysFromCard } from "./recovery.mjs";
 const $ = (selector) => document.querySelector(selector);
 const origin = location.origin;
 let currentRole = "",
   memberCursor = "",
   inviteCursor = "";
+let stagedRecovery;
 const roleLabel = (role) =>
   ({
     owner: "Владелец",
@@ -124,7 +126,7 @@ async function signIn(forceGrant = false) {
     !/^[A-Za-z0-9_-]{43}$/.test(discovery.signing_public_key)
   )
     throw new Error("Нужен совместимый сервер с PostgreSQL");
-  record = await vault();
+  record = stagedRecovery || (await vault());
   if (
     record &&
     (record.serverId !== discovery.server_id ||
@@ -146,18 +148,33 @@ async function signIn(forceGrant = false) {
     await vault(record);
   }
   if (forceGrant || !record.grantId) {
+    const authority =
+      record.root.privateKey || record.recoveryPrivate
+        ? record
+        : await unlockAuthority();
     const grant = await proof(
       origin,
       discovery,
-      record,
+      {
+        ...record,
+        root: authority.root,
+        recoveryPrivate: authority.recoveryPrivate,
+        recoveryGrantId: authority.recoveryGrantId || record.recoveryGrantId,
+      },
       "device.register",
       "",
       joinToken(),
     );
     record.grantId = grant.grantId;
+    delete record.recoveryPrivate;
     await vault(record);
+    stagedRecovery = undefined;
   }
   await renew();
+  $("#identity-tools").hidden = false;
+  $("#download-card").hidden = !record.cardCipher;
+  $("#device-password-label").hidden = !!record.root.privateKey;
+  await loadDevices();
   if (joinToken()) {
     await api("/api/v1/membership/invites/accept", { token: joinToken() });
     $("#join-token").value = "";
@@ -259,6 +276,7 @@ $("#sign-out").addEventListener("click", () =>
     expires = 0;
     config = null;
     $("#management").hidden = true;
+    $("#identity-tools").hidden = true;
     $("#participant").hidden = true;
     $("#created-invite").hidden = true;
     $("#invite-token").value = "";
@@ -422,3 +440,212 @@ $("#more-invites").addEventListener("click", () =>
 $("#participant-sign-out").addEventListener("click", () =>
   $("#sign-out").click(),
 );
+
+function downloadCard(packet) {
+  const url = URL.createObjectURL(
+    new Blob([packet], { type: "application/json" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "space-recovery.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$("#card-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const pass = $("#card-password").value;
+    if (pass.length < 12 || pass !== $("#card-confirm").value)
+      throw new Error("Пароль слишком короткий или значения не совпадают.");
+    if (
+      !confirm(
+        "Создать отдельный ключ восстановления? Карточка и пароль дают доступ вашей идентичности. Сохраните их раздельно и проверьте восстановление.",
+      )
+    )
+      return;
+    try {
+      const packet = await createRecoveryCard(
+        record,
+        origin,
+        discovery,
+        pass,
+        (keys) =>
+          proof(origin, discovery, keys, "device.register", "", "", {
+            recovery: true,
+          }),
+      );
+      record.cardCipher = packet;
+      await vault(record);
+      $("#download-card").hidden = false;
+      downloadCard(packet);
+      await loadDevices();
+      status(
+        "Зашифрованная карточка создана. Проверьте восстановление на другом устройстве.",
+      );
+    } finally {
+      $("#card-password").value = "";
+      $("#card-confirm").value = "";
+    }
+  });
+});
+$("#download-card").addEventListener("click", () => {
+  if (record?.cardCipher) downloadCard(record.cardCipher);
+});
+$("#restore-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const file = $("#restore-file").files[0];
+    if (!file || file.size > 16384)
+      throw new Error("Выберите карточку JSON размером до 16 KiB.");
+    try {
+      const packet = await file.text(),
+        payload = await openCard(packet, $("#restore-password").value);
+      const response = await fetch("/.well-known/space-protocol", {
+        redirect: "error",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Discovery недоступен");
+      const server = await response.json();
+      const previous = await vault();
+      if (
+        previous &&
+        (previous.serverId !== server.server_id ||
+          previous.serverKey !== server.signing_public_key)
+      )
+        throw new Error(
+          "Закреплённая идентичность сервера изменилась. Восстановление заблокировано.",
+        );
+      const restored = await keysFromCard(payload, origin, server);
+      if (
+        !confirm(
+          "Восстановить идентичность карточки? Сохранённые ключи этого браузера для данного адреса будут заменены. Сначала сохраните прежнюю карточку, если это другая идентичность.",
+        )
+      )
+        return;
+      stagedRecovery = {
+        ...restored,
+        serverId: server.server_id,
+        serverKey: server.signing_public_key,
+        cardCipher: packet,
+      };
+      await signIn();
+      status(
+        "Прежняя идентичность восстановлена с новым устройством. Проверьте список и отзовите потерянные устройства.",
+      );
+    } finally {
+      stagedRecovery = undefined;
+      $("#restore-password").value = "";
+      $("#restore-file").value = "";
+    }
+  });
+});
+async function loadDevices() {
+  const result = await api("/api/v1/auth/devices");
+  const list = $("#devices");
+  list.replaceChildren();
+  for (const grant of result.devices || []) {
+    const row = element("div", undefined, "member-row");
+    row.append(
+      element(
+        "p",
+        grant.recovery
+          ? "Ключ восстановления"
+          : grant.id === record.grantId
+            ? "Это устройство"
+            : "Другое устройство",
+      ),
+      element("p", grant.id, "identity"),
+      element(
+        "p",
+        `${grant.revoked ? "Отозвано" : "Доступ до"} ${new Date(Number(grant.expiresAt) * 1000).toLocaleString()}`,
+      ),
+    );
+    if (
+      !grant.revoked &&
+      Number(grant.expiresAt) > Date.now() / 1000 &&
+      (record.root.privateKey || grant.id !== record.recoveryGrantId)
+    ) {
+      const revoke = element("button", "Отозвать доступ", "secondary");
+      revoke.addEventListener("click", () =>
+        run(async () => {
+          if (
+            !confirm(
+              grant.recovery
+                ? "Отозвать карточку и все подключённые через неё устройства? Сначала проверьте другой путь доступа."
+                : "Отозвать это устройство? Его сессии и подписки завершатся.",
+            )
+          )
+            return;
+          if (grant.id === record.grantId) {
+            await api("/api/v1/auth/devices/current/revoke", {});
+            token = "";
+            expires = 0;
+            config = null;
+            for (const id of [
+              "management",
+              "claim",
+              "participant",
+              "identity-tools",
+            ])
+              $(`#${id}`).hidden = true;
+            $("#login").hidden = false;
+            status(
+              "Устройство отозвано. Новое разрешение автоматически не создаётся.",
+            );
+            return;
+          }
+          try {
+            const authority = record.root.privateKey
+              ? record
+              : await unlockAuthority();
+            const targetKey = await crypto.subtle.importKey(
+              "raw",
+              Uint8Array.from(atob(grant.publicKey), (c) => c.charCodeAt(0)),
+              "Ed25519",
+              true,
+              ["verify"],
+            );
+            await proof(
+              origin,
+              discovery,
+              {
+                ...authority,
+                device: { ...record.device, publicKey: targetKey },
+              },
+              "device.revoke",
+              grant.id,
+              "",
+              { expectedScopes: grant.scopes },
+            );
+            await loadDevices();
+            status("Устройство отозвано.");
+          } finally {
+            $("#device-card-password").value = "";
+          }
+        }),
+      );
+      row.append(revoke);
+    }
+    list.append(row);
+  }
+}
+$("#reload-devices").addEventListener("click", () => run(loadDevices));
+async function unlockAuthority() {
+  if (!record.cardCipher)
+    throw new Error("Нужна исходная карточка восстановления.");
+  try {
+    const payload = await openCard(
+      record.cardCipher,
+      $("#device-card-password").value || $("#renew-card-password").value,
+    );
+    if (
+      payload.root_public_key !==
+      url64(await crypto.subtle.exportKey("raw", record.root.publicKey))
+    )
+      throw new Error("Карточка относится к другой идентичности");
+    return await keysFromCard(payload, origin, discovery);
+  } finally {
+    $("#device-card-password").value = "";
+    $("#renew-card-password").value = "";
+  }
+}

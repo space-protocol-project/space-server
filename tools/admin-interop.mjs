@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { recoveryInterop } from "./recovery-interop.mjs";
 import {
   request,
   newKeys,
@@ -138,6 +139,7 @@ await request(
   session.accessToken,
   "PATCH",
 );
+await recoveryInterop(origin, discovery, keys, session);
 await request(origin, "/api/v1/auth/logout", {}, session.accessToken);
 let refused = false;
 try {

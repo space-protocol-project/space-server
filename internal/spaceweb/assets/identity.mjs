@@ -51,7 +51,14 @@ export async function proof(
   purpose,
   grantId,
   invitationToken = "",
+  options = {},
 ) {
+  if (purpose === "device.register" && !keys.root.privateKey)
+    purpose = "device.delegate";
+  if (purpose === "device.revoke" && !keys.root.privateKey)
+    purpose = "recovery.device.revoke";
+  const delegated =
+    purpose === "device.delegate" || purpose === "recovery.device.revoke";
   const root = new Uint8Array(
     await crypto.subtle.exportKey("raw", keys.root.publicKey),
   );
@@ -63,8 +70,16 @@ export async function proof(
     input.rootPublicKey = base64(root);
     input.devicePublicKey = base64(device);
     input.administrative = true;
+    input.recovery = !!options.recovery;
+  } else if (purpose === "device.delegate") {
+    input.devicePublicKey = base64(device);
+    input.administrative = true;
+    input.recoveryGrantId = keys.recoveryGrantId;
   } else {
     input.grantId = grantId;
+    if (purpose === "device.revoke") input.rootPublicKey = base64(root);
+    if (purpose === "recovery.device.revoke")
+      input.recoveryGrantId = keys.recoveryGrantId;
   }
   const response = await request(origin, "/api/v1/auth/challenges", input);
   const raw = atob(response.transcript);
@@ -87,6 +102,7 @@ export async function proof(
     "v",
   ];
   const names = Object.keys(transcript).sort();
+  if (delegated) expected.splice(1, 0, "authorizer_grant_id");
   const canonical = JSON.stringify(
     Object.fromEntries(names.map((key) => [key, transcript[key]])),
   );
@@ -108,22 +124,41 @@ export async function proof(
     /^dg_[A-Za-z0-9_-]{43}$/.test(transcript.grant_id) &&
     /^[A-Za-z0-9_-]{43}$/.test(transcript.nonce) &&
     JSON.stringify(transcript.scopes) ===
-      '["chat.read","chat.write","space.manage"]' &&
+      JSON.stringify(
+        options.expectedScopes || [
+          "chat.read",
+          "chat.write",
+          "space.manage",
+          ...(options.recovery ? ["identity.recover"] : []),
+        ],
+      ) &&
+    (!delegated || transcript.authorizer_grant_id === keys.recoveryGrantId) &&
     transcript.expires_at === transcript.issued_at + 60 &&
     transcript.expires_at > now &&
     transcript.issued_at <= now + 5 &&
-    (purpose === "device.register"
-      ? transcript.grant_expires_at === transcript.issued_at + 30 * 86400
+    (purpose === "device.register" || purpose === "device.delegate"
+      ? purpose === "device.delegate"
+        ? transcript.grant_expires_at > transcript.expires_at &&
+          transcript.grant_expires_at <= transcript.issued_at + 30 * 86400
+        : transcript.grant_expires_at ===
+          transcript.issued_at + (options.recovery ? 3650 : 30) * 86400
       : transcript.grant_id === grantId);
   if (!valid)
     throw new Error("Проверка challenge не пройдена. Ключ не использован.");
   const prefixes = {
     "device.register": "space/device-register/v1",
     "auth.login": "space/auth-login/v1",
+    "device.revoke": "space/device-revoke/v1",
+    "device.delegate": "space/device-delegate/v1",
+    "recovery.device.revoke": "space/recovery-device-revoke/v1",
   };
   const signature = await crypto.subtle.sign(
     "Ed25519",
-    purpose === "auth.login" ? keys.device.privateKey : keys.root.privateKey,
+    purpose === "auth.login"
+      ? keys.device.privateKey
+      : delegated
+        ? keys.recoveryPrivate
+        : keys.root.privateKey,
     encoder.encode(prefixes[purpose] + "\0" + canonical),
   );
   const result = await request(origin, "/api/v1/auth/sessions", {
@@ -147,5 +182,5 @@ export async function proof(
     )
       throw new Error("Ответ содержит недействительную сессию");
   }
-  return result;
+  return { ...result, recoveryExpiresAt: transcript.grant_expires_at };
 }

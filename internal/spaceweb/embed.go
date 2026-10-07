@@ -20,6 +20,7 @@ func Handler() http.Handler {
 			file = "index.html"
 		}
 		types := map[string]string{"index.html": "text/html; charset=utf-8", "app.mjs": "text/javascript; charset=utf-8", "identity.mjs": "text/javascript; charset=utf-8", "styles.css": "text/css; charset=utf-8"}
+		types["recovery.mjs"] = "text/javascript; charset=utf-8"
 		media, ok := types[file]
 		if !ok {
 			http.NotFound(w, r)

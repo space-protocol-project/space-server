@@ -30,6 +30,31 @@
           Проверить приглашение
         </button>
         <p id="invite-preview" class="note"></p>
+        <details>
+          <summary>Восстановить прежнюю идентичность</summary>
+          <form id="restore-form">
+            <label
+              >Карточка Space (JSON)<input
+                id="restore-file"
+                type="file"
+                accept=".json,application/json"
+                required /></label
+            ><label
+              >Пароль карточки<input
+                id="restore-password"
+                type="password"
+                autocomplete="off"
+                minlength="12"
+                required
+            /></label>
+            <p class="note">
+              Открывается только на этом устройстве. Будет создан новый рабочий
+              ключ под прежней идентичностью. Карточка должна относиться к этому
+              адресу и серверному ключу.
+            </p>
+            <button>Восстановить и войти</button>
+          </form>
+        </details>
         <p class="note">
           При первом входе создаётся отдельная идентичность в этом браузере. Она
           отличается от идентичности Flutter-клиента. Ключи сохраняются в
@@ -55,6 +80,13 @@
           <button id="renew-grant" class="secondary">
             Выдать новое разрешение устройства
           </button>
+          <label
+            >Пароль сохранённой карточки, если это восстановленное
+            устройство<input
+              id="renew-card-password"
+              type="password"
+              autocomplete="off"
+          /></label>
         </details>
       </section>
       <section class="card" id="claim" hidden>
@@ -200,6 +232,54 @@
         <button id="participant-sign-out" class="secondary">Выйти</button>
       </section>
       <p id="status" role="status" aria-live="polite"></p>
+      <section class="card" id="identity-tools" hidden>
+        <h2>Восстановление и устройства</h2>
+        <p class="note">
+          Карточка содержит зашифрованный ключ восстановления для этого сервера.
+          Она позволяет подключать новые устройства с вашей идентичностью.
+          Сервер не получает пароль или приватный ключ. Ключ восстановления
+          действует до 3650 дней; потеря файла и пароля не восстанавливается
+          сервером. QR-импорт появится отдельно.
+        </p>
+        <form id="card-form">
+          <label
+            >Пароль карточки (от 12 символов)<input
+              id="card-password"
+              type="password"
+              minlength="12"
+              autocomplete="off"
+              required /></label
+          ><label
+            >Повторите пароль<input
+              id="card-confirm"
+              type="password"
+              minlength="12"
+              autocomplete="off"
+              required /></label
+          ><button>Создать и скачать карточку</button>
+        </form>
+        <button id="download-card" class="secondary" hidden>
+          Скачать сохранённую карточку
+        </button>
+        <div class="row">
+          <h3>Устройства вашей идентичности</h3>
+          <button id="reload-devices" class="secondary">Обновить</button>
+        </div>
+        <div id="devices"></div>
+        <label id="device-password-label" hidden
+          >Пароль сохранённой карточки для отзыва других устройств<input
+            id="device-card-password"
+            type="password"
+            minlength="12"
+            autocomplete="off"
+        /></label>
+        <p class="note">
+          Отзыв карточки закрывает также устройства, подключённые через неё.
+          Создать новый recovery key можно исходным root после отзыва
+          предыдущего. Восстановленная идентичность может повторно использовать
+          сохранённую карточку.
+        </p>
+      </section>
       <footer>
         Экспериментальный профиль · /space · настройка без Docker на локальном
         компьютере сервера

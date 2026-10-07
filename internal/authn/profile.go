@@ -17,25 +17,27 @@ import (
 // Transcript имеет только ASCII-строки фиксированного профиля и целые Unix seconds.
 // Порядок полей лексикографический; это ограниченное подмножество JCS, не общий JCS parser.
 type Transcript struct {
-	AuthEpoch       int64    `json:"auth_epoch"`
-	ChallengeID     string   `json:"challenge_id"`
-	DevicePublicKey string   `json:"device_public_key"`
-	ExpiresAt       int64    `json:"expires_at"`
-	GrantExpiresAt  int64    `json:"grant_expires_at"`
-	GrantID         string   `json:"grant_id"`
-	IssuedAt        int64    `json:"issued_at"`
-	Nonce           string   `json:"nonce"`
-	Origin          string   `json:"origin"`
-	PrincipalID     string   `json:"principal_id"`
-	Purpose         string   `json:"purpose"`
-	RootPublicKey   string   `json:"root_public_key"`
-	Scopes          []string `json:"scopes"`
-	ServerID        string   `json:"server_id"`
-	Version         int      `json:"v"`
+	AuthEpoch         int64    `json:"auth_epoch"`
+	AuthorizerGrantID string   `json:"authorizer_grant_id,omitempty"`
+	ChallengeID       string   `json:"challenge_id"`
+	DevicePublicKey   string   `json:"device_public_key"`
+	ExpiresAt         int64    `json:"expires_at"`
+	GrantExpiresAt    int64    `json:"grant_expires_at"`
+	GrantID           string   `json:"grant_id"`
+	IssuedAt          int64    `json:"issued_at"`
+	Nonce             string   `json:"nonce"`
+	Origin            string   `json:"origin"`
+	PrincipalID       string   `json:"principal_id"`
+	Purpose           string   `json:"purpose"`
+	RootPublicKey     string   `json:"root_public_key"`
+	Scopes            []string `json:"scopes"`
+	ServerID          string   `json:"server_id"`
+	Version           int      `json:"v"`
 }
 
 func (t Transcript) Canonical() ([]byte, error) {
 	stringsToCheck := []string{t.ChallengeID, t.DevicePublicKey, t.GrantID, t.Nonce, t.Origin, t.PrincipalID, t.Purpose, t.RootPublicKey, t.ServerID}
+	stringsToCheck = append(stringsToCheck, t.AuthorizerGrantID)
 	stringsToCheck = append(stringsToCheck, t.Scopes...)
 	for _, value := range stringsToCheck {
 		for _, char := range value {
@@ -53,7 +55,7 @@ func (t Transcript) Canonical() ([]byte, error) {
 }
 
 func (t Transcript) SigningBytes() ([]byte, error) {
-	prefixes := map[string]string{"device.register": "space/device-register/v1", "auth.login": "space/auth-login/v1", "device.revoke": "space/device-revoke/v1"}
+	prefixes := map[string]string{"device.register": "space/device-register/v1", "auth.login": "space/auth-login/v1", "device.revoke": "space/device-revoke/v1", "device.delegate": "space/device-delegate/v1", "recovery.device.revoke": "space/recovery-device-revoke/v1"}
 	prefix, ok := prefixes[t.Purpose]
 	if !ok {
 		return nil, fmt.Errorf("Неизвестное назначение подписи")

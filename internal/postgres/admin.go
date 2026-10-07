@@ -146,7 +146,7 @@ func (s *Store) GetSettings(ctx context.Context, _ *pb.GetSettingsRequest) (*pb.
 		return nil, databaseError(ctx, err)
 	}
 	defer tx.Rollback(ctx)
-	principal, err := authorizeManagement(ctx, tx)
+	principal, err := managementRole(ctx, tx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,10 @@ func (s *Store) GetSettings(ctx context.Context, _ *pb.GetSettingsRequest) (*pb.
 		return nil, databaseError(ctx, err)
 	}
 	if owner != principal {
-		return nil, status.Error(codes.PermissionDenied, "Нужны права владельца")
+		member, roleErr := membership(ctx, tx, principal, false)
+		if roleErr != nil || member.Role != "admin" {
+			return nil, forbidden()
+		}
 	}
 	return &pb.GetSettingsResponse{Settings: config}, nil
 }
@@ -168,7 +171,7 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 		return nil, databaseError(ctx, err)
 	}
 	defer tx.Rollback(ctx)
-	principal, err := authorizeManagement(ctx, tx)
+	principal, err := managementRole(ctx, tx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +180,10 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 		return nil, databaseError(ctx, err)
 	}
 	if owner != principal {
-		return nil, status.Error(codes.PermissionDenied, "Нужны права владельца")
+		member, roleErr := membership(ctx, tx, principal, false)
+		if roleErr != nil || member.Role != "admin" {
+			return nil, forbidden()
+		}
 	}
 	if current.Revision != req.ExpectedRevision {
 		return nil, status.Error(codes.Aborted, "Настройки уже изменились; загрузите их заново")

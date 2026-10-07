@@ -176,10 +176,13 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 	if !ed25519.Verify(key, signing, req.Signature) {
 		return nil, denied()
 	}
+	if req.InvitationToken != "" && transcript.Purpose != "device.register" {
+		return nil, status.Error(codes.InvalidArgument, "Приглашение разрешено только при регистрации устройства")
+	}
 	result := &pb.CompleteChallengeResponse{GrantId: transcript.GrantID, PrincipalId: transcript.PrincipalID}
 	switch transcript.Purpose {
 	case "device.register":
-		err = s.register(ctx, tx, transcript, canonical, req.Signature)
+		err = s.register(ctx, tx, transcript, canonical, req.Signature, req.InvitationToken)
 	case "auth.login":
 		err = s.login(ctx, tx, transcript, result)
 	case "device.revoke":
@@ -199,7 +202,7 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 	return result, nil
 }
 
-func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte) error {
+func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte, invitation string) error {
 	var policy string
 	if err := tx.QueryRow(ctx, "SELECT registration_policy FROM space_settings WHERE singleton=true FOR SHARE").Scan(&policy); err != nil {
 		return databaseError(ctx, err)
@@ -208,7 +211,7 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principals WHERE id=$1)", t.PrincipalID).Scan(&existing); err != nil {
 		return databaseError(ctx, err)
 	}
-	if !existing && policy == "closed" {
+	if !existing && policy == "closed" && invitation == "" {
 		return status.Error(codes.PermissionDenied, "Регистрация новых идентичностей закрыта")
 	}
 	root, _ := base64.RawURLEncoding.DecodeString(t.RootPublicKey)
@@ -222,6 +225,22 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 	}
 	if epoch != t.AuthEpoch {
 		return denied()
+	}
+	if invitation != "" {
+		if _, err := redeemInvite(ctx, tx, invitation, t.PrincipalID); err != nil {
+			return err
+		}
+	} else {
+		if _, err := tx.Exec(ctx, "INSERT INTO memberships(principal_id,role) VALUES($1,'member') ON CONFLICT(principal_id) DO NOTHING", t.PrincipalID); err != nil {
+			return databaseError(ctx, err)
+		}
+	}
+	member, memberErr := membership(ctx, tx, t.PrincipalID, true)
+	if memberErr != nil {
+		return memberErr
+	}
+	if member.Blocked {
+		return forbidden()
 	}
 	var count int
 	if err := tx.QueryRow(ctx, "SELECT count(*) FROM device_grants WHERE principal_id=$1 AND revoked_at IS NULL AND expires_at>now()", t.PrincipalID).Scan(&count); err != nil {

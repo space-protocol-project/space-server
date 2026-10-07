@@ -44,7 +44,14 @@ export async function newKeys() {
   ]);
   return { root, device, grantId: "" };
 }
-export async function proof(origin, discovery, keys, purpose, grantId) {
+export async function proof(
+  origin,
+  discovery,
+  keys,
+  purpose,
+  grantId,
+  invitationToken = "",
+) {
   const root = new Uint8Array(
     await crypto.subtle.exportKey("raw", keys.root.publicKey),
   );
@@ -122,6 +129,7 @@ export async function proof(origin, discovery, keys, purpose, grantId) {
   const result = await request(origin, "/api/v1/auth/sessions", {
     challengeId: response.challengeId,
     signature: base64(signature),
+    invitationToken: purpose === "device.register" ? invitationToken : "",
   });
   if (
     result.principalId !== principal ||

@@ -10,6 +10,9 @@ import (
 )
 
 func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.ListEventsResponse, error) {
+	if err := chatAccess(ctx, s.pool, false, false); err != nil {
+		return nil, err
+	}
 	if err := enabledChat(ctx, s.pool, false); err != nil {
 		return nil, err
 	}

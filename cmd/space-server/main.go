@@ -97,6 +97,7 @@ func run() error {
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, identity.ServerID, origin))
 		pb.RegisterSyncServiceServer(server, store)
 		pb.RegisterAdminServiceServer(server, store)
+		pb.RegisterMembershipServiceServer(server, store)
 	}
 	go func() {
 		if err := server.Serve(listener); err != nil {

@@ -36,6 +36,9 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 			return err
 		}
 		for _, event := range batch.Events {
+			if err := chatAccess(ctx, s.pool, false, false); err != nil {
+				return err
+			}
 			if _, err := s.Authenticate(ctx, token); err != nil {
 				return err
 			}

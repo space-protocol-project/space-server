@@ -31,6 +31,7 @@ type Identity struct {
 type Store struct {
 	pb.UnimplementedSyncServiceServer
 	pb.UnimplementedAdminServiceServer
+	pb.UnimplementedMembershipServiceServer
 	pool        *pgxpool.Pool
 	streamSlots chan struct{}
 }
@@ -88,13 +89,13 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 3)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 4)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
-	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql"} {
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql"} {
 		if err := applyMigration(ctx, tx, i+1, path); err != nil {
 			return err
 		}
@@ -175,6 +176,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	if err := s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
+	if err := chatAccess(ctx, tx, true, true); err != nil {
+		return nil, err
+	}
 	if err := enabledChat(ctx, tx, true); err != nil {
 		return nil, err
 	}
@@ -217,6 +221,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 }
 
 func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListContentResponse, error) {
+	if err := chatAccess(ctx, s.pool, false, false); err != nil {
+		return nil, err
+	}
 	if err := enabledChat(ctx, s.pool, false); err != nil {
 		return nil, err
 	}

@@ -136,6 +136,15 @@ summary:focus-visible {
   padding: 12px 0;
   color: #fabd2f;
 }
+.member-row {
+  border-top: 1px solid #504945;
+  padding: 18px 0;
+}
+.identity {
+  overflow-wrap: anywhere;
+  font-family: monospace;
+  font-size: 12px;
+}
 [hidden] {
   display: none !important;
 }

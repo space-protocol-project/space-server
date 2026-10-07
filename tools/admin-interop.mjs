@@ -53,6 +53,91 @@ assert.ok(
 );
 const denied = await fetch(origin + "/api/v1/space/settings");
 assert.equal(denied.status, 401);
+const invitation = await request(
+  origin,
+  "/api/v1/space/invites",
+  { role: "reader", ttlSeconds: 3600, maxUses: 1 },
+  session.accessToken,
+);
+await request(
+  origin,
+  "/api/v1/space/settings",
+  {
+    title: updated.settings.title,
+    chatTitle: updated.settings.chatTitle,
+    chatEnabled: true,
+    registrationPolicy: "closed",
+    expectedRevision: updated.settings.revision,
+  },
+  session.accessToken,
+  "PATCH",
+);
+const readerKeys = await newKeys();
+const readerGrant = await proof(
+  origin,
+  discovery,
+  readerKeys,
+  "device.register",
+  "",
+  invitation.token,
+);
+const readerSession = await proof(
+  origin,
+  discovery,
+  readerKeys,
+  "auth.login",
+  readerGrant.grantId,
+);
+const member = await request(
+  origin,
+  "/api/v1/membership",
+  undefined,
+  readerSession.accessToken,
+);
+assert.equal(member.member.role, "reader");
+await request(
+  origin,
+  "/api/v1/channels/general/content",
+  undefined,
+  readerSession.accessToken,
+);
+await assert.rejects(
+  request(
+    origin,
+    "/api/v1/channels/general/content",
+    { text: "Читатель не пишет", idempotencyKey: "reader-denied" },
+    readerSession.accessToken,
+  ),
+  (error) => error.status === 403,
+);
+await assert.rejects(
+  request(
+    origin,
+    "/api/v1/space/invites",
+    { role: "member", ttlSeconds: 3600, maxUses: 1 },
+    readerSession.accessToken,
+  ),
+  (error) => error.status === 403,
+);
+const latest = await request(
+  origin,
+  "/api/v1/space/settings",
+  undefined,
+  session.accessToken,
+);
+await request(
+  origin,
+  "/api/v1/space/settings",
+  {
+    title: latest.settings.title,
+    chatTitle: latest.settings.chatTitle,
+    chatEnabled: true,
+    registrationPolicy: "open",
+    expectedRevision: latest.settings.revision,
+  },
+  session.accessToken,
+  "PATCH",
+);
 await request(origin, "/api/v1/auth/logout", {}, session.accessToken);
 let refused = false;
 try {

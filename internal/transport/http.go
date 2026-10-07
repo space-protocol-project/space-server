@@ -50,6 +50,9 @@ func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serve
 	if err := pb.RegisterAdminServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
 	}
+	if err := pb.RegisterMembershipServiceHandler(ctx, gateway, connection); err != nil {
+		return nil, err
+	}
 	mux := http.NewServeMux()
 	mux.Handle("/api/", gateway)
 	mux.Handle("/space", spaceweb.Handler())

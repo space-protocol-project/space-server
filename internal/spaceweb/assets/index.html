@@ -20,6 +20,16 @@
         <h2 id="login-title">Вход владельца</h2>
         <p>Подпись ключом устройства. Пароль и центральный аккаунт не нужны.</p>
         <button id="sign-in">Войти с ключами этого браузера</button>
+        <label
+          >Приглашение (необязательно)<input
+            id="join-token"
+            autocomplete="off"
+            placeholder="iv_…"
+        /></label>
+        <button id="preview-invite" class="secondary">
+          Проверить приглашение
+        </button>
+        <p id="invite-preview" class="note"></p>
         <p class="note">
           При первом входе создаётся отдельная идентичность в этом браузере. Она
           отличается от идентичности Flutter-клиента. Ключи сохраняются в
@@ -95,8 +105,8 @@
             </select></label
           >
           <p class="note">
-            Закрытие регистрации не отзывает доступ существующих участников.
-            Приглашения и дополнительные роли появятся отдельно.
+            Закрытие регистрации не отзывает доступ существующих участников. По
+            приглашению можно вступить и при закрытой регистрации.
           </p>
           <div class="actions">
             <button type="button" id="reload" class="secondary">
@@ -105,6 +115,71 @@
           </div>
         </form>
         <section class="card">
+          <div class="row">
+            <h2>Участники и права</h2>
+            <button id="reload-members" class="secondary">Обновить</button>
+          </div>
+          <p class="note">
+            Читатель читает чат. Участник также пишет. Администратор меняет
+            настройки и создаёт приглашения. Только владелец назначает роли и
+            блокирует участников. Для управления устройству отдельно нужен
+            space.manage.
+          </p>
+          <div id="members"></div>
+          <button id="more-members" class="secondary" hidden>
+            Следующие участники
+          </button>
+        </section>
+        <section class="card">
+          <h2>Приглашения</h2>
+          <form id="invite-form">
+            <label
+              >Роль<select id="invite-role">
+                <option value="member">Участник — читать и писать</option>
+                <option value="reader">Читатель — только читать</option>
+              </select></label
+            >
+            <label
+              >Срок действия<select id="invite-ttl">
+                <option value="3600">1 час</option>
+                <option value="86400" selected>1 день</option>
+                <option value="604800">7 дней</option>
+              </select></label
+            >
+            <label
+              >Количество вступлений<input
+                id="invite-uses"
+                type="number"
+                min="1"
+                max="100"
+                value="1"
+                required
+            /></label>
+            <button>Создать приглашение</button>
+          </form>
+          <div id="created-invite" hidden>
+            <p>
+              Сохраните ссылку сейчас: сервер не сможет показать секрет
+              повторно. Любой получивший ссылку может вступить с указанной
+              ролью.
+            </p>
+            <label>Ссылка<input id="invite-link" readonly /></label
+            ><label>Код для Flutter<input id="invite-token" readonly /></label
+            ><button id="copy-invite" class="secondary">
+              Скопировать ссылку
+            </button>
+          </div>
+          <div class="actions">
+            <button id="reload-invites" class="secondary">
+              Обновить список
+            </button>
+          </div>
+          <div id="invites"></div>
+          <button id="more-invites" class="secondary" hidden>
+            Следующие приглашения
+          </button>
+        </section>
+        <section class="card">
           <h2>Сессия управления</h2>
           <p>
             Каждое действие проверяет права владельца, разрешение устройства и
@@ -112,6 +187,17 @@
           </p>
           <button id="sign-out" class="secondary">Выйти из панели</button>
         </section>
+      </section>
+      <section class="card" id="participant" hidden>
+        <h2>Вы в пространстве</h2>
+        <p id="participant-role"></p>
+        <p>
+          Для чата подключите Flutter-клиент по адресу сервера и коду
+          приглашения. Браузер и Flutter пока имеют разные идентичности: для
+          каждого вступления нужен отдельный код или свободное использование
+          приглашения.
+        </p>
+        <button id="participant-sign-out" class="secondary">Выйти</button>
       </section>
       <p id="status" role="status" aria-live="polite"></p>
       <footer>

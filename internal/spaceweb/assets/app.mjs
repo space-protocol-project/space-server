@@ -1,6 +1,24 @@
 import { request, newKeys, proof } from "./identity.mjs";
 const $ = (selector) => document.querySelector(selector);
 const origin = location.origin;
+let currentRole = "",
+  memberCursor = "",
+  inviteCursor = "";
+const roleLabel = (role) =>
+  ({
+    owner: "Владелец",
+    admin: "Администратор",
+    member: "Участник",
+    reader: "Читатель",
+  })[role] || "Неизвестная роль";
+function joinToken() {
+  return $("#join-token").value.trim();
+}
+const fragmentToken = new URLSearchParams(location.hash.slice(1)).get("invite");
+if (fragmentToken) {
+  $("#join-token").value = fragmentToken;
+  history.replaceState(null, "", location.pathname);
+}
 let token = "",
   expires = 0,
   record,
@@ -128,20 +146,53 @@ async function signIn(forceGrant = false) {
     await vault(record);
   }
   if (forceGrant || !record.grantId) {
-    const grant = await proof(origin, discovery, record, "device.register", "");
+    const grant = await proof(
+      origin,
+      discovery,
+      record,
+      "device.register",
+      "",
+      joinToken(),
+    );
     record.grantId = grant.grantId;
     await vault(record);
   }
   await renew();
+  if (joinToken()) {
+    await api("/api/v1/membership/invites/accept", { token: joinToken() });
+    $("#join-token").value = "";
+  }
   const setup = await request(origin, "/api/v1/space/setup");
   if (!setup.initialized) {
     $("#claim").hidden = false;
     status("Устройство вошло. Для роли владельца нужен код сервера.");
   } else {
-    await load();
+    const current = await api("/api/v1/membership");
+    currentRole = current.member.role;
+    if (["owner", "admin"].includes(currentRole) && !current.member.blocked) {
+      await load();
+      await loadMembers();
+      await loadInvites();
+    } else {
+      $("#login").hidden = true;
+      $("#participant").hidden = false;
+      $("#participant-role").textContent = current.member.blocked
+        ? "Доступ заблокирован владельцем."
+        : `Ваша роль: ${roleLabel(currentRole)}.`;
+      status("Вход выполнен.");
+    }
   }
 }
 $("#sign-in").addEventListener("click", () => run(() => signIn()));
+$("#preview-invite").addEventListener("click", () =>
+  run(async () => {
+    const v = await request(origin, "/api/v1/membership/invites/preview", {
+      token: joinToken(),
+    });
+    $("#invite-preview").textContent =
+      `${v.title}: ${roleLabel(v.role)}. Действует до ${new Date(Number(v.expiresAt) * 1000).toLocaleString()}. Вход использует приглашение для отдельной браузерной идентичности. Для Flutter вставьте код в самом клиенте.`;
+  }),
+);
 $("#renew-grant").addEventListener("click", () => {
   if (
     confirm("Явно разрешить этому устройству управление через корневой ключ?")
@@ -155,6 +206,9 @@ $("#claim-form").addEventListener("submit", (event) => {
     $("#setup-code").value = "";
     const result = await api("/api/v1/space/setup/claim", { setupCode: code });
     display(result.settings);
+    currentRole = "owner";
+    await loadMembers();
+    await loadInvites();
     status("Владелец назначен. Код использован один раз.");
   });
 });
@@ -205,6 +259,14 @@ $("#sign-out").addEventListener("click", () =>
     expires = 0;
     config = null;
     $("#management").hidden = true;
+    $("#participant").hidden = true;
+    $("#created-invite").hidden = true;
+    $("#invite-token").value = "";
+    $("#invite-link").value = "";
+    $("#participant").hidden = true;
+    $("#created-invite").hidden = true;
+    $("#invite-token").value = "";
+    $("#invite-link").value = "";
     $("#claim").hidden = true;
     $("#login").hidden = false;
     status("Сессия закрыта на сервере. Ключи сохранены в браузере.");
@@ -217,3 +279,150 @@ request(origin, "/api/v1/space/setup")
       : "Первый запуск пространства";
   })
   .catch(() => status("Для рабочей панели нужен сервер с PostgreSQL."));
+
+function element(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+async function loadMembers(append = false) {
+  const result = await api(
+    "/api/v1/space/members" +
+      (append && memberCursor
+        ? `?after=${encodeURIComponent(memberCursor)}`
+        : ""),
+  );
+  const list = $("#members");
+  if (!append) list.replaceChildren();
+  for (const m of result.members || []) {
+    const row = element("div", undefined, "member-row");
+    row.append(
+      element("p", m.principalId, "identity"),
+      element(
+        "p",
+        `${roleLabel(m.role)}${m.blocked ? " · Доступ заблокирован" : ""}`,
+      ),
+    );
+    if (currentRole === "owner" && m.role !== "owner") {
+      const select = element("select");
+      select.setAttribute("aria-label", `Роль ${m.principalId}`);
+      for (const role of ["reader", "member", "admin"]) {
+        const o = element("option", roleLabel(role));
+        o.value = role;
+        select.append(o);
+      }
+      select.value = m.role;
+      const blocked = element("input");
+      blocked.type = "checkbox";
+      blocked.checked = !!m.blocked;
+      const label = element("label", undefined, "check");
+      label.append(blocked, document.createTextNode("Заблокировать доступ"));
+      const save = element("button", "Применить права", "secondary");
+      save.addEventListener("click", () =>
+        run(async () => {
+          if (
+            !confirm(
+              `Изменить права ${m.principalId}? Новая роль: ${roleLabel(select.value)}; блокировка: ${blocked.checked ? "да" : "нет"}.`,
+            )
+          )
+            return;
+          await api(
+            `/api/v1/space/members/${encodeURIComponent(m.principalId)}`,
+            {
+              role: select.value,
+              blocked: blocked.checked,
+              expectedRevision: m.revision,
+            },
+            "PATCH",
+          );
+          await loadMembers();
+          status("Права сохранены. Сервер проверяет их при каждом действии.");
+        }),
+      );
+      row.append(select, label, save);
+    }
+    list.append(row);
+  }
+  memberCursor = result.nextCursor || "";
+  $("#more-members").hidden = !memberCursor;
+}
+async function loadInvites(append = false) {
+  const result = await api(
+    "/api/v1/space/invites" +
+      (append && inviteCursor
+        ? `?after=${encodeURIComponent(inviteCursor)}`
+        : ""),
+  );
+  const list = $("#invites");
+  if (!append) list.replaceChildren();
+  for (const v of result.invites || []) {
+    const row = element("div", undefined, "member-row");
+    row.append(
+      element(
+        "p",
+        `${roleLabel(v.role)} · ${v.uses || 0}/${v.maxUses} вступлений`,
+      ),
+      element(
+        "p",
+        `${v.revoked ? "Отозвано" : Number(v.expiresAt) * 1000 <= Date.now() ? "Истекло" : "Действует"} · до ${new Date(Number(v.expiresAt) * 1000).toLocaleString()}`,
+      ),
+    );
+    if (!v.revoked) {
+      const revoke = element("button", "Отозвать приглашение", "secondary");
+      revoke.addEventListener("click", () =>
+        run(async () => {
+          if (
+            !confirm(
+              "Отозвать приглашение? Уже вступившие участники сохранят доступ; для них используйте блокировку в списке участников.",
+            )
+          )
+            return;
+          await api(
+            `/api/v1/space/invites/${encodeURIComponent(v.id)}/revoke`,
+            {},
+          );
+          await loadInvites();
+          status("Приглашение отозвано.");
+        }),
+      );
+      row.append(revoke);
+    }
+    list.append(row);
+  }
+  inviteCursor = result.nextCursor || "";
+  $("#more-invites").hidden = !inviteCursor;
+}
+$("#invite-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const result = await api("/api/v1/space/invites", {
+      role: $("#invite-role").value,
+      ttlSeconds: Number($("#invite-ttl").value),
+      maxUses: Number($("#invite-uses").value),
+    });
+    $("#invite-token").value = result.token;
+    $("#invite-link").value =
+      `${origin}/space#invite=${encodeURIComponent(result.token)}`;
+    $("#created-invite").hidden = false;
+    await loadInvites();
+    status("Приглашение создано. Сохраните ссылку или код.");
+  });
+});
+$("#copy-invite").addEventListener("click", () =>
+  run(async () => {
+    await navigator.clipboard.writeText($("#invite-link").value);
+    status("Ссылка скопирована.");
+  }),
+);
+$("#reload-members").addEventListener("click", () => run(() => loadMembers()));
+$("#more-members").addEventListener("click", () =>
+  run(() => loadMembers(true)),
+);
+$("#reload-invites").addEventListener("click", () => run(() => loadInvites()));
+$("#more-invites").addEventListener("click", () =>
+  run(() => loadInvites(true)),
+);
+$("#participant-sign-out").addEventListener("click", () =>
+  $("#sign-out").click(),
+);

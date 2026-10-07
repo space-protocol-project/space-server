@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -154,7 +155,7 @@ func (s *Store) UpdateMember(ctx context.Context, req *pb.UpdateMemberRequest) (
 	if _, err = tx.Exec(ctx, "UPDATE memberships SET role=$2,blocked=$3,revision=$4 WHERE principal_id=$1", m.PrincipalId, m.Role, m.Blocked, m.Revision); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if err = audit(ctx, tx, principal, "member.update:"+m.PrincipalId+":"+m.Role, m.Revision); err != nil {
+	if err = audit(ctx, tx, principal, "member.update:"+m.PrincipalId+":"+m.Role+":blocked="+strconv.FormatBool(m.Blocked), m.Revision); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err = tx.Commit(ctx); err != nil {

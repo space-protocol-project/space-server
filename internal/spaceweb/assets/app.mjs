@@ -42,7 +42,7 @@ async function run(action) {
   } catch (error) {
     status(
       error.status === 403
-        ? "Нет права управления или код первоначальной настройки недействителен."
+        ? "Недостаточно прав, код недействителен или приглашение больше не действует."
         : error.message,
     );
   } finally {
@@ -134,7 +134,7 @@ async function signIn(forceGrant = false) {
   if (!record) {
     if (
       !confirm(
-        "Создать административные ключи для этого сервера в текущем браузере? Восстановление пока не поддерживается.",
+        "Создать ключи пространства в этом браузере? Управление доступно только владельцу или назначенному администратору. Вход по приглашению расходует место для этой отдельной браузерной идентичности. Восстановление пока не поддерживается.",
       )
     )
       return;
@@ -263,10 +263,6 @@ $("#sign-out").addEventListener("click", () =>
     $("#created-invite").hidden = true;
     $("#invite-token").value = "";
     $("#invite-link").value = "";
-    $("#participant").hidden = true;
-    $("#created-invite").hidden = true;
-    $("#invite-token").value = "";
-    $("#invite-link").value = "";
     $("#claim").hidden = true;
     $("#login").hidden = false;
     status("Сессия закрыта на сервере. Ключи сохранены в браузере.");
@@ -275,7 +271,7 @@ $("#sign-out").addEventListener("click", () =>
 request(origin, "/api/v1/space/setup")
   .then((result) => {
     $("#login-title").textContent = result.initialized
-      ? "Вход владельца"
+      ? "Вход в пространство"
       : "Первый запуск пространства";
   })
   .catch(() => status("Для рабочей панели нужен сервер с PostgreSQL."));

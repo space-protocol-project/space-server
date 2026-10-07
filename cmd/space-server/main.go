@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	"github.com/space-protocol-project/space-protocol/server/internal/authn"
 	"github.com/space-protocol-project/space-protocol/server/internal/chat"
 	"github.com/space-protocol-project/space-protocol/server/internal/postgres"
 	"github.com/space-protocol-project/space-protocol/server/internal/transport"
@@ -36,18 +37,28 @@ func run() error {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	service, identity, closeStore, err := openService(ctx, *demo)
+	service, identity, store, err := openService(ctx, *demo)
 	if err != nil {
 		return err
 	}
-	defer closeStore()
+	if store != nil {
+		defer store.Close()
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
 	}
-	server := grpc.NewServer(grpc.MaxRecvMsgSize(16 * 1024))
+	options := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
+	if store != nil {
+		options = append(options, grpc.UnaryInterceptor(authn.Interceptor(store)))
+	}
+	server := grpc.NewServer(options...)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
+	if store != nil {
+		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, identity.ServerID, "http://"+*port))
+		pb.RegisterSyncServiceServer(server, store)
+	}
 	go func() {
 		if err := server.Serve(listener); err != nil {
 			log.Printf("gRPC: %v", err)
@@ -78,9 +89,9 @@ func run() error {
 	}
 }
 
-func openService(ctx context.Context, demo bool) (*chat.Service, postgres.Identity, func(), error) {
+func openService(ctx context.Context, demo bool) (*chat.Service, postgres.Identity, *postgres.Store, error) {
 	if demo {
-		return chat.New("local-prototype"), postgres.Identity{ServerID: "local-prototype"}, func() {}, nil
+		return chat.New("local-prototype"), postgres.Identity{ServerID: "local-prototype"}, nil, nil
 	}
 	url := os.Getenv("SPACE_DATABASE_URL")
 	if url == "" {
@@ -92,5 +103,5 @@ func openService(ctx context.Context, demo bool) (*chat.Service, postgres.Identi
 	if err != nil {
 		return nil, postgres.Identity{}, nil, err
 	}
-	return chat.NewPersistent(identity.ServerID, store), identity, store.Close, nil
+	return chat.NewPersistent(identity.ServerID, store), identity, store, nil
 }

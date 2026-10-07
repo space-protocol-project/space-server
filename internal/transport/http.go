@@ -12,11 +12,18 @@ import (
 )
 
 func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey ...[]byte) (http.Handler, error) {
-	gateway := runtime.NewServeMux()
+	// Authorization прокидывается runtime отдельно; клиентская Grpc-Metadata-* не принимается.
+	gateway := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(string) (string, bool) { return "", false }))
 	if err := pb.RegisterChannelServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
 	}
 	if err := pb.RegisterContentServiceHandler(ctx, gateway, connection); err != nil {
+		return nil, err
+	}
+	if err := pb.RegisterAuthServiceHandler(ctx, gateway, connection); err != nil {
+		return nil, err
+	}
+	if err := pb.RegisterSyncServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
 	}
 	mux := http.NewServeMux()

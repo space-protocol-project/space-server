@@ -177,24 +177,24 @@ func TestDamagedMigrationAndMissingIdentityFailClosed(t *testing.T) {
 	if err := store.pool.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=1").Scan(&checksum); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum='damaged'"); err != nil {
+	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum='damaged' WHERE version=1"); err != nil {
 		t.Fatal(err)
 	}
 	if reopened, _, err := Open(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Повреждённая миграция принята")
 	}
-	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum=$1", checksum); err != nil {
+	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum=$1 WHERE version=1", checksum); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES(2,'future')"); err != nil {
+	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES(3,'future')"); err != nil {
 		t.Fatal(err)
 	}
 	if reopened, _, err := Open(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Новая схема принята старым сервером")
 	}
-	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=2"); err != nil {
+	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=3"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pool.Exec(ctx, "DELETE FROM server_state"); err != nil {

@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/space-protocol-project/space-protocol/server/internal/authn"
 	"log"
 	"strings"
 
@@ -27,7 +28,10 @@ type Identity struct {
 	PublicKey ed25519.PublicKey
 }
 
-type Store struct{ pool *pgxpool.Pool }
+type Store struct {
+	pb.UnimplementedSyncServiceServer
+	pool *pgxpool.Pool
+}
 
 func Open(ctx context.Context, url string) (*Store, Identity, error) {
 	config, err := pgxpool.ParseConfig(url)
@@ -81,21 +85,30 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 }
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
-	sql, err := migrations.ReadFile("migrations/001_initial.sql")
-	if err != nil {
-		return err
-	}
-	hash := sha256.Sum256([]byte(strings.ReplaceAll(string(sql), "\r\n", "\n")))
-	checksum := hex.EncodeToString(hash[:])
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 1)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 2)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql"} {
+		if err := applyMigration(ctx, tx, i+1, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyMigration(ctx context.Context, tx pgx.Tx, version int, path string) error {
+	sql, err := migrations.ReadFile("migrations/" + path)
+	if err != nil {
+		return err
+	}
+	hash := sha256.Sum256([]byte(strings.ReplaceAll(string(sql), "\r\n", "\n")))
+	checksum := hex.EncodeToString(hash[:])
 	var saved string
-	err = tx.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=1").Scan(&saved)
+	err = tx.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=$1", version).Scan(&saved)
 	if err == nil {
 		if saved != checksum {
 			return errors.New("Контрольная сумма применённой миграции изменилась")
@@ -108,7 +121,7 @@ func migrate(ctx context.Context, tx pgx.Tx) error {
 	if _, err := tx.Exec(ctx, string(sql)); err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version,checksum) VALUES (1,$1)", checksum)
+	_, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version,checksum) VALUES ($1,$2)", version, checksum)
 	return err
 }
 
@@ -157,6 +170,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 		return nil, databaseError(ctx, err)
 	}
 	defer tx.Rollback(ctx)
+	if err := s.lockSession(ctx, tx); err != nil {
+		return nil, err
+	}
 	var sequence int64
 	// Блокировка канала задаёт порядок фиксации сообщений, без дыр от rollback.
 	err = tx.QueryRow(ctx, "SELECT next_sequence FROM channels WHERE id=$1 FOR UPDATE", req.ChannelId).Scan(&sequence)
@@ -164,7 +180,8 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 		return nil, databaseError(ctx, err)
 	}
 	previous := new(pb.Content)
-	err = tx.QueryRow(ctx, "SELECT id, channel_id, text FROM contents WHERE channel_id=$1 AND idempotency_key=$2", req.ChannelId, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text)
+	actor := authn.Actor(ctx)
+	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId)
 	if err == nil {
 		if previous.Text != req.Text {
 			return nil, status.Error(codes.AlreadyExists, "Ключ уже использован с другим текстом")
@@ -177,12 +194,15 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	if sequence > 1000 {
 		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 1000 сообщений")
 	}
-	content := &pb.Content{Id: fmt.Sprintf("message-%d", sequence), ChannelId: req.ChannelId, Text: req.Text}
-	_, err = tx.Exec(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key) VALUES($1,$2,$3,$4,$5)", req.ChannelId, sequence, content.Id, req.Text, req.IdempotencyKey)
+	content := &pb.Content{Id: fmt.Sprintf("message-%d", sequence), ChannelId: req.ChannelId, Text: req.Text, AuthorId: actor}
+	_, err = tx.Exec(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id) VALUES($1,$2,$3,$4,$5,$6)", req.ChannelId, sequence, content.Id, req.Text, req.IdempotencyKey, actor)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if _, err = tx.Exec(ctx, "UPDATE channels SET next_sequence=next_sequence+1 WHERE id=$1", req.ChannelId); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if _, err = tx.Exec(ctx, "INSERT INTO events(channel_id,sequence,cursor,type) VALUES($1,$2,$3,'content.created')", req.ChannelId, sequence, fmt.Sprintf("event-%d", sequence)); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -202,7 +222,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := s.pool.Query(ctx, "SELECT id,channel_id,text FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
+	rows, err := s.pool.Query(ctx, "SELECT id,channel_id,text,author_id FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -210,7 +230,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 	result := &pb.ListContentResponse{NextCursor: req.After}
 	for rows.Next() {
 		content := new(pb.Content)
-		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text); err != nil {
+		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Contents = append(result.Contents, content)

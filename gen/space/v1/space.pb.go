@@ -22,6 +22,412 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CreateChallengeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// device.register / auth.login / device.revoke.
+	Purpose         string `protobuf:"bytes,1,opt,name=purpose,proto3" json:"purpose,omitempty"`
+	RootPublicKey   []byte `protobuf:"bytes,2,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
+	DevicePublicKey []byte `protobuf:"bytes,3,opt,name=device_public_key,json=devicePublicKey,proto3" json:"device_public_key,omitempty"`
+	GrantId         string `protobuf:"bytes,4,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CreateChallengeRequest) Reset() {
+	*x = CreateChallengeRequest{}
+	mi := &file_space_v1_space_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChallengeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChallengeRequest) ProtoMessage() {}
+
+func (x *CreateChallengeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChallengeRequest.ProtoReflect.Descriptor instead.
+func (*CreateChallengeRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *CreateChallengeRequest) GetPurpose() string {
+	if x != nil {
+		return x.Purpose
+	}
+	return ""
+}
+
+func (x *CreateChallengeRequest) GetRootPublicKey() []byte {
+	if x != nil {
+		return x.RootPublicKey
+	}
+	return nil
+}
+
+func (x *CreateChallengeRequest) GetDevicePublicKey() []byte {
+	if x != nil {
+		return x.DevicePublicKey
+	}
+	return nil
+}
+
+func (x *CreateChallengeRequest) GetGrantId() string {
+	if x != nil {
+		return x.GrantId
+	}
+	return ""
+}
+
+type CreateChallengeResponse struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	ChallengeId string                 `protobuf:"bytes,1,opt,name=challenge_id,json=challengeId,proto3" json:"challenge_id,omitempty"`
+	// Клиент проверяет поля и восстанавливает байты по фиксированному профилю.
+	Transcript    []byte `protobuf:"bytes,2,opt,name=transcript,proto3" json:"transcript,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateChallengeResponse) Reset() {
+	*x = CreateChallengeResponse{}
+	mi := &file_space_v1_space_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChallengeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChallengeResponse) ProtoMessage() {}
+
+func (x *CreateChallengeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChallengeResponse.ProtoReflect.Descriptor instead.
+func (*CreateChallengeResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CreateChallengeResponse) GetChallengeId() string {
+	if x != nil {
+		return x.ChallengeId
+	}
+	return ""
+}
+
+func (x *CreateChallengeResponse) GetTranscript() []byte {
+	if x != nil {
+		return x.Transcript
+	}
+	return nil
+}
+
+type CompleteChallengeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChallengeId   string                 `protobuf:"bytes,1,opt,name=challenge_id,json=challengeId,proto3" json:"challenge_id,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteChallengeRequest) Reset() {
+	*x = CompleteChallengeRequest{}
+	mi := &file_space_v1_space_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteChallengeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteChallengeRequest) ProtoMessage() {}
+
+func (x *CompleteChallengeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteChallengeRequest.ProtoReflect.Descriptor instead.
+func (*CompleteChallengeRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CompleteChallengeRequest) GetChallengeId() string {
+	if x != nil {
+		return x.ChallengeId
+	}
+	return ""
+}
+
+func (x *CompleteChallengeRequest) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type CompleteChallengeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GrantId       string                 `protobuf:"bytes,1,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
+	PrincipalId   string                 `protobuf:"bytes,2,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
+	AccessToken   string                 `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	ExpiresAt     int64                  `protobuf:"varint,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompleteChallengeResponse) Reset() {
+	*x = CompleteChallengeResponse{}
+	mi := &file_space_v1_space_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompleteChallengeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompleteChallengeResponse) ProtoMessage() {}
+
+func (x *CompleteChallengeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompleteChallengeResponse.ProtoReflect.Descriptor instead.
+func (*CompleteChallengeResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CompleteChallengeResponse) GetGrantId() string {
+	if x != nil {
+		return x.GrantId
+	}
+	return ""
+}
+
+func (x *CompleteChallengeResponse) GetPrincipalId() string {
+	if x != nil {
+		return x.PrincipalId
+	}
+	return ""
+}
+
+func (x *CompleteChallengeResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *CompleteChallengeResponse) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+type ListEventsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	After         string                 `protobuf:"bytes,2,opt,name=after,proto3" json:"after,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEventsRequest) Reset() {
+	*x = ListEventsRequest{}
+	mi := &file_space_v1_space_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEventsRequest) ProtoMessage() {}
+
+func (x *ListEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListEventsRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListEventsRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *ListEventsRequest) GetAfter() string {
+	if x != nil {
+		return x.After
+	}
+	return ""
+}
+
+type ListEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*Event               `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListEventsResponse) Reset() {
+	*x = ListEventsResponse{}
+	mi := &file_space_v1_space_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListEventsResponse) ProtoMessage() {}
+
+func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListEventsResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListEventsResponse) GetEvents() []*Event {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *ListEventsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+type Event struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cursor        string                 `protobuf:"bytes,1,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Content       *Content               `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Event) Reset() {
+	*x = Event{}
+	mi := &file_space_v1_space_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Event) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Event) ProtoMessage() {}
+
+func (x *Event) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Event.ProtoReflect.Descriptor instead.
+func (*Event) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Event) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *Event) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Event) GetContent() *Content {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
 type GetManifestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -30,7 +436,7 @@ type GetManifestRequest struct {
 
 func (x *GetManifestRequest) Reset() {
 	*x = GetManifestRequest{}
-	mi := &file_space_v1_space_proto_msgTypes[0]
+	mi := &file_space_v1_space_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +448,7 @@ func (x *GetManifestRequest) String() string {
 func (*GetManifestRequest) ProtoMessage() {}
 
 func (x *GetManifestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[0]
+	mi := &file_space_v1_space_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +461,7 @@ func (x *GetManifestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetManifestRequest.ProtoReflect.Descriptor instead.
 func (*GetManifestRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{0}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{7}
 }
 
 type GetManifestResponse struct {
@@ -69,7 +475,7 @@ type GetManifestResponse struct {
 
 func (x *GetManifestResponse) Reset() {
 	*x = GetManifestResponse{}
-	mi := &file_space_v1_space_proto_msgTypes[1]
+	mi := &file_space_v1_space_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -81,7 +487,7 @@ func (x *GetManifestResponse) String() string {
 func (*GetManifestResponse) ProtoMessage() {}
 
 func (x *GetManifestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[1]
+	mi := &file_space_v1_space_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -94,7 +500,7 @@ func (x *GetManifestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetManifestResponse.ProtoReflect.Descriptor instead.
 func (*GetManifestResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{1}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetManifestResponse) GetProtocolVersion() string {
@@ -129,7 +535,7 @@ type Channel struct {
 
 func (x *Channel) Reset() {
 	*x = Channel{}
-	mi := &file_space_v1_space_proto_msgTypes[2]
+	mi := &file_space_v1_space_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -141,7 +547,7 @@ func (x *Channel) String() string {
 func (*Channel) ProtoMessage() {}
 
 func (x *Channel) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[2]
+	mi := &file_space_v1_space_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -154,7 +560,7 @@ func (x *Channel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Channel.ProtoReflect.Descriptor instead.
 func (*Channel) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{2}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Channel) GetId() string {
@@ -188,7 +594,7 @@ type View struct {
 
 func (x *View) Reset() {
 	*x = View{}
-	mi := &file_space_v1_space_proto_msgTypes[3]
+	mi := &file_space_v1_space_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -200,7 +606,7 @@ func (x *View) String() string {
 func (*View) ProtoMessage() {}
 
 func (x *View) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[3]
+	mi := &file_space_v1_space_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -213,7 +619,7 @@ func (x *View) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use View.ProtoReflect.Descriptor instead.
 func (*View) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{3}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *View) GetId() string {
@@ -235,13 +641,14 @@ type Content struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	AuthorId      string                 `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Content) Reset() {
 	*x = Content{}
-	mi := &file_space_v1_space_proto_msgTypes[4]
+	mi := &file_space_v1_space_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +660,7 @@ func (x *Content) String() string {
 func (*Content) ProtoMessage() {}
 
 func (x *Content) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[4]
+	mi := &file_space_v1_space_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -266,7 +673,7 @@ func (x *Content) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Content.ProtoReflect.Descriptor instead.
 func (*Content) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{4}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Content) GetId() string {
@@ -290,6 +697,13 @@ func (x *Content) GetText() string {
 	return ""
 }
 
+func (x *Content) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
 type CreateContentRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ChannelId      string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
@@ -301,7 +715,7 @@ type CreateContentRequest struct {
 
 func (x *CreateContentRequest) Reset() {
 	*x = CreateContentRequest{}
-	mi := &file_space_v1_space_proto_msgTypes[5]
+	mi := &file_space_v1_space_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -313,7 +727,7 @@ func (x *CreateContentRequest) String() string {
 func (*CreateContentRequest) ProtoMessage() {}
 
 func (x *CreateContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[5]
+	mi := &file_space_v1_space_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -326,7 +740,7 @@ func (x *CreateContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentRequest.ProtoReflect.Descriptor instead.
 func (*CreateContentRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{5}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateContentRequest) GetChannelId() string {
@@ -359,7 +773,7 @@ type CreateContentResponse struct {
 
 func (x *CreateContentResponse) Reset() {
 	*x = CreateContentResponse{}
-	mi := &file_space_v1_space_proto_msgTypes[6]
+	mi := &file_space_v1_space_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +785,7 @@ func (x *CreateContentResponse) String() string {
 func (*CreateContentResponse) ProtoMessage() {}
 
 func (x *CreateContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[6]
+	mi := &file_space_v1_space_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +798,7 @@ func (x *CreateContentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContentResponse.ProtoReflect.Descriptor instead.
 func (*CreateContentResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{6}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CreateContentResponse) GetContent() *Content {
@@ -405,7 +819,7 @@ type ListContentRequest struct {
 
 func (x *ListContentRequest) Reset() {
 	*x = ListContentRequest{}
-	mi := &file_space_v1_space_proto_msgTypes[7]
+	mi := &file_space_v1_space_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +831,7 @@ func (x *ListContentRequest) String() string {
 func (*ListContentRequest) ProtoMessage() {}
 
 func (x *ListContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[7]
+	mi := &file_space_v1_space_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +844,7 @@ func (x *ListContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContentRequest.ProtoReflect.Descriptor instead.
 func (*ListContentRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{7}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListContentRequest) GetChannelId() string {
@@ -457,7 +871,7 @@ type ListContentResponse struct {
 
 func (x *ListContentResponse) Reset() {
 	*x = ListContentResponse{}
-	mi := &file_space_v1_space_proto_msgTypes[8]
+	mi := &file_space_v1_space_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +883,7 @@ func (x *ListContentResponse) String() string {
 func (*ListContentResponse) ProtoMessage() {}
 
 func (x *ListContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_space_proto_msgTypes[8]
+	mi := &file_space_v1_space_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +896,7 @@ func (x *ListContentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContentResponse.ProtoReflect.Descriptor instead.
 func (*ListContentResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_space_proto_rawDescGZIP(), []int{8}
+	return file_space_v1_space_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListContentResponse) GetContents() []*Content {
@@ -503,7 +917,38 @@ var File_space_v1_space_proto protoreflect.FileDescriptor
 
 const file_space_v1_space_proto_rawDesc = "" +
 	"\n" +
-	"\x14space/v1/space.proto\x12\bspace.v1\x1a\x1cgoogle/api/annotations.proto\"\x14\n" +
+	"\x14space/v1/space.proto\x12\bspace.v1\x1a\x1cgoogle/api/annotations.proto\"\xa1\x01\n" +
+	"\x16CreateChallengeRequest\x12\x18\n" +
+	"\apurpose\x18\x01 \x01(\tR\apurpose\x12&\n" +
+	"\x0froot_public_key\x18\x02 \x01(\fR\rrootPublicKey\x12*\n" +
+	"\x11device_public_key\x18\x03 \x01(\fR\x0fdevicePublicKey\x12\x19\n" +
+	"\bgrant_id\x18\x04 \x01(\tR\agrantId\"\\\n" +
+	"\x17CreateChallengeResponse\x12!\n" +
+	"\fchallenge_id\x18\x01 \x01(\tR\vchallengeId\x12\x1e\n" +
+	"\n" +
+	"transcript\x18\x02 \x01(\fR\n" +
+	"transcript\"[\n" +
+	"\x18CompleteChallengeRequest\x12!\n" +
+	"\fchallenge_id\x18\x01 \x01(\tR\vchallengeId\x12\x1c\n" +
+	"\tsignature\x18\x02 \x01(\fR\tsignature\"\x9b\x01\n" +
+	"\x19CompleteChallengeResponse\x12\x19\n" +
+	"\bgrant_id\x18\x01 \x01(\tR\agrantId\x12!\n" +
+	"\fprincipal_id\x18\x02 \x01(\tR\vprincipalId\x12!\n" +
+	"\faccess_token\x18\x03 \x01(\tR\vaccessToken\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\x03R\texpiresAt\"H\n" +
+	"\x11ListEventsRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
+	"\x05after\x18\x02 \x01(\tR\x05after\"^\n" +
+	"\x12ListEventsResponse\x12'\n" +
+	"\x06events\x18\x01 \x03(\v2\x0f.space.v1.EventR\x06events\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"`\n" +
+	"\x05Event\x12\x16\n" +
+	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12+\n" +
+	"\acontent\x18\x03 \x01(\v2\x11.space.v1.ContentR\acontent\"\x14\n" +
 	"\x12GetManifestRequest\"\x8c\x01\n" +
 	"\x13GetManifestResponse\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\tR\x0fprotocolVersion\x12\x1b\n" +
@@ -515,12 +960,13 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x05views\x18\x03 \x03(\v2\x0e.space.v1.ViewR\x05views\"*\n" +
 	"\x04View\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"L\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\"i\n" +
 	"\aContent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\"r\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
+	"\tauthor_id\x18\x04 \x01(\tR\bauthorId\"r\n" +
 	"\x14CreateContentRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x12\n" +
@@ -540,7 +986,13 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\vGetManifest\x12\x1c.space.v1.GetManifestRequest\x1a\x1d.space.v1.GetManifestResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/api/v1/manifest2\x90\x02\n" +
 	"\x0eContentService\x12\x82\x01\n" +
 	"\rCreateContent\x12\x1e.space.v1.CreateContentRequest\x1a\x1f.space.v1.CreateContentResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/api/v1/channels/{channel_id}/content\x12y\n" +
-	"\vListContent\x12\x1c.space.v1.ListContentRequest\x1a\x1d.space.v1.ListContentResponse\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/channels/{channel_id}/contentBNZLgithub.com/space-protocol-project/space-protocol/server/gen/space/v1;spacev1b\x06proto3"
+	"\vListContent\x12\x1c.space.v1.ListContentRequest\x1a\x1d.space.v1.ListContentResponse\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/channels/{channel_id}/content2\x89\x02\n" +
+	"\vAuthService\x12z\n" +
+	"\x0fCreateChallenge\x12 .space.v1.CreateChallengeRequest\x1a!.space.v1.CreateChallengeResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/auth/challenges\x12~\n" +
+	"\x11CompleteChallenge\x12\".space.v1.CompleteChallengeRequest\x1a#.space.v1.CompleteChallengeResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/auth/sessions2\x84\x01\n" +
+	"\vSyncService\x12u\n" +
+	"\n" +
+	"ListEvents\x12\x1b.space.v1.ListEventsRequest\x1a\x1c.space.v1.ListEventsResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/channels/{channel_id}/eventsBNZLgithub.com/space-protocol-project/space-protocol/server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_space_proto_rawDescOnce sync.Once
@@ -554,34 +1006,49 @@ func file_space_v1_space_proto_rawDescGZIP() []byte {
 	return file_space_v1_space_proto_rawDescData
 }
 
-var file_space_v1_space_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_space_v1_space_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_space_v1_space_proto_goTypes = []any{
-	(*GetManifestRequest)(nil),    // 0: space.v1.GetManifestRequest
-	(*GetManifestResponse)(nil),   // 1: space.v1.GetManifestResponse
-	(*Channel)(nil),               // 2: space.v1.Channel
-	(*View)(nil),                  // 3: space.v1.View
-	(*Content)(nil),               // 4: space.v1.Content
-	(*CreateContentRequest)(nil),  // 5: space.v1.CreateContentRequest
-	(*CreateContentResponse)(nil), // 6: space.v1.CreateContentResponse
-	(*ListContentRequest)(nil),    // 7: space.v1.ListContentRequest
-	(*ListContentResponse)(nil),   // 8: space.v1.ListContentResponse
+	(*CreateChallengeRequest)(nil),    // 0: space.v1.CreateChallengeRequest
+	(*CreateChallengeResponse)(nil),   // 1: space.v1.CreateChallengeResponse
+	(*CompleteChallengeRequest)(nil),  // 2: space.v1.CompleteChallengeRequest
+	(*CompleteChallengeResponse)(nil), // 3: space.v1.CompleteChallengeResponse
+	(*ListEventsRequest)(nil),         // 4: space.v1.ListEventsRequest
+	(*ListEventsResponse)(nil),        // 5: space.v1.ListEventsResponse
+	(*Event)(nil),                     // 6: space.v1.Event
+	(*GetManifestRequest)(nil),        // 7: space.v1.GetManifestRequest
+	(*GetManifestResponse)(nil),       // 8: space.v1.GetManifestResponse
+	(*Channel)(nil),                   // 9: space.v1.Channel
+	(*View)(nil),                      // 10: space.v1.View
+	(*Content)(nil),                   // 11: space.v1.Content
+	(*CreateContentRequest)(nil),      // 12: space.v1.CreateContentRequest
+	(*CreateContentResponse)(nil),     // 13: space.v1.CreateContentResponse
+	(*ListContentRequest)(nil),        // 14: space.v1.ListContentRequest
+	(*ListContentResponse)(nil),       // 15: space.v1.ListContentResponse
 }
 var file_space_v1_space_proto_depIdxs = []int32{
-	2, // 0: space.v1.GetManifestResponse.channels:type_name -> space.v1.Channel
-	3, // 1: space.v1.Channel.views:type_name -> space.v1.View
-	4, // 2: space.v1.CreateContentResponse.content:type_name -> space.v1.Content
-	4, // 3: space.v1.ListContentResponse.contents:type_name -> space.v1.Content
-	0, // 4: space.v1.ChannelService.GetManifest:input_type -> space.v1.GetManifestRequest
-	5, // 5: space.v1.ContentService.CreateContent:input_type -> space.v1.CreateContentRequest
-	7, // 6: space.v1.ContentService.ListContent:input_type -> space.v1.ListContentRequest
-	1, // 7: space.v1.ChannelService.GetManifest:output_type -> space.v1.GetManifestResponse
-	6, // 8: space.v1.ContentService.CreateContent:output_type -> space.v1.CreateContentResponse
-	8, // 9: space.v1.ContentService.ListContent:output_type -> space.v1.ListContentResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	6,  // 0: space.v1.ListEventsResponse.events:type_name -> space.v1.Event
+	11, // 1: space.v1.Event.content:type_name -> space.v1.Content
+	9,  // 2: space.v1.GetManifestResponse.channels:type_name -> space.v1.Channel
+	10, // 3: space.v1.Channel.views:type_name -> space.v1.View
+	11, // 4: space.v1.CreateContentResponse.content:type_name -> space.v1.Content
+	11, // 5: space.v1.ListContentResponse.contents:type_name -> space.v1.Content
+	7,  // 6: space.v1.ChannelService.GetManifest:input_type -> space.v1.GetManifestRequest
+	12, // 7: space.v1.ContentService.CreateContent:input_type -> space.v1.CreateContentRequest
+	14, // 8: space.v1.ContentService.ListContent:input_type -> space.v1.ListContentRequest
+	0,  // 9: space.v1.AuthService.CreateChallenge:input_type -> space.v1.CreateChallengeRequest
+	2,  // 10: space.v1.AuthService.CompleteChallenge:input_type -> space.v1.CompleteChallengeRequest
+	4,  // 11: space.v1.SyncService.ListEvents:input_type -> space.v1.ListEventsRequest
+	8,  // 12: space.v1.ChannelService.GetManifest:output_type -> space.v1.GetManifestResponse
+	13, // 13: space.v1.ContentService.CreateContent:output_type -> space.v1.CreateContentResponse
+	15, // 14: space.v1.ContentService.ListContent:output_type -> space.v1.ListContentResponse
+	1,  // 15: space.v1.AuthService.CreateChallenge:output_type -> space.v1.CreateChallengeResponse
+	3,  // 16: space.v1.AuthService.CompleteChallenge:output_type -> space.v1.CompleteChallengeResponse
+	5,  // 17: space.v1.SyncService.ListEvents:output_type -> space.v1.ListEventsResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_space_proto_init() }
@@ -595,9 +1062,9 @@ func file_space_v1_space_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_space_proto_rawDesc), len(file_space_v1_space_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   16,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   4,
 		},
 		GoTypes:           file_space_v1_space_proto_goTypes,
 		DependencyIndexes: file_space_v1_space_proto_depIdxs,

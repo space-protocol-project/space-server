@@ -11,7 +11,7 @@ $env:SPACE_DATABASE_URL = 'postgres://space:YOUR_PASSWORD@127.0.0.1:5432/space?s
 go run ./cmd/space-server
 ```
 
-Адрес: `http://127.0.0.1:8080`. Другой локальный порт: `go run ./cmd/space-server -http 127.0.0.1:8081`. Внешний интерфейс отклоняется. gRPC слушает случайный loopback-порт и используется gateway внутри процесса.
+Адрес: `http://127.0.0.1:8080`. Другой локальный порт: `go run ./cmd/space-server -http 127.0.0.1:8081`. Внешний интерфейс отклоняется. gRPC слушает `127.0.0.1:9090` для нативного Flutter-клиента и внутреннего gateway. Изменение: `-grpc 127.0.0.1:9091`. Discovery содержит `grpc_endpoint`; оба транспорта остаются локальными без TLS. [Flutter-клиент](../client/README.md) использует существующий interceptor.
 
 PostgreSQL можно поднять через [локальный Compose](../deploy/README.md). Пароль в URL должен быть URL-encoded. Без `SPACE_DATABASE_URL` обычный запуск останавливается; при недоступности базы автоматического перехода в память нет. Для демонстрации без базы: `go run ./cmd/space-server -demo`.
 

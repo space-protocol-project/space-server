@@ -29,11 +29,16 @@ func main() {
 
 func run() error {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
+	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
 	flag.Parse()
 	host, _, err := net.SplitHostPort(*port)
 	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
 		return fmt.Errorf("прототип без авторизации разрешает только IP loopback, например 127.0.0.1:8080")
+	}
+	grpcHost, _, err := net.SplitHostPort(*grpcAddress)
+	if err != nil || net.ParseIP(grpcHost) == nil || !net.ParseIP(grpcHost).IsLoopback() {
+		return fmt.Errorf("gRPC адрес должен быть loopback IP")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -44,7 +49,7 @@ func run() error {
 	if store != nil {
 		defer store.Close()
 	}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", *grpcAddress)
 	if err != nil {
 		return err
 	}
@@ -71,7 +76,7 @@ func run() error {
 		return err
 	}
 	defer connection.Close()
-	handler, err := transport.Handler(ctx, connection, identity.ServerID, identity.PublicKey)
+	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String())
 	if err != nil {
 		return err
 	}

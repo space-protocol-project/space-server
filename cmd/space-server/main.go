@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
 	"github.com/space-protocol-project/space-protocol/server/internal/chat"
+	"github.com/space-protocol-project/space-protocol/server/internal/postgres"
 	"github.com/space-protocol-project/space-protocol/server/internal/transport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,6 +28,7 @@ func main() {
 
 func run() error {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
+	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
 	flag.Parse()
 	host, _, err := net.SplitHostPort(*port)
 	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
@@ -34,12 +36,16 @@ func run() error {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	service, identity, closeStore, err := openService(ctx, *demo)
+	if err != nil {
+		return err
+	}
+	defer closeStore()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
 	}
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(16 * 1024))
-	service := chat.New("local-prototype")
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	go func() {
@@ -54,14 +60,14 @@ func run() error {
 		return err
 	}
 	defer connection.Close()
-	handler, err := transport.Handler(ctx, connection, "local-prototype")
+	handler, err := transport.Handler(ctx, connection, identity.ServerID, identity.PublicKey)
 	if err != nil {
 		return err
 	}
 	httpServer := &http.Server{Addr: *port, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() { failures <- httpServer.ListenAndServe() }()
-	log.Printf("Локальный прототип: http://%s; сообщения хранятся в памяти", *port)
+	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", *port, identity.ServerID, *demo)
 	select {
 	case err := <-failures:
 		return err
@@ -70,4 +76,21 @@ func run() error {
 		defer done()
 		return httpServer.Shutdown(shutdown)
 	}
+}
+
+func openService(ctx context.Context, demo bool) (*chat.Service, postgres.Identity, func(), error) {
+	if demo {
+		return chat.New("local-prototype"), postgres.Identity{ServerID: "local-prototype"}, func() {}, nil
+	}
+	url := os.Getenv("SPACE_DATABASE_URL")
+	if url == "" {
+		return nil, postgres.Identity{}, nil, fmt.Errorf("нужна SPACE_DATABASE_URL; для временного режима используйте -demo")
+	}
+	startup, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	store, identity, err := postgres.Open(startup, url)
+	if err != nil {
+		return nil, postgres.Identity{}, nil, err
+	}
+	return chat.NewPersistent(identity.ServerID, store), identity, store.Close, nil
 }

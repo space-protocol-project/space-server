@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
@@ -10,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string) (http.Handler, error) {
+func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey ...[]byte) (http.Handler, error) {
 	gateway := runtime.NewServeMux()
 	if err := pb.RegisterChannelServiceHandler(ctx, gateway, connection); err != nil {
 		return nil, err
@@ -23,7 +24,12 @@ func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string) 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("GET /.well-known/space-protocol", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"protocol_version": "0.1-experimental", "server_id": serverID, "manifest": "/api/v1/manifest"})
+		discovery := map[string]string{"protocol_version": "0.1-experimental", "server_id": serverID, "manifest": "/api/v1/manifest"}
+		if len(publicKey) > 0 && len(publicKey[0]) > 0 {
+			discovery["signing_algorithm"] = "Ed25519"
+			discovery["signing_public_key"] = base64.RawURLEncoding.EncodeToString(publicKey[0])
+		}
+		_ = json.NewEncoder(w).Encode(discovery)
 	})
 	return http.MaxBytesHandler(mux, 16*1024), nil
 }

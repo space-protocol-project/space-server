@@ -12,7 +12,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Service хранит данные только до завершения процесса.
+type Store interface {
+	Create(context.Context, *pb.CreateContentRequest) (*pb.CreateContentResponse, error)
+	List(context.Context, *pb.ListContentRequest) (*pb.ListContentResponse, error)
+}
+
+// Service использует PostgreSQL либо явное демонстрационное хранилище в памяти.
 type Service struct {
 	pb.UnimplementedChannelServiceServer
 	pb.UnimplementedContentServiceServer
@@ -20,10 +25,15 @@ type Service struct {
 	serverID string
 	messages []*pb.Content
 	requests map[string]*pb.Content
+	store    Store
 }
 
 func New(serverID string) *Service {
 	return &Service{serverID: serverID, requests: make(map[string]*pb.Content)}
+}
+
+func NewPersistent(serverID string, store Store) *Service {
+	return &Service{serverID: serverID, store: store}
 }
 
 func (s *Service) GetManifest(context.Context, *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
@@ -50,6 +60,9 @@ func (s *Service) CreateContent(ctx context.Context, req *pb.CreateContentReques
 	if strings.TrimSpace(req.Text) == "" || len(req.Text) > 4096 || len(req.IdempotencyKey) == 0 || len(req.IdempotencyKey) > 128 {
 		return nil, status.Error(codes.InvalidArgument, "Нужны текст до 4096 байт и ключ идемпотентности до 128 байт")
 	}
+	if s.store != nil {
+		return s.store.Create(ctx, req)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if previous, ok := s.requests[req.IdempotencyKey]; ok {
@@ -73,6 +86,9 @@ func (s *Service) ListContent(ctx context.Context, req *pb.ListContentRequest) (
 	}
 	if err := validateChannel(req.ChannelId); err != nil {
 		return nil, err
+	}
+	if s.store != nil {
+		return s.store.List(ctx, req)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -89,13 +89,13 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 6)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 7)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
-	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql"} {
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql"} {
 		if err := applyMigration(ctx, tx, i+1, path); err != nil {
 			return err
 		}

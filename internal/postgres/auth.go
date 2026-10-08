@@ -91,7 +91,10 @@ func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallen
 		if req.Administrative {
 			transcript.Scopes = append(transcript.Scopes, "space.manage")
 		}
-		transcript.PrincipalID = authn.PrincipalID(root)
+		transcript.PrincipalID, transcript.AuthEpoch, err = principalForRoot(ctx, tx, root)
+		if err != nil {
+			return nil, err
+		}
 		if req.PairingId != "" {
 			if err = s.validatePairChallenge(ctx, tx, req, transcript.PrincipalID); err != nil {
 				return nil, err
@@ -219,6 +222,9 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 }
 
 func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte, invitation string) error {
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(73616003)"); err != nil {
+		return databaseError(ctx, err)
+	}
 	var policy string
 	if err := tx.QueryRow(ctx, "SELECT registration_policy FROM space_settings WHERE singleton=true FOR SHARE").Scan(&policy); err != nil {
 		return databaseError(ctx, err)
@@ -231,6 +237,13 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 		return status.Error(codes.PermissionDenied, "Регистрация новых идентичностей закрыта")
 	}
 	root, _ := base64.RawURLEncoding.DecodeString(t.RootPublicKey)
+	principal, currentEpoch, err := principalForRoot(ctx, tx, root)
+	if err != nil {
+		return err
+	}
+	if principal != t.PrincipalID || currentEpoch != t.AuthEpoch {
+		return denied()
+	}
 	device, _ := base64.RawURLEncoding.DecodeString(t.DevicePublicKey)
 	if _, err := tx.Exec(ctx, "INSERT INTO principals(id,root_public_key) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", t.PrincipalID, root); err != nil {
 		return databaseError(ctx, err)
@@ -241,6 +254,9 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 	}
 	if epoch != t.AuthEpoch {
 		return denied()
+	}
+	if _, err := tx.Exec(ctx, "INSERT INTO principal_roots(public_key,principal_id,auth_epoch) VALUES($1,$2,$3) ON CONFLICT(public_key) DO NOTHING", root, t.PrincipalID, epoch); err != nil {
+		return databaseError(ctx, err)
 	}
 	if slices.Contains(t.Scopes, "identity.recover") {
 		var recoveryCount int
@@ -274,7 +290,7 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 	if count >= 32 {
 		return status.Error(codes.ResourceExhausted, "Лимит: 32 активных устройства")
 	}
-	_, err := tx.Exec(ctx, "INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature,scopes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", t.GrantID, t.PrincipalID, device, t.AuthEpoch, time.Unix(t.GrantExpiresAt, 0), canonical, signature, t.Scopes)
+	_, err = tx.Exec(ctx, "INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature,scopes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", t.GrantID, t.PrincipalID, device, t.AuthEpoch, time.Unix(t.GrantExpiresAt, 0), canonical, signature, t.Scopes)
 	if err != nil {
 		return databaseError(ctx, err)
 	}

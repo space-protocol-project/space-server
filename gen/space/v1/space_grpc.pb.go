@@ -265,23 +265,28 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	AuthService_ProposePairing_FullMethodName      = "/space.v1.AuthService/ProposePairing"
-	AuthService_CreatePairing_FullMethodName       = "/space.v1.AuthService/CreatePairing"
-	AuthService_InspectPairing_FullMethodName      = "/space.v1.AuthService/InspectPairing"
-	AuthService_PollPairing_FullMethodName         = "/space.v1.AuthService/PollPairing"
-	AuthService_CancelPairing_FullMethodName       = "/space.v1.AuthService/CancelPairing"
-	AuthService_ClaimPairing_FullMethodName        = "/space.v1.AuthService/ClaimPairing"
-	AuthService_RevokeCurrentDevice_FullMethodName = "/space.v1.AuthService/RevokeCurrentDevice"
-	AuthService_ListDevices_FullMethodName         = "/space.v1.AuthService/ListDevices"
-	AuthService_Logout_FullMethodName              = "/space.v1.AuthService/Logout"
-	AuthService_CreateChallenge_FullMethodName     = "/space.v1.AuthService/CreateChallenge"
-	AuthService_CompleteChallenge_FullMethodName   = "/space.v1.AuthService/CompleteChallenge"
+	AuthService_CreateRootRotation_FullMethodName   = "/space.v1.AuthService/CreateRootRotation"
+	AuthService_CompleteRootRotation_FullMethodName = "/space.v1.AuthService/CompleteRootRotation"
+	AuthService_ProposePairing_FullMethodName       = "/space.v1.AuthService/ProposePairing"
+	AuthService_CreatePairing_FullMethodName        = "/space.v1.AuthService/CreatePairing"
+	AuthService_InspectPairing_FullMethodName       = "/space.v1.AuthService/InspectPairing"
+	AuthService_PollPairing_FullMethodName          = "/space.v1.AuthService/PollPairing"
+	AuthService_CancelPairing_FullMethodName        = "/space.v1.AuthService/CancelPairing"
+	AuthService_ClaimPairing_FullMethodName         = "/space.v1.AuthService/ClaimPairing"
+	AuthService_RevokeCurrentDevice_FullMethodName  = "/space.v1.AuthService/RevokeCurrentDevice"
+	AuthService_ListDevices_FullMethodName          = "/space.v1.AuthService/ListDevices"
+	AuthService_Logout_FullMethodName               = "/space.v1.AuthService/Logout"
+	AuthService_CreateChallenge_FullMethodName      = "/space.v1.AuthService/CreateChallenge"
+	AuthService_CompleteChallenge_FullMethodName    = "/space.v1.AuthService/CompleteChallenge"
 )
 
 // AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
+	// Экспериментальный API; требует поддержки stable principal у клиента.
+	CreateRootRotation(ctx context.Context, in *CreateRootRotationRequest, opts ...grpc.CallOption) (*CreateRootRotationResponse, error)
+	CompleteRootRotation(ctx context.Context, in *CompleteRootRotationRequest, opts ...grpc.CallOption) (*CompleteRootRotationResponse, error)
 	ProposePairing(ctx context.Context, in *ProposePairingRequest, opts ...grpc.CallOption) (*ProposePairingResponse, error)
 	CreatePairing(ctx context.Context, in *CreatePairingRequest, opts ...grpc.CallOption) (*CreatePairingResponse, error)
 	InspectPairing(ctx context.Context, in *InspectPairingRequest, opts ...grpc.CallOption) (*InspectPairingResponse, error)
@@ -301,6 +306,26 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) CreateRootRotation(ctx context.Context, in *CreateRootRotationRequest, opts ...grpc.CallOption) (*CreateRootRotationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateRootRotationResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreateRootRotation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CompleteRootRotation(ctx context.Context, in *CompleteRootRotationRequest, opts ...grpc.CallOption) (*CompleteRootRotationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteRootRotationResponse)
+	err := c.cc.Invoke(ctx, AuthService_CompleteRootRotation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) ProposePairing(ctx context.Context, in *ProposePairingRequest, opts ...grpc.CallOption) (*ProposePairingResponse, error) {
@@ -417,6 +442,9 @@ func (c *authServiceClient) CompleteChallenge(ctx context.Context, in *CompleteC
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
+	// Экспериментальный API; требует поддержки stable principal у клиента.
+	CreateRootRotation(context.Context, *CreateRootRotationRequest) (*CreateRootRotationResponse, error)
+	CompleteRootRotation(context.Context, *CompleteRootRotationRequest) (*CompleteRootRotationResponse, error)
 	ProposePairing(context.Context, *ProposePairingRequest) (*ProposePairingResponse, error)
 	CreatePairing(context.Context, *CreatePairingRequest) (*CreatePairingResponse, error)
 	InspectPairing(context.Context, *InspectPairingRequest) (*InspectPairingResponse, error)
@@ -438,6 +466,12 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) CreateRootRotation(context.Context, *CreateRootRotationRequest) (*CreateRootRotationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRootRotation not implemented")
+}
+func (UnimplementedAuthServiceServer) CompleteRootRotation(context.Context, *CompleteRootRotationRequest) (*CompleteRootRotationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteRootRotation not implemented")
+}
 func (UnimplementedAuthServiceServer) ProposePairing(context.Context, *ProposePairingRequest) (*ProposePairingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProposePairing not implemented")
 }
@@ -490,6 +524,42 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_CreateRootRotation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRootRotationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CreateRootRotation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CreateRootRotation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CreateRootRotation(ctx, req.(*CreateRootRotationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CompleteRootRotation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteRootRotationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CompleteRootRotation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CompleteRootRotation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CompleteRootRotation(ctx, req.(*CompleteRootRotationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_ProposePairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -697,6 +767,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateRootRotation",
+			Handler:    _AuthService_CreateRootRotation_Handler,
+		},
+		{
+			MethodName: "CompleteRootRotation",
+			Handler:    _AuthService_CompleteRootRotation_Handler,
+		},
 		{
 			MethodName: "ProposePairing",
 			Handler:    _AuthService_ProposePairing_Handler,

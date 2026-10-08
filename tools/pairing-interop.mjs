@@ -180,8 +180,8 @@ export async function pairingInterop(
   console.log(
     "WebCrypto/Go: pairing браузера, независимая root-подпись, management scope, одноразовость и подмена подписи — успешно.",
   );
-  const nativeSourceTarget = await startPairing(origin, true);
   if (options.skipNativeSource) return;
+  const nativeSourceTarget = await startPairing(origin, true);
   const sourceDirectory = await mkdtemp(join(tmpdir(), "space-pair-source-"));
   const sourceChild = spawn(
     "dart",

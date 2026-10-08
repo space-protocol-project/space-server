@@ -541,6 +541,7 @@ $("#restore-form").addEventListener("submit", (event) => {
     if ((!file && !cameraPacket) || (file && file.size > 8 * 1024 * 1024))
       throw new Error("Выберите карточку JSON или PNG до 8 MiB.");
     try {
+      if(await vault(undefined,origin+':rotation')) throw new Error('Сначала завершите сохранённую смену ключа');
       const packet = cameraPacket || await readCardFile(file),
         payload = await openCard(packet, $("#restore-password").value);
       const response = await fetch("/.well-known/space-protocol", {

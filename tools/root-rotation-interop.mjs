@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {openCard,keysFromCard,createRecoveryCard} from '../internal/spaceweb/assets/recovery.mjs';
+import {proof,request,url64} from '../internal/spaceweb/assets/identity.mjs';
+import {verifyRootHistory} from '../internal/spaceweb/assets/root-history.mjs';
+const origin='http://127.0.0.1:18080';
+const directory=await mkdtemp(join(tmpdir(),'space-root-rotation-'));
+try {
+  const path=join(directory,'new-card.json');
+  const native=await promisify(execFile)('dart',['run','tool/root_rotation_interoperability.dart',origin,path],{cwd:resolve('../client'),timeout:90000,maxBuffer:16384});
+  process.stdout.write(native.stdout);
+  const discovery=await(await fetch(origin+'/.well-known/space-protocol')).json();
+  const payload=await openCard(await readFile(path,'utf8'),'Disposable rotation card password');
+  assert.equal(payload.v,2);
+  const keys=await keysFromCard(payload,origin,discovery);
+  const root=new Uint8Array(await crypto.subtle.exportKey('raw',keys.root.publicKey));
+  const identity=await verifyRootHistory(keys.rootHistory,root,origin,discovery.server_id);
+  assert.equal(identity.epoch,2);
+  const broken=structuredClone(payload);broken.root_history[0].new_signature=url64(new Uint8Array(64));
+  await assert.rejects(keysFromCard(broken,origin,discovery),/Подпись/);
+  const registered=await proof(origin,discovery,keys,'device.register','');
+  assert.equal(registered.principalId,identity.principalId);
+  keys.grantId=registered.grantId;
+  const session=await proof(origin,discovery,keys,'auth.login',keys.grantId);
+  const membership=await request(origin,'/api/v1/membership',undefined,session.accessToken);
+  assert.equal(membership.member.role,'member');
+  await assert.rejects(request(origin,'/api/v1/space/settings',undefined,session.accessToken),error=>error.status===403);
+  const card=await createRecoveryCard(keys,origin,discovery,'Disposable browser rotation card',authority=>proof(origin,discovery,authority,'device.register','','',{recovery:true}));
+  const delegated=await keysFromCard(await openCard(card,'Disposable browser rotation card'),origin,discovery);
+  const device=await proof(origin,discovery,delegated,'device.register','');
+  assert.equal(device.principalId,identity.principalId);
+  console.log('WebCrypto/Dart/Go: recovery v2 после ротации, проверка двух подписей, прежний ID, эпоха 2 и отказ повышения роли — успешно.');
+} finally {await rm(directory,{recursive:true,force:true});}

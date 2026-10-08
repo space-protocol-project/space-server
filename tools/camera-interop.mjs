@@ -28,11 +28,11 @@ try{
  await page.getByText('Восстановить прежнюю идентичность',{exact:true}).click();
  // Обёртка только тестовой камеры: проверяет отсутствие audio и остановку track.
  await page.evaluate(()=>{
-   window.cameraTracks=[];
+   window.cameraTracks=[];window.cameraErrors=[];
    const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
    navigator.mediaDevices.getUserMedia=async c=>{
      if(c.audio!==false)throw new Error('Микрофон не должен запрашиваться');
-     const stream=await capture(c);window.cameraTracks.push(...stream.getTracks());return stream;
+     try {const stream=await capture(c);window.cameraTracks.push(...stream.getTracks());return stream;} catch(error){window.cameraErrors.push({name:error.name,message:error.message});throw error;}
    };
  });
  await page.locator('#scan-card-camera').click();
@@ -51,6 +51,6 @@ try{
  await context.close();
  console.log('Браузер: синтетическая камера → QR → пароль → реальное восстановление; audio=false и остановка tracks — успешно.');
 }catch(error){
- if(browser){const contexts=browser.contexts();const page=contexts[0]?.pages()[0];if(page)console.log(await page.evaluate(()=>({status:document.querySelector('#camera-dialog [role=status]')?.textContent,video:[document.querySelector('video')?.videoWidth,document.querySelector('video')?.videoHeight],tracks:window.cameraTracks?.map(t=>({kind:t.kind,state:t.readyState}))})));}
+ if(browser){const contexts=browser.contexts();const page=contexts[0]?.pages()[0];if(page)console.log(await page.evaluate(()=>({status:document.querySelector('#camera-dialog [role=status]')?.textContent,video:[document.querySelector('video')?.videoWidth,document.querySelector('video')?.videoHeight],errors:window.cameraErrors,secure:isSecureContext,media:!!navigator.mediaDevices,tracks:window.cameraTracks?.map(t=>({kind:t.kind,state:t.readyState}))})));}
  throw error;
 }finally{await browser?.close();await rm(directory,{recursive:true,force:true});}

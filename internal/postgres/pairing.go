@@ -131,6 +131,21 @@ func (s *AuthService) PollPairing(ctx context.Context, req *pb.PollPairingReques
 				return nil, pairError(ctx, err)
 			}
 		}
+		rows, err := s.store.pool.Query(ctx, `SELECT r.transcript,r.old_signature,r.new_signature FROM root_rotations r JOIN principals p ON p.id=r.principal_id WHERE p.root_public_key=$1 AND r.completed_at IS NOT NULL ORDER BY (convert_from(r.transcript,'UTF8')::jsonb->>'auth_epoch')::bigint LIMIT 17`, result.RootPublicKey)
+		if err != nil {
+			return nil, databaseError(ctx, err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			proof := new(pb.RootHistoryProof)
+			if err = rows.Scan(&proof.Transcript, &proof.OldSignature, &proof.NewSignature); err != nil {
+				return nil, databaseError(ctx, err)
+			}
+			result.RootHistory = append(result.RootHistory, proof)
+		}
+		if err = rows.Err(); err != nil {
+			return nil, databaseError(ctx, err)
+		}
 	}
 	return result, nil
 }

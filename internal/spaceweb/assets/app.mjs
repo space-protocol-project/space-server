@@ -1,3 +1,4 @@
+import {prepareBrowserRotation,commitBrowserRotation} from './root-rotation.mjs';
 import {installCameraScanner} from './camera-scanner.mjs';
 import { request, newKeys, proof, url64 } from "./identity.mjs";
 import { createRecoveryCard, openCard, keysFromCard } from "./recovery.mjs";
@@ -77,14 +78,14 @@ function database() {
     open.onerror = () => reject(open.error);
   });
 }
-async function vault(value) {
+async function vault(value,slot=origin) {
   const db = await database();
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction("keys", value ? "readwrite" : "readonly");
       const store = tx.objectStore("keys");
       let result;
-      const operation = value ? store.put(value, origin) : store.get(origin);
+      const operation = value ? store.put(value, slot) : store.get(slot);
       operation.onsuccess = () => {
         result = operation.result;
       };
@@ -786,8 +787,7 @@ $("#prepare-pair-form").addEventListener("submit", (event) => {
     if (p.state !== "pending")
       throw new Error("Запрос уже подтверждён или отменён");
     const authority = record.root.privateKey ? record : await unlockAuthority();
-    if(record.rootHistory?.length || authority.rootHistory?.length)
-      throw new Error('Сопряжение после смены ключа ещё обновляется. Подключите устройство новой карточкой.');
+
     if (!authority.root.privateKey && !authority.recoveryPrivate)
       throw new Error("Нужен исходный root или recovery-карточка");
     const localRoot = url64(
@@ -908,3 +908,31 @@ $("#download-card-png").addEventListener("click", () =>
     status("QR-карточка сохранена в PNG. Пароль не входит в изображение.");
   }),
 );
+
+async function activateRotation(next){
+ const db=await database();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('keys','readwrite'),store=tx.objectStore('keys');
+  store.put(next,origin);store.delete(origin+':rotation');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);tx.onerror=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+async function finishBrowserRotation(){
+ discovery=await(await fetch('/.well-known/space-protocol',{cache:'no-store',redirect:'error'})).json();
+ const pending=await vault(undefined,origin+':rotation');if(!pending)throw new Error('Нет сохранённой смены ключа');
+ const current=await vault();
+ const next=await commitBrowserRotation(origin,discovery,pending,current);
+ await activateRotation(next);token='';record=next;await signIn();
+ status('Корневой ключ сменён. Сохраните новую карточку: старые карточки и устройства закрыты.');
+}
+for(const [id,renewing] of [['rotate-root',false],['renew-root-rotation',true]]){
+ $('#'+id).addEventListener('click',()=>run(async()=>{
+  if(!confirm('Сменить корневой ключ с сохранением ID и прав? Прежние устройства и карточки потеряют доступ. После перехода сохраните новую карточку.'))return;
+  if(!record||!token)throw new Error('Сначала войдите исходным ключом');
+  const pending=await prepareBrowserRotation(origin,discovery,record,token,await vault(undefined,origin+':rotation'),renewing);
+  await vault(pending,origin+':rotation');
+  const persisted=await vault(undefined,origin+':rotation');
+  if(!persisted?.next?.root?.privateKey||persisted.operation!==pending.operation)throw new Error('Новый ключ не сохранён; переход не отправлен');
+  await finishBrowserRotation();
+ }));
+}
+$('#finish-root-rotation').addEventListener('click',()=>run(finishBrowserRotation));

@@ -1,3 +1,4 @@
+import {verifyRootHistory} from './root-history.mjs';
 import { request, url64, base64 } from "./identity.mjs";
 const encoder = new TextEncoder();
 const bytes = (value) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
@@ -95,13 +96,13 @@ export async function verifyPairing(origin, discovery, pending, response) {
   );
   const delegated = t.purpose === "device.delegate";
   if (delegated) wanted.splice(1, 0, "authorizer_grant_id");
-  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", root));
-  const principal =
-    "u_" + Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("");
+  const history=(response.rootHistory || []).map(p=>({transcript:url64(bytes(p.transcript)),old_signature:url64(bytes(p.oldSignature)),new_signature:url64(bytes(p.newSignature))}));
+  const identity=await verifyRootHistory(history,root,origin,discovery.server_id);
+  const principal=identity.principalId;
   if (
     raw !== canonical ||
     JSON.stringify(names) !== JSON.stringify(wanted) ||
-    t.auth_epoch !== 1 ||
+    t.auth_epoch !== identity.epoch ||
     t.v !== 1 ||
     t.purpose !== (delegated ? "device.delegate" : "device.register") ||
     t.pairing_id !== p.id ||
@@ -139,7 +140,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
   );
   let signer = publicKey;
   if (delegated)
-    signer = await verifyRecoveryParent(origin, discovery, response, t, root);
+    signer = await verifyRecoveryParent(origin, discovery, response, t, root, identity);
   else if (
     response.parentGrantId ||
     response.parentTranscript ||
@@ -161,6 +162,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
     throw new Error("Root-подпись сопряжения неверна");
   return {
     record: {
+      rootHistory: history,
       root: { publicKey },
       device: pending.device,
       grantId: response.grantId,
@@ -176,7 +178,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
     ),
   };
 }
-async function verifyRecoveryParent(origin, discovery, response, child, root) {
+async function verifyRecoveryParent(origin, discovery, response, child, root, identity) {
   if (
     !response.parentTranscript ||
     !response.parentSignature ||
@@ -214,7 +216,7 @@ async function verifyRecoveryParent(origin, discovery, response, child, root) {
       (k) => Number.isSafeInteger(t[k]),
     ) ||
     t.v !== 1 ||
-    t.auth_epoch !== 1 ||
+    t.auth_epoch !== identity.epoch ||
     t.purpose !== "device.register" ||
     t.origin !== origin ||
     t.server_id !== discovery.server_id ||

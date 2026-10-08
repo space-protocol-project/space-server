@@ -19,7 +19,7 @@ try{
  for(let i=0;i<y.length;i++)y[i]=raster.data[i*4]===0?16:235;
  const path=join(directory,'qr.y4m');
  await writeFile(path,Buffer.concat([Buffer.from(`YUV4MPEG2 W${w} H${h} F30:1 Ip A1:1 C420jpeg\n`),...Array.from({length:10},()=>[Buffer.from('FRAME\n'),y,uv,uv]).flat()]));
- browser=await chromium.launch({headless:true,args:['--use-fake-device-for-media-stream',`--use-file-for-fake-video-capture=${path}`]});
+ browser=await chromium.launch({channel:'chromium',headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream',`--use-file-for-fake-video-capture=${path}`]});
  const context=await browser.newContext({permissions:['camera']});
  const page=await context.newPage();
  page.on('dialog',d=>d.accept());

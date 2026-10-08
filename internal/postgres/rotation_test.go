@@ -83,6 +83,10 @@ func TestRootRotationStablePrincipalAndRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := &pb.CreateRootRotationRequest{OperationId: "ro_" + strings.Repeat("a", 43), ExpectedAuthEpoch: 1, NewRootPublicKey: newRoot, NewDevicePublicKey: newDevice, Profile: "root-rotation-v1"}
+	reuse := &pb.CreateRootRotationRequest{OperationId: "ro_" + strings.Repeat("b", 43), ExpectedAuthEpoch: 1, NewRootPublicKey: newRoot, NewDevicePublicKey: device, Profile: "root-rotation-v1"}
+	if _, err = auth.CreateRootRotation(sourceCtx, reuse); status.Code(err) != codes.AlreadyExists {
+		t.Fatal("Прежний device key принят как новый", err)
+	}
 	if _, err = auth.CreateRootRotation(ctx, req); status.Code(err) != codes.Unauthenticated {
 		t.Fatal("Гость создал ротацию", err)
 	}

@@ -75,9 +75,9 @@ func (t Transcript) Validate(expected Expected, now time.Time) error {
 	}
 	oldRoot, oldOK := key(t.OldRootPublicKey)
 	newRoot, newOK := key(t.NewRootPublicKey)
-	_, deviceOK := key(t.NewDevicePublicKey)
+	device, deviceOK := key(t.NewDevicePublicKey)
 	validScopes := slices.Equal(t.Scopes, []string{"chat.read", "chat.write"}) || slices.Equal(t.Scopes, []string{"chat.read", "chat.write", "space.manage"})
-	if !oldOK || !newOK || !deviceOK || bytes.Equal(oldRoot, newRoot) ||
+	if !oldOK || !newOK || !deviceOK || bytes.Equal(oldRoot, newRoot) || bytes.Equal(device, newRoot) || bytes.Equal(device, oldRoot) ||
 		t.V != 1 || t.Purpose != "identity.root.rotate" ||
 		t.AuthEpoch < 1 || t.AuthEpoch >= 9007199254740991 || t.AuthEpoch != expected.AuthEpoch ||
 		!principalPattern.MatchString(t.PrincipalID) || t.PrincipalID != expected.PrincipalID ||

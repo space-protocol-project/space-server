@@ -79,7 +79,7 @@ func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRoot
 		return nil, status.Error(codes.FailedPrecondition, "Эпоха или новый root недействительны")
 	}
 	var used bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principal_roots WHERE public_key=$1)", req.NewRootPublicKey).Scan(&used); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principal_roots WHERE public_key=$1) OR EXISTS(SELECT 1 FROM device_grants WHERE principal_id=$3 AND device_public_key IN ($1,$2))", req.NewRootPublicKey, req.NewDevicePublicKey, authn.Actor(ctx)).Scan(&used); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if used {
@@ -223,7 +223,7 @@ func (s *AuthService) CompleteRootRotation(ctx context.Context, req *pb.Complete
 		return nil, denied()
 	}
 	var used bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principal_roots WHERE public_key=$1)", expected.NewRootPublicKey).Scan(&used); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principal_roots WHERE public_key=$1) OR EXISTS(SELECT 1 FROM device_grants WHERE principal_id=$3 AND device_public_key IN ($1,$2))", expected.NewRootPublicKey, expected.NewDevicePublicKey, t.PrincipalID).Scan(&used); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if used {

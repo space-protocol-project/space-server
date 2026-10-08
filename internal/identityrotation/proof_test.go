@@ -54,6 +54,17 @@ func TestRotationProof(t *testing.T) {
 			t.Fatal("Нет подтверждения нового root")
 		}
 	})
+	t.Run("root и device должны быть разными", func(t *testing.T) {
+		altered := transcript
+		altered.NewDevicePublicKey = altered.NewRootPublicKey
+		bound := expected
+		bound.NewDevicePublicKey = newPub
+		oldBytes, _ := altered.SigningBytes(false)
+		newBytes, _ := altered.SigningBytes(true)
+		if altered.Verify(bound, now, ed25519.Sign(oldPrivate, oldBytes), ed25519.Sign(newPrivate, newBytes)) == nil {
+			t.Fatal("Один ключ получил root и device authority")
+		}
+	})
 	t.Run("разделение доменов", func(t *testing.T) {
 		wrong := ed25519.Sign(newPrivate, oldBytes)
 		if transcript.Verify(expected, now, oldSignature, wrong) == nil {

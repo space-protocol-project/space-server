@@ -78,6 +78,31 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await page.getByRole('textbox',{name:/Название пространства/}).fill(oldTitle);
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
     await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
+    // Каналы того же Flutter-модуля: создание, смена прав и архив.
+    async function reach(text,role='button') {
+      const target=role?page.getByRole(role,{name:text,exact:true}):page.getByText(text,{exact:true});
+      for(let i=0;i<15;i++) {
+        if(await target.count()) {try {await target.first().scrollIntoViewIfNeeded({timeout:1500});return target;}catch {}}
+        await page.mouse.move(550,650);await page.mouse.wheel(0,i===0?-10000:500);await page.waitForTimeout(150);
+      }
+      throw new Error('Не найден элемент Flutter: '+text);
+    }
+    await (await reach('Создать чат-канал')).click();
+    await page.getByRole('textbox',{name:/Адрес нового канала/}).fill('flutter-team');
+    await page.getByRole('textbox',{name:/Название нового канала/}).fill('Группа Flutter');
+    await (await reach('Создать канал')).click();
+    await (await reach('Канал создан.',null)).waitFor();
+    const createdFlutter=(await api('/api/v1/channels?includeArchived=true')).channels.find(c=>c.id==='flutter-team');
+    assert.ok(createdFlutter);
+    for(let i=0;i<2;i++)await (await reach('Удалить правило')).first().click();
+    await (await reach('Сохранить права')).click();
+    await (await reach('Права канала сохранены.',null)).waitFor();
+    assert.equal(((await api('/api/v1/channels/flutter-team/access')).rules||[]).length,0);
+    await (await reach('Архивировать канал','switch')).click();
+    await (await reach('Сохранить канал')).click();
+    await (await reach('Настройки канала сохранены.',null)).waitFor();
+    assert.equal((await api('/api/v1/channels?includeArchived=true')).channels.find(c=>c.id==='flutter-team').archived,true);
+    if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT});
     assert.deepEqual(errors,[]);
     await context.close();context=undefined;
 

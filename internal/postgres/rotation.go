@@ -85,6 +85,9 @@ func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRoot
 	if used {
 		return nil, status.Error(codes.AlreadyExists, "Root уже использован")
 	}
+	if _, err = tx.Exec(ctx, "DELETE FROM root_rotations WHERE completed_at IS NULL AND expires_at<=now()"); err != nil {
+		return nil, databaseError(ctx, err)
+	}
 	var id string
 	var canonical []byte
 	err = tx.QueryRow(ctx, "SELECT id,transcript FROM root_rotations WHERE principal_id=$1 AND operation_id=$2", authn.Actor(ctx), req.OperationId).Scan(&id, &canonical)
@@ -101,9 +104,7 @@ func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRoot
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, databaseError(ctx, err)
 	}
-	if _, err = tx.Exec(ctx, "DELETE FROM root_rotations WHERE completed_at IS NULL AND expires_at<=now()"); err != nil {
-		return nil, databaseError(ctx, err)
-	}
+
 	var count int
 	if err = tx.QueryRow(ctx, "SELECT count(*) FROM root_rotations WHERE completed_at IS NULL").Scan(&count); err != nil {
 		return nil, databaseError(ctx, err)

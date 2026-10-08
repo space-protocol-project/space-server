@@ -6,6 +6,7 @@ let currentRole = "",
   memberCursor = "",
   inviteCursor = "";
 let stagedRecovery;
+let serverReady = false;
 const roleLabel = (role) =>
   ({
     owner: "Владелец",
@@ -34,7 +35,7 @@ function pending(value) {
   busy = value;
   document
     .querySelectorAll("button")
-    .forEach((button) => (button.disabled = value));
+    .forEach((button) => (button.disabled = value || !serverReady));
 }
 async function run(action) {
   if (busy) return;
@@ -45,7 +46,9 @@ async function run(action) {
     status(
       error.status === 403
         ? "Недостаточно прав, код недействителен или приглашение больше не действует."
-        : error.message,
+        : error.status === 501
+          ? "Для входа, приглашений и восстановления нужен сервер с PostgreSQL."
+          : error.message,
     );
   } finally {
     pending(false);
@@ -288,11 +291,14 @@ $("#sign-out").addEventListener("click", () =>
 );
 request(origin, "/api/v1/space/setup")
   .then((result) => {
+    serverReady = true;
+    pending(false);
     $("#login-title").textContent = result.initialized
       ? "Вход в пространство"
       : "Первый запуск пространства";
   })
   .catch(() => status("Для рабочей панели нужен сервер с PostgreSQL."));
+pending(false);
 
 function element(tag, text, className) {
   const node = document.createElement(tag);

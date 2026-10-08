@@ -74,6 +74,7 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
     await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
     assert.equal((await api('/api/v1/space/settings')).settings.title,'Настройка из общего Flutter-модуля');
+    if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT,fullPage:true});
     await page.getByRole('textbox',{name:/Название пространства/}).fill(oldTitle);
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
     await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();

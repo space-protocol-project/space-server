@@ -43,12 +43,14 @@ async function cardKey(password, salt) {
 }
 export async function sealCard(payload, password) {
   passwordCheck(password);
+  const plain=encoder.encode(JSON.stringify(payload));
+  if(plain.length>8176) throw new Error("Карточка превышает безопасный размер формата");
   const salt = crypto.getRandomValues(new Uint8Array(16)),
     nonce = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: nonce, additionalData: aad, tagLength: 128 },
     await cardKey(password, salt),
-    encoder.encode(JSON.stringify(payload)),
+    plain,
   );
   return JSON.stringify({
     v: 1,

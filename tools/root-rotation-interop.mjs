@@ -1,3 +1,5 @@
+import {PNG} from 'pngjs';
+import {qrText} from '../internal/spaceweb/assets/recovery-qr.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -14,7 +16,10 @@ try {
   const native=await promisify(execFile)('dart',['run','tool/root_rotation_interoperability.dart',origin,path],{cwd:resolve('../client'),timeout:90000,maxBuffer:16384});
   process.stdout.write(native.stdout);
   const discovery=await(await fetch(origin+'/.well-known/space-protocol')).json();
-  const payload=await openCard(await readFile(path,'utf8'),'Disposable rotation card password');
+  const packet=await readFile(path,'utf8');
+  const png=PNG.sync.read(await readFile(path+'.png'));
+  assert.equal(qrText(new Uint8ClampedArray(png.data),png.width,png.height),packet);
+  const payload=await openCard(packet,'Disposable rotation card password');
   assert.equal(payload.v,2);
   const keys=await keysFromCard(payload,origin,discovery);
   const root=new Uint8Array(await crypto.subtle.exportKey('raw',keys.root.publicKey));

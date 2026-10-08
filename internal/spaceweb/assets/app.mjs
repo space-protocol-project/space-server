@@ -775,6 +775,8 @@ $("#prepare-pair-form").addEventListener("submit", (event) => {
     if (p.state !== "pending")
       throw new Error("Запрос уже подтверждён или отменён");
     const authority = record.root.privateKey ? record : await unlockAuthority();
+    if(record.rootHistory?.length || authority.rootHistory?.length)
+      throw new Error('Сопряжение после смены ключа ещё обновляется. Подключите устройство новой карточкой.');
     if (!authority.root.privateKey && !authority.recoveryPrivate)
       throw new Error("Нужен исходный root или recovery-карточка");
     const localRoot = url64(

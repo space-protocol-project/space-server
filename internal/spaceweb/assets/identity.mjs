@@ -1,3 +1,4 @@
+import { verifyRootHistory } from './root-history.mjs';
 const encoder = new TextEncoder();
 export const base64 = (bytes) =>
   btoa(String.fromCharCode(...new Uint8Array(bytes)));
@@ -114,7 +115,8 @@ export async function proof(
   const canonical = JSON.stringify(
     Object.fromEntries(names.map((key) => [key, transcript[key]])),
   );
-  const principal = `u_${hex(await crypto.subtle.digest("SHA-256", root))}`;
+  const checkedIdentity = await verifyRootHistory(keys.rootHistory || [], root, origin, discovery.server_id);
+  const principal = checkedIdentity.principalId;
   const now = Math.floor(Date.now() / 1000);
   const valid =
     ["auth_epoch", "issued_at", "expires_at", "grant_expires_at", "v"].every(
@@ -123,7 +125,7 @@ export async function proof(
     raw === canonical &&
     JSON.stringify(names) === JSON.stringify(expected) &&
     transcript.v === 1 &&
-    transcript.auth_epoch === 1 &&
+    transcript.auth_epoch === checkedIdentity.epoch &&
     transcript.origin === origin &&
     transcript.server_id === discovery.server_id &&
     transcript.purpose === purpose &&

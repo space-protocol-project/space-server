@@ -1,3 +1,4 @@
+import { verifyRootHistory } from './root-history.mjs';
 import { url64 } from "./identity.mjs";
 const encoder = new TextEncoder(),
   decoder = new TextDecoder("utf-8", { fatal: true });
@@ -121,7 +122,7 @@ export async function importSeed(seed, publicKey) {
 }
 export async function keysFromCard(payload, origin, discovery) {
   if (
-    payload.v !== 1 ||
+    (payload.v !== 1 && payload.v !== 2) ||
     payload.origin !== origin ||
     payload.server_id !== discovery.server_id ||
     payload.server_key !== discovery.signing_public_key ||
@@ -130,12 +131,15 @@ export async function keysFromCard(payload, origin, discovery) {
     throw new Error("Карточка принадлежит другому серверу или формату");
   const rootPublic = decode64(payload.root_public_key, 32),
     secret = decode64(payload.secret, 32);
+  const rootHistory=payload.root_history || [];
+  if((payload.v===1 && rootHistory.length)||(payload.v===2 && !rootHistory.length)) throw new Error('Версия карточки не соответствует истории ключей');
+  await verifyRootHistory(rootHistory,rootPublic,origin,discovery.server_id);
   const device = await crypto.subtle.generateKey("Ed25519", false, [
     "sign",
     "verify",
   ]);
   if (payload.credential === "root")
-    return { root: await importSeed(secret, rootPublic), device, grantId: "" };
+    return { root: await importSeed(secret, rootPublic), device, grantId: "", rootHistory };
   if (
     !/^dg_[A-Za-z0-9_-]{43}$/.test(payload.recovery_grant_id) ||
     !Number.isSafeInteger(payload.expires_at) ||
@@ -158,6 +162,7 @@ export async function keysFromCard(payload, origin, discovery) {
   return {
     root,
     device,
+    rootHistory,
     recoveryPrivate: recovery.privateKey,
     recoveryGrantId: payload.recovery_grant_id,
     grantId: "",
@@ -182,7 +187,8 @@ export async function createRecoveryCard(
   const jwk = await crypto.subtle.exportKey("jwk", recovery.privateKey);
   const granted = await register({ ...record, device: recovery });
   const payload = {
-    v: 1,
+    v: record.rootHistory?.length ? 2 : 1,
+    ...(record.rootHistory?.length ? {root_history: record.rootHistory} : {}),
     credential: "recovery",
     origin,
     server_id: discovery.server_id,

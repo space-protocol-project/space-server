@@ -18,7 +18,7 @@ try{
  const y=Buffer.alloc(w*h),uv=Buffer.alloc(w*h/4,128);
  for(let i=0;i<y.length;i++)y[i]=raster.data[i*4]===0?16:235;
  const path=join(directory,'qr.y4m');
- await writeFile(path,Buffer.concat([Buffer.from(`YUV4MPEG2 W${w} H${h} F2:1 Ip A1:1 C420jpeg\n`),Buffer.from('FRAME\n'),y,uv,uv]));
+ await writeFile(path,Buffer.concat([Buffer.from(`YUV4MPEG2 W${w} H${h} F30:1 Ip A1:1 C420jpeg\n`),...Array.from({length:10},()=>[Buffer.from('FRAME\n'),y,uv,uv]).flat()]));
  browser=await chromium.launch({headless:true,args:['--use-fake-device-for-media-stream',`--use-file-for-fake-video-capture=${path}`]});
  const context=await browser.newContext({permissions:['camera']});
  const page=await context.newPage();
@@ -50,4 +50,7 @@ try{
  assert.equal(await page.evaluate(()=>window.cameraTracks.every(t=>t.readyState==='ended')),true);
  await context.close();
  console.log('Браузер: синтетическая камера → QR → пароль → реальное восстановление; audio=false и остановка tracks — успешно.');
+}catch(error){
+ if(browser){const contexts=browser.contexts();const page=contexts[0]?.pages()[0];if(page)console.log(await page.evaluate(()=>({status:document.querySelector('#camera-dialog [role=status]')?.textContent,video:[document.querySelector('video')?.videoWidth,document.querySelector('video')?.videoHeight],tracks:window.cameraTracks?.map(t=>({kind:t.kind,state:t.readyState}))})));}
+ throw error;
 }finally{await browser?.close();await rm(directory,{recursive:true,force:true});}

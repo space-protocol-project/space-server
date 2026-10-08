@@ -3,6 +3,7 @@ package postgres
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"net"
 	"strings"
@@ -98,6 +99,22 @@ func TestRootRotationStablePrincipalAndRevocation(t *testing.T) {
 	if err != nil || retry.ChallengeId != challenge.ChallengeId {
 		t.Fatal("Повтор создания неидемпотентен", err)
 	}
+	// Эмуляция истечения persisted challenge: обновление сохраняет operation/keys.
+	if _, err = store.pool.Exec(ctx, "UPDATE root_rotations SET expires_at=now()-interval '1 second' WHERE id=$1", challenge.ChallengeId); err != nil {
+		t.Fatal(err)
+	}
+	renewed, err := auth.CreateRootRotation(sourceCtx, req)
+	if err != nil || renewed.ChallengeId == challenge.ChallengeId {
+		t.Fatal("Истёкший запрос не обновлён", err)
+	}
+	var renewedProof rotation.Transcript
+	if err = json.Unmarshal(renewed.Transcript, &renewedProof); err != nil {
+		t.Fatal(err)
+	}
+	if renewedProof.OperationID != req.OperationId || renewedProof.NewRootPublicKey != base64.RawURLEncoding.EncodeToString(newRoot) || renewedProof.NewDevicePublicKey != base64.RawURLEncoding.EncodeToString(newDevice) {
+		t.Fatal("Обновление сменило operation или новые ключи")
+	}
+	challenge = renewed
 	var tr rotation.Transcript
 	json.Unmarshal(challenge.Transcript, &tr)
 	oldBytes, _ := tr.SigningBytes(false)

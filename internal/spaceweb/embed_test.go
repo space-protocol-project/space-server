@@ -7,7 +7,7 @@ import (
 )
 
 func TestPanelAssetsAndCSP(t *testing.T) {
-	for _, path := range []string{"/space", "/space/", "/space/app.mjs", "/space/identity.mjs", "/space/styles.css"} {
+	for _, path := range []string{"/space", "/space/", "/space/app.mjs", "/space/channels.mjs", "/space/identity.mjs", "/space/styles.css"} {
 		result := httptest.NewRecorder()
 		Handler().ServeHTTP(result, httptest.NewRequest("GET", path, nil))
 		if result.Code != 200 || !strings.Contains(result.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") {

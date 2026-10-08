@@ -57,7 +57,7 @@ func (s *Store) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.
 		return nil, databaseError(ctx, err)
 	}
 	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title}
-	response.Channels, err = s.channelList(ctx, tx, false, publicOnly)
+	response.Channels, err = s.channelList(ctx, tx, false, publicOnly, false)
 	return response, err
 }
 func (s *Store) CreateSetupCode(ctx context.Context) (string, error) {

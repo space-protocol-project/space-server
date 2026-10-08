@@ -1,3 +1,4 @@
+import { installChannels } from './channels.mjs';
 import {prepareBrowserRotation,commitBrowserRotation} from './root-rotation.mjs';
 import {installCameraScanner} from './camera-scanner.mjs';
 import { request, newKeys, proof, url64 } from "./identity.mjs";
@@ -124,9 +125,11 @@ function display(settings) {
   $("#login").hidden = true;
   $("#management").hidden = false;
 }
+const channelPanel = installChannels({api,run,status,onMetadataChanged:async()=>{const result=await api("/api/v1/space/settings");display(result.settings);}});
 async function load() {
   const result = await api("/api/v1/space/settings");
   display(result.settings);
+  await channelPanel.load();
   status("Настройки загружены.");
 }
 async function signIn(forceGrant = false) {
@@ -250,6 +253,7 @@ $("#claim-form").addEventListener("submit", (event) => {
     const result = await api("/api/v1/space/setup/claim", { setupCode: code });
     display(result.settings);
     currentRole = "owner";
+    await channelPanel.load();
     await loadMembers();
     await loadInvites();
     status("Владелец назначен. Код использован один раз.");
@@ -263,7 +267,7 @@ $("#settings-form").addEventListener("submit", (event) => {
       config.chatEnabled &&
       !$("#chat-enabled").checked &&
       !confirm(
-        "Закрыть общий чат? Подписки участников завершатся; сообщения не удаляются.",
+        "Выключить все чаты? Подписки участников завершатся; сообщения не удаляются.",
       )
     )
       return;
@@ -280,6 +284,7 @@ $("#settings-form").addEventListener("submit", (event) => {
         "PATCH",
       );
       display(result.settings);
+      await channelPanel.load();
       status("Настройки сохранены на сервере.");
     } catch (error) {
       if (error.status === 409)
@@ -301,6 +306,7 @@ $("#sign-out").addEventListener("click", () =>
     token = "";
     expires = 0;
     config = null;
+    channelPanel.clear();
     $("#management").hidden = true;
     $("#identity-tools").hidden = true;
     preparedAuthority = undefined;
@@ -626,6 +632,7 @@ async function loadDevices() {
             token = "";
             expires = 0;
             config = null;
+    channelPanel.clear();
             for (const id of [
               "management",
               "claim",

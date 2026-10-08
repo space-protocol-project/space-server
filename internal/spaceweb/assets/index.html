@@ -145,11 +145,11 @@
               required
               maxlength="80" /></label
           ><label class="check"
-            ><input id="chat-enabled" type="checkbox" /> Общий чат доступен
+            ><input id="chat-enabled" type="checkbox" /> Чаты доступны
             участникам</label
           >
           <p class="note">
-            Выключение закрывает чтение, отправку и подписку. Сообщения остаются
+            Выключение всех чатов закрывает чтение, отправку и подписку. Сообщения остаются
             в базе.
           </p>
           <label
@@ -168,6 +168,40 @@
             ><button>Сохранить изменения</button>
           </div>
         </form>
+        <section class="card" id="channels-panel">
+          <div class="row"><h2>Каналы</h2><button id="reload-channels" type="button" class="secondary">Обновить каналы</button></div>
+          <p class="note">Чаты пространства. Архив сохраняет историю и запрещает новые сообщения. Права проверяет сервер.</p>
+          <div id="channels-list"></div>
+          <details><summary>Создать чат-канал</summary>
+            <form id="create-channel">
+              <label>Адрес канала<input id="new-channel-id" required pattern="[a-z][a-z0-9_-]{0,63}" maxlength="64" placeholder="team" /></label>
+              <label>Название<input id="new-channel-title" required maxlength="80" /></label>
+              <label>Порядок<input id="new-channel-position" type="number" min="0" max="100000" value="10" required /></label>
+              <p class="note">Участники смогут читать и писать, читатели — читать. Публичный предпросмотр выключен.</p>
+              <button>Создать канал</button>
+            </form>
+          </details>
+          <div id="channel-editor" hidden>
+            <div class="row"><h3 id="channel-id"></h3><span id="channel-version" class="badge"></span></div>
+            <form id="channel-form">
+              <label>Название<input id="channel-title" required maxlength="80" /></label>
+              <label>Порядок<input id="channel-position" type="number" min="0" max="100000" required /></label>
+              <label class="check"><input id="channel-archived" type="checkbox" /> Архивировать канал</label>
+              <label class="check"><input id="channel-preview" type="checkbox" /> Показывать название посетителям без входа</label>
+              <p class="note">Предпросмотр раскрывает название и адрес, но не сообщения. Для полностью скрытой группы выключите его.</p>
+              <button>Сохранить канал</button>
+            </form>
+            <section id="channel-access" hidden>
+              <div class="row"><h3>Права канала</h3><span id="access-version" class="badge"></span></div>
+              <p class="note">Индивидуальное правило полностью заменяет правило роли. Удаление правила роли закрывает доступ этой роли. Владелец и администраторы сохраняют доступ. «Управлять» разрешает менять название, порядок и архив; менять права могут только администраторы пространства. Читатель не получает отправку, а устройству для управления нужно отдельное разрешение.</p>
+              <div id="channel-rules"></div>
+              <label>Добавить правило<select id="rule-subject"><option value="member">Участники</option><option value="reader">Читатели</option><option value="principal">Отдельный участник</option></select></label>
+              <label>Идентификатор отдельного участника<input id="rule-principal" placeholder="u_…" maxlength="66" /></label>
+              <button id="add-channel-rule" type="button" class="secondary">Добавить правило</button>
+              <div class="actions"><button id="reload-channel-access" type="button" class="secondary">Загрузить права заново</button><button id="save-channel-access" type="button">Сохранить права</button></div>
+            </section>
+          </div>
+        </section>
         <section class="card">
           <div class="row">
             <h2>Участники и права</h2>

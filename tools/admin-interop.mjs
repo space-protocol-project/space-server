@@ -1,3 +1,4 @@
+import { channelsInterop } from './channels-interop.mjs';
 import assert from "node:assert/strict";
 import { recoveryInterop } from "./recovery-interop.mjs";
 import { pairingInterop } from "./pairing-interop.mjs";
@@ -142,6 +143,7 @@ await request(
 );
 await recoveryInterop(origin, discovery, keys, session);
 await pairingInterop(origin, discovery, keys, session);
+await channelsInterop(origin, discovery, keys, session);
 await request(origin, "/api/v1/auth/logout", {}, session.accessToken);
 let refused = false;
 try {

@@ -100,8 +100,12 @@ func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool
 			return nil, forbidden()
 		}
 	}
+	var disabled bool
 	if err := enabledChat(ctx, q, lock); err != nil {
-		return nil, err
+		if action != "visible" || status.Code(err) != codes.NotFound {
+			return nil, err
+		}
+		disabled = true
 	}
 	clause := ""
 	if lock {
@@ -144,6 +148,10 @@ func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool
 	if c.Archived {
 		c.Permissions.Write = false
 	}
+	if disabled {
+		c.Permissions.Read = false
+		c.Permissions.Write = false
+	}
 	return c, nil
 }
 
@@ -151,12 +159,12 @@ func validChannelMetadata(title string, position int32) bool {
 	return strings.TrimSpace(title) != "" && len(title) <= 320 && position >= 0 && position <= 100000
 }
 
-func (s *Store) channelList(ctx context.Context, tx pgx.Tx, archived, publicOnly bool) ([]*pb.Channel, error) {
+func (s *Store) channelList(ctx context.Context, tx pgx.Tx, archived, publicOnly, includeDisabled bool) ([]*pb.Channel, error) {
 	var enabled bool
 	if err := tx.QueryRow(ctx, "SELECT chat_enabled FROM space_settings WHERE singleton=true FOR SHARE").Scan(&enabled); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if !enabled {
+	if !enabled && !includeDisabled {
 		return nil, nil
 	}
 	// Сначала закрываем rows: пул ограничен, повторные запросы выполняются той же транзакцией.
@@ -220,7 +228,7 @@ func (s *Store) ListChannels(ctx context.Context, req *pb.ListChannelsRequest) (
 	if m.Blocked {
 		return nil, forbidden()
 	}
-	channels, err := s.channelList(ctx, tx, req.IncludeArchived, false)
+	channels, err := s.channelList(ctx, tx, req.IncludeArchived, false, true)
 	return &pb.ListChannelsResponse{Channels: channels}, err
 }
 

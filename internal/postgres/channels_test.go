@@ -463,6 +463,34 @@ func TestChannelRulesValidation(t *testing.T) {
 	}
 }
 
+func TestDisabledChatKeepsChannelMetadataForConfiguration(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "disabled")
+	settings, err := f.admin.GetSettings(f.owner, &pb.GetSettingsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.admin.UpdateSettings(f.owner, &pb.UpdateSettingsRequest{Title: settings.Settings.Title, ChatTitle: settings.Settings.ChatTitle, ChatEnabled: false, RegistrationPolicy: "open", ExpectedRevision: settings.Settings.Revision})
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed, err := f.channels.ListChannels(f.owner, &pb.ListChannelsRequest{IncludeArchived: true})
+	if err != nil || len(listed.GetChannels()) != 2 {
+		t.Fatal(listed, err)
+	}
+	for _, entry := range listed.Channels {
+		if entry.Permissions.Read || entry.Permissions.Write || !entry.Permissions.Manage {
+			t.Fatal(entry)
+		}
+	}
+	_, err = f.contents.ListContent(f.owner, &pb.ListContentRequest{ChannelId: c.Id})
+	requireCode(t, err, codes.NotFound)
+	manifest, err := f.channels.GetManifest(f.owner, &pb.GetManifestRequest{})
+	if err != nil || len(manifest.GetChannels()) != 0 {
+		t.Fatal(manifest, err)
+	}
+}
+
 func outgoingAuthorization(ctx context.Context) string {
 	md, _ := metadata.FromOutgoingContext(ctx)
 	return md.Get("authorization")[0]

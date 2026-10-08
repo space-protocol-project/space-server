@@ -43,6 +43,10 @@ func TestUpgradePreservesIdentityAndBackfillsEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
+	channel, err := loadChannel(ctx, store.pool, "general", "")
+	if err != nil || channel.Title != "Общий чат" || channel.Revision != 1 || !channel.PublicPreview {
+		t.Fatalf("Миграция канала: %v %v", channel, err)
+	}
 	if identity.ServerID != original.ServerID || !bytes.Equal(identity.PublicKey, original.PublicKey) {
 		t.Fatal("Upgrade изменил identity")
 	}

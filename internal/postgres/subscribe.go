@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
 	"github.com/space-protocol-project/space-protocol/server/internal/authn"
 	"google.golang.org/grpc/codes"
@@ -25,7 +26,7 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 	if err != nil {
 		return err
 	}
-	if err := sendFrame(stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
+	if err := s.sendAuthorizedFrame(req.ChannelId, stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
 		return err
 	}
 	beat := time.Now()
@@ -36,20 +37,14 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 			return err
 		}
 		for _, event := range batch.Events {
-			if err := chatAccess(ctx, s.pool, false, false); err != nil {
-				return err
-			}
-			if _, err := s.Authenticate(ctx, token); err != nil {
-				return err
-			}
-			if err := sendFrame(stream, &pb.SubscribeResponse{Event: event, Cursor: event.Cursor}); err != nil {
+			if err := s.sendAuthorizedFrame(req.ChannelId, stream, &pb.SubscribeResponse{Event: event, Cursor: event.Cursor}); err != nil {
 				return err
 			}
 			cursor = event.Cursor
 			beat = time.Now()
 		}
 		if time.Since(beat) >= 15*time.Second {
-			if err := sendFrame(stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
+			if err := s.sendAuthorizedFrame(req.ChannelId, stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
 				return err
 			}
 			beat = time.Now()
@@ -66,6 +61,25 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 			return err
 		}
 	}
+}
+
+// Отзыв прав ждёт текущую ограниченную по времени отправку. Следующая отправка
+// проверяет новое состояние, включая события из уже прочитанной пачки.
+func (s *Store) sendAuthorizedFrame(channel string, stream pb.SyncService_SubscribeServer, frame *pb.SubscribeResponse) error {
+	ctx, cancel := context.WithTimeout(stream.Context(), 6*time.Second)
+	defer cancel()
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return databaseError(ctx, err)
+	}
+	defer tx.Rollback(ctx)
+	if err = s.lockSession(ctx, tx); err != nil {
+		return err
+	}
+	if _, err = channelAccess(ctx, tx, channel, "read", true); err != nil {
+		return err
+	}
+	return sendFrame(stream, frame)
 }
 
 // В каждый момент одна отправка. Возврат handler закрывает transport context,

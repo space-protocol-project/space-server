@@ -10,18 +10,20 @@ import (
 )
 
 func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.ListEventsResponse, error) {
-	if err := chatAccess(ctx, s.pool, false, false); err != nil {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	defer tx.Rollback(ctx)
+	if err := s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
-	if err := enabledChat(ctx, s.pool, false); err != nil {
+	if _, err := channelAccess(ctx, tx, req.ChannelId, "read", true); err != nil {
 		return nil, err
-	}
-	if req.ChannelId != "general" {
-		return nil, status.Error(codes.NotFound, "Канал не найден")
 	}
 	var after int64
 	if req.After != "" {
-		err := s.pool.QueryRow(ctx, "SELECT sequence FROM events WHERE channel_id=$1 AND cursor=$2", req.ChannelId, req.After).Scan(&after)
+		err := tx.QueryRow(ctx, "SELECT sequence FROM events WHERE channel_id=$1 AND cursor=$2", req.ChannelId, req.After).Scan(&after)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.InvalidArgument, "Неизвестный курсор событий")
 		}
@@ -29,7 +31,7 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := s.pool.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id
+	rows, err := tx.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id
  FROM events e JOIN contents c USING(channel_id,sequence)
  WHERE e.channel_id=$1 AND e.sequence>$2 ORDER BY e.sequence LIMIT 100`, req.ChannelId, after)
 	if err != nil {

@@ -89,13 +89,13 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 7)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 8)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
-	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql"} {
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql"} {
 		if err := applyMigration(ctx, tx, i+1, path); err != nil {
 			return err
 		}
@@ -176,10 +176,7 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	if err := s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
-	if err := chatAccess(ctx, tx, true, true); err != nil {
-		return nil, err
-	}
-	if err := enabledChat(ctx, tx, true); err != nil {
+	if _, err := channelAccess(ctx, tx, req.ChannelId, "write", true); err != nil {
 		return nil, err
 	}
 	var sequence int64
@@ -221,15 +218,20 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 }
 
 func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListContentResponse, error) {
-	if err := chatAccess(ctx, s.pool, false, false); err != nil {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	defer tx.Rollback(ctx)
+	if err := s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
-	if err := enabledChat(ctx, s.pool, false); err != nil {
+	if _, err := channelAccess(ctx, tx, req.ChannelId, "read", true); err != nil {
 		return nil, err
 	}
 	var after int64
 	if req.After != "" {
-		err := s.pool.QueryRow(ctx, "SELECT sequence FROM contents WHERE channel_id=$1 AND id=$2", req.ChannelId, req.After).Scan(&after)
+		err := tx.QueryRow(ctx, "SELECT sequence FROM contents WHERE channel_id=$1 AND id=$2", req.ChannelId, req.After).Scan(&after)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.InvalidArgument, "Неизвестный курсор")
 		}
@@ -237,7 +239,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := s.pool.Query(ctx, "SELECT id,channel_id,text,author_id FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
+	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

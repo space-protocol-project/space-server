@@ -33,17 +33,32 @@ func enabledChat(ctx context.Context, query rowQuery, lock bool) error {
 	return nil
 }
 func (s *Store) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
-	var title, chatTitle, serverID string
-	var enabled bool
-	err := s.pool.QueryRow(ctx, "SELECT s.title,s.chat_title,s.chat_enabled,i.server_id FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &chatTitle, &enabled, &serverID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	defer tx.Rollback(ctx)
+	publicOnly := authn.Token(ctx) == ""
+	if !publicOnly {
+		if err = s.lockSession(ctx, tx); err != nil {
+			return nil, err
+		}
+		m, err := membership(ctx, tx, authn.Actor(ctx), true)
+		if err != nil {
+			return nil, err
+		}
+		if m.Blocked {
+			return nil, forbidden()
+		}
+	}
+	var title, serverID string
+	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &serverID)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title}
-	if enabled {
-		response.Channels = []*pb.Channel{{Id: "general", Title: chatTitle, Views: []*pb.View{{Id: "chat", Type: "chat"}}}}
-	}
-	return response, nil
+	response.Channels, err = s.channelList(ctx, tx, false, publicOnly)
+	return response, err
 }
 func (s *Store) CreateSetupCode(ctx context.Context) (string, error) {
 	code, err := randomString("setup_")
@@ -190,6 +205,10 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	}
 	revision := current.Revision + 1
 	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	// Старое поле chat_title остаётся совместимым с названием general.
+	if _, err = tx.Exec(ctx, "UPDATE channels SET title=$1,revision=revision+1 WHERE id='general' AND title<>$1", req.ChatTitle); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if _, err = tx.Exec(ctx, "INSERT INTO admin_audit(principal_id,action,revision) VALUES($1,'settings.update',$2)", principal, revision); err != nil {

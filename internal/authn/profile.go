@@ -94,9 +94,18 @@ func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 		switch info.FullMethod {
 		case "/space.v1.AuthService/CompleteRootRotation":
 			return handler(ctx, req)
+		case "/space.v1.ChannelService/GetManifest":
+			if len(metadata.ValueFromIncomingContext(ctx, "authorization")) == 0 {
+				return handler(ctx, req)
+			}
+			ctx, err := authorize(ctx, verifier)
+			if err != nil {
+				return nil, err
+			}
+			return handler(ctx, req)
 		case "/space.v1.AuthService/CreatePairing", "/space.v1.AuthService/InspectPairing", "/space.v1.AuthService/PollPairing", "/space.v1.AuthService/CancelPairing":
 			return handler(ctx, req)
-		case "/space.v1.MembershipService/PreviewInvite", "/space.v1.ChannelService/GetManifest", "/space.v1.AuthService/CreateChallenge", "/space.v1.AuthService/CompleteChallenge", "/space.v1.AdminService/GetSetupStatus":
+		case "/space.v1.MembershipService/PreviewInvite", "/space.v1.AuthService/CreateChallenge", "/space.v1.AuthService/CompleteChallenge", "/space.v1.AdminService/GetSetupStatus":
 			return handler(ctx, req)
 		}
 		ctx, err := authorize(ctx, verifier)

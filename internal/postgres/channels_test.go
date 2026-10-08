@@ -467,3 +467,38 @@ func outgoingAuthorization(ctx context.Context) string {
 	md, _ := metadata.FromOutgoingContext(ctx)
 	return md.Get("authorization")[0]
 }
+
+type capturedChannelStream struct {
+	grpc.ServerStream
+	ctx  context.Context
+	sent bool
+}
+
+func (s *capturedChannelStream) Context() context.Context         { return s.ctx }
+func (s *capturedChannelStream) Send(*pb.SubscribeResponse) error { s.sent = true; return nil }
+
+func TestChannelRevocationRejectsAlreadyLoadedEvent(t *testing.T) {
+	f := newChannelFixture(t)
+	member, id := f.enroll(t, false)
+	c := f.create(t, "cached")
+	if _, err := f.contents.CreateContent(f.owner, &pb.CreateContentRequest{ChannelId: c.Id, Text: "Загружено до отзыва", IdempotencyKey: "cached"}); err != nil {
+		t.Fatal(err)
+	}
+	var authorized context.Context
+	incoming := metadata.NewIncomingContext(f.ctx, metadata.Pairs("authorization", outgoingAuthorization(member)))
+	_, err := authn.Interceptor(f.store)(incoming, nil, &grpc.UnaryServerInfo{FullMethod: "/space.v1.SyncService/ListEvents"}, func(ctx context.Context, _ any) (any, error) { authorized = ctx; return nil, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch, err := f.store.ListEvents(authorized, &pb.ListEventsRequest{ChannelId: c.Id})
+	if err != nil || len(batch.GetEvents()) != 1 {
+		t.Fatal(batch, err)
+	}
+	f.acl(t, c, principalRule(id, permissions(false, false, false, false)))
+	stream := &capturedChannelStream{ctx: authorized}
+	err = f.store.sendAuthorizedFrame(c.Id, stream, &pb.SubscribeResponse{Event: batch.Events[0], Cursor: batch.Events[0].Cursor})
+	requireCode(t, err, codes.NotFound)
+	if stream.sent {
+		t.Fatal("Событие из старой пачки выдано после отзыва")
+	}
+}

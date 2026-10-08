@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"context"
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
 	"github.com/space-protocol-project/space-protocol/server/internal/authn"
 	"google.golang.org/grpc/codes"
@@ -66,8 +65,7 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 // Отзыв прав ждёт текущую ограниченную по времени отправку. Следующая отправка
 // проверяет новое состояние, включая события из уже прочитанной пачки.
 func (s *Store) sendAuthorizedFrame(channel string, stream pb.SyncService_SubscribeServer, frame *pb.SubscribeResponse) error {
-	ctx, cancel := context.WithTimeout(stream.Context(), 6*time.Second)
-	defer cancel()
+	ctx := stream.Context()
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return databaseError(ctx, err)

@@ -38,7 +38,7 @@ func TestUpgradePreservesIdentityAndBackfillsEvents(t *testing.T) {
 	if err = tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	store, identity, err := Open(ctx, databaseURL)
+	store, identity, err := openManual(ctx, databaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}

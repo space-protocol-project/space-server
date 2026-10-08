@@ -32,7 +32,7 @@ func signedProof(t *testing.T, response *pb.CreateChallengeResponse, key ed25519
 }
 func TestOwnerBootstrapScopesAndSettings(t *testing.T) {
 	ctx, databaseURL := isolatedDatabase(t)
-	store, identity, err := Open(ctx, databaseURL)
+	store, identity, err := openManual(ctx, databaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}

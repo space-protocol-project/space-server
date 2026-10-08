@@ -33,6 +33,7 @@ func run() error {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
+	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
 	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
 	originFlag := flag.String("origin", "", "Origin браузера, в том числе локальная сторона SSH-туннеля")
 	flag.Parse()
@@ -68,6 +69,16 @@ func run() error {
 	}
 	if store != nil {
 		defer store.Close()
+	}
+	if *firstOwner {
+		if *setupCode || store == nil {
+			return fmt.Errorf("first-owner требует PostgreSQL и не совмещается с setup-code")
+		}
+		if err := store.EnableFirstOwner(ctx); err != nil {
+			return err
+		}
+		fmt.Println("Первый успешный вход назначит владельца")
+		return nil
 	}
 	if *setupCode {
 		if store == nil {

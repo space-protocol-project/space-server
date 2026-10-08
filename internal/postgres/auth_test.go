@@ -51,7 +51,7 @@ func complete(t *testing.T, ctx context.Context, client pb.AuthServiceClient, re
 
 func TestAuthGatewayReplayEventsAndRevoke(t *testing.T) {
 	ctx, databaseURL := isolatedDatabase(t)
-	store, identity, err := Open(ctx, databaseURL)
+	store, identity, err := openManual(ctx, databaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}

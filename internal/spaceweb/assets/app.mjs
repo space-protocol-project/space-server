@@ -328,7 +328,7 @@ request(origin, "/api/v1/space/setup")
     pending(false);
     $("#login-title").textContent = result.initialized
       ? "Вход в пространство"
-      : "Первый запуск пространства";
+      : result.firstLoginOwner ? "Первый вход назначит владельца" : "Первый запуск пространства";
   })
   .catch(() => status("Для рабочей панели нужен сервер с PostgreSQL."));
 pending(false);

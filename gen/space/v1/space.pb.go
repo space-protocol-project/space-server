@@ -2003,10 +2003,11 @@ func (*GetSetupStatusRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetSetupStatusResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Initialized   bool                   `protobuf:"varint,1,opt,name=initialized,proto3" json:"initialized,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Initialized     bool                   `protobuf:"varint,1,opt,name=initialized,proto3" json:"initialized,omitempty"`
+	FirstLoginOwner bool                   `protobuf:"varint,2,opt,name=first_login_owner,json=firstLoginOwner,proto3" json:"first_login_owner,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetSetupStatusResponse) Reset() {
@@ -2042,6 +2043,13 @@ func (*GetSetupStatusResponse) Descriptor() ([]byte, []int) {
 func (x *GetSetupStatusResponse) GetInitialized() bool {
 	if x != nil {
 		return x.Initialized
+	}
+	return false
+}
+
+func (x *GetSetupStatusResponse) GetFirstLoginOwner() bool {
+	if x != nil {
+		return x.FirstLoginOwner
 	}
 	return false
 }
@@ -4663,9 +4671,10 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x14GetMembershipRequest\"A\n" +
 	"\x15GetMembershipResponse\x12(\n" +
 	"\x06member\x18\x01 \x01(\v2\x10.space.v1.MemberR\x06member\"\x17\n" +
-	"\x15GetSetupStatusRequest\":\n" +
+	"\x15GetSetupStatusRequest\"f\n" +
 	"\x16GetSetupStatusResponse\x12 \n" +
-	"\vinitialized\x18\x01 \x01(\bR\vinitialized\"2\n" +
+	"\vinitialized\x18\x01 \x01(\bR\vinitialized\x12*\n" +
+	"\x11first_login_owner\x18\x02 \x01(\bR\x0ffirstLoginOwner\"2\n" +
 	"\x11ClaimOwnerRequest\x12\x1d\n" +
 	"\n" +
 	"setup_code\x18\x01 \x01(\tR\tsetupCode\"\x14\n" +

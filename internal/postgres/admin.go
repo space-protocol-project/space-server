@@ -78,7 +78,7 @@ func (s *Store) CreateSetupCode(ctx context.Context) (string, error) {
 		return "", errors.New("Владелец уже назначен; первичная настройка закрыта")
 	}
 	hash := sha256.Sum256([]byte(code))
-	if _, err = tx.Exec(ctx, "UPDATE space_settings SET setup_code_hash=$1,setup_expires_at=now()+interval '15 minutes' WHERE singleton=true", hash[:]); err != nil {
+	if _, err = tx.Exec(ctx, "UPDATE space_settings SET owner_claim_policy='manual',setup_code_hash=$1,setup_expires_at=now()+interval '15 minutes' WHERE singleton=true", hash[:]); err != nil {
 		return "", err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -87,11 +87,11 @@ func (s *Store) CreateSetupCode(ctx context.Context) (string, error) {
 	return code, nil
 }
 func (s *Store) GetSetupStatus(ctx context.Context, _ *pb.GetSetupStatusRequest) (*pb.GetSetupStatusResponse, error) {
-	var initialized bool
-	if err := s.pool.QueryRow(ctx, "SELECT owner_id IS NOT NULL FROM space_settings WHERE singleton=true").Scan(&initialized); err != nil {
+	var initialized, automatic bool
+	if err := s.pool.QueryRow(ctx, "SELECT owner_id IS NOT NULL,owner_id IS NULL AND owner_claim_policy='first_login' FROM space_settings WHERE singleton=true").Scan(&initialized, &automatic); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.GetSetupStatusResponse{Initialized: initialized}, nil
+	return &pb.GetSetupStatusResponse{Initialized: initialized, FirstLoginOwner: automatic}, nil
 }
 func authorizeManagement(ctx context.Context, tx pgx.Tx) (string, error) {
 	token := authn.Token(ctx)
@@ -218,4 +218,24 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision}}, nil
+}
+
+// Включение bootstrap не изменяет уже назначенного владельца.
+func (s *Store) EnableFirstOwner(ctx context.Context) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var initialized bool
+	if err = tx.QueryRow(ctx, "SELECT owner_id IS NOT NULL FROM space_settings WHERE singleton=true FOR UPDATE").Scan(&initialized); err != nil {
+		return err
+	}
+	if initialized {
+		return errors.New("Владелец уже назначен; автоматическая настройка закрыта")
+	}
+	if _, err = tx.Exec(ctx, "UPDATE space_settings SET owner_claim_policy='first_login',setup_code_hash=NULL,setup_expires_at=NULL WHERE singleton=true"); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

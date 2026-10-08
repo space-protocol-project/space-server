@@ -72,7 +72,7 @@ func TestConcurrentInitializationAndRestart(t *testing.T) {
 		go func(i int) {
 			defer workers.Done()
 			var err error
-			stores[i], identities[i], err = Open(ctx, databaseURL)
+			stores[i], identities[i], err = openManual(ctx, databaseURL)
 			if err != nil {
 				t.Error(err)
 			}
@@ -109,7 +109,7 @@ func TestConcurrentInitializationAndRestart(t *testing.T) {
 	for _, store := range stores {
 		store.Close()
 	}
-	restarted, identity, err := Open(ctx, databaseURL)
+	restarted, identity, err := openManual(ctx, databaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestConcurrentInitializationAndRestart(t *testing.T) {
 
 func TestDamagedMigrationAndMissingIdentityFailClosed(t *testing.T) {
 	ctx, databaseURL := isolatedDatabase(t)
-	store, _, err := Open(ctx, databaseURL)
+	store, _, err := openManual(ctx, databaseURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,28 +180,41 @@ func TestDamagedMigrationAndMissingIdentityFailClosed(t *testing.T) {
 	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum='damaged' WHERE version=1"); err != nil {
 		t.Fatal(err)
 	}
-	if reopened, _, err := Open(ctx, databaseURL); err == nil {
+	if reopened, _, err := openManual(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Повреждённая миграция принята")
 	}
 	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum=$1 WHERE version=1", checksum); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES(9,'future')"); err != nil {
+	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES(10,'future')"); err != nil {
 		t.Fatal(err)
 	}
-	if reopened, _, err := Open(ctx, databaseURL); err == nil {
+	if reopened, _, err := openManual(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Новая схема принята старым сервером")
 	}
-	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=9"); err != nil {
+	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=10"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pool.Exec(ctx, "DELETE FROM server_state"); err != nil {
 		t.Fatal(err)
 	}
-	if reopened, _, err := Open(ctx, databaseURL); err == nil {
+	if reopened, _, err := openManual(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Утраченная identity заменена новой")
 	}
+}
+
+// Существующие сценарии setup-code и миграций проверяются в явном ручном режиме.
+func openManual(ctx context.Context, url string) (*Store, Identity, error) {
+	store, identity, err := Open(ctx, url)
+	if err != nil {
+		return nil, identity, err
+	}
+	if _, err = store.pool.Exec(ctx, "UPDATE space_settings SET owner_claim_policy='manual' WHERE owner_id IS NULL"); err != nil {
+		store.Close()
+		return nil, identity, err
+	}
+	return store, identity, nil
 }

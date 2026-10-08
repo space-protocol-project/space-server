@@ -77,6 +77,11 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 	if err := migrate(ctx, tx); err != nil {
 		return Identity{}, err
 	}
+	if !initialized {
+		if _, err = tx.Exec(ctx, "UPDATE space_settings SET owner_claim_policy='first_login' WHERE singleton=true"); err != nil {
+			return Identity{}, err
+		}
+	}
 	identity, err := loadIdentity(ctx, tx, !initialized)
 	if err != nil {
 		return Identity{}, err
@@ -89,13 +94,13 @@ func (s *Store) initialize(ctx context.Context) (Identity, error) {
 
 func migrate(ctx context.Context, tx pgx.Tx) error {
 	var future bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 8)").Scan(&future); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version > 9)").Scan(&future); err != nil {
 		return err
 	}
 	if future {
 		return errors.New("База создана более новой версией сервера")
 	}
-	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql"} {
+	for i, path := range []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql"} {
 		if err := applyMigration(ctx, tx, i+1, path); err != nil {
 			return err
 		}

@@ -46,7 +46,7 @@ type channelFixture struct {
 func newChannelFixture(t *testing.T) *channelFixture {
 	t.Helper()
 	ctx, url := isolatedDatabase(t)
-	store, identity, err := Open(ctx, url)
+	store, identity, err := openManual(ctx, url)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestChannelsIsolationPermissionsAndPersistence(t *testing.T) {
 		}
 	}
 	// Новый Store повторно открывает ту же базу без изменения identity, ACL или истории.
-	reopened, id, err := Open(f.ctx, f.url)
+	reopened, id, err := openManual(f.ctx, f.url)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -230,14 +230,15 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 		return databaseError(ctx, err)
 	}
 	var policy string
-	if err := tx.QueryRow(ctx, "SELECT registration_policy FROM space_settings WHERE singleton=true FOR SHARE").Scan(&policy); err != nil {
+	var bootstrap bool
+	if err := tx.QueryRow(ctx, "SELECT registration_policy,owner_id IS NULL AND owner_claim_policy='first_login' FROM space_settings WHERE singleton=true FOR SHARE").Scan(&policy, &bootstrap); err != nil {
 		return databaseError(ctx, err)
 	}
 	var existing bool
 	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principals WHERE id=$1)", t.PrincipalID).Scan(&existing); err != nil {
 		return databaseError(ctx, err)
 	}
-	if !existing && policy == "closed" && invitation == "" {
+	if !existing && policy == "closed" && invitation == "" && !bootstrap {
 		return status.Error(codes.PermissionDenied, "Регистрация новых идентичностей закрыта")
 	}
 	root, _ := base64.RawURLEncoding.DecodeString(t.RootPublicKey)
@@ -302,6 +303,16 @@ func (s *AuthService) register(ctx context.Context, tx pgx.Tx, t authn.Transcrip
 }
 
 func (s *AuthService) login(ctx context.Context, tx pgx.Tx, t authn.Transcript, result *pb.CompleteChallengeResponse) error {
+	// Пока выбор владельца открыт, registry lock сохраняет порядок registration → grant → settings.
+	var automatic bool
+	if err := tx.QueryRow(ctx, "SELECT owner_id IS NULL AND owner_claim_policy='first_login' FROM space_settings WHERE singleton=true").Scan(&automatic); err != nil {
+		return databaseError(ctx, err)
+	}
+	if automatic {
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(73616003)"); err != nil {
+			return databaseError(ctx, err)
+		}
+	}
 	if err := activeGrant(ctx, tx, t); err != nil {
 		return err
 	}
@@ -323,6 +334,27 @@ func (s *AuthService) login(ctx context.Context, tx pgx.Tx, t authn.Transcript, 
 	expiry := min(time.Now().Add(10*time.Minute).Unix(), t.GrantExpiresAt)
 	if _, err := tx.Exec(ctx, "INSERT INTO auth_sessions(token_hash,grant_id,expires_at) VALUES($1,$2,$3)", hash[:], t.GrantID, time.Unix(expiry, 0)); err != nil {
 		return databaseError(ctx, err)
+	}
+	if automatic {
+		member, err := membership(ctx, tx, t.PrincipalID, true)
+		if err != nil {
+			return err
+		}
+		if member.Blocked {
+			return forbidden()
+		}
+		if !slices.Contains(t.Scopes, "identity.recover") {
+			var revision int64
+			err = tx.QueryRow(ctx, "UPDATE space_settings SET owner_id=$1,revision=revision+1,setup_code_hash=NULL,setup_expires_at=NULL WHERE singleton=true AND owner_id IS NULL AND owner_claim_policy='first_login' RETURNING revision", t.PrincipalID).Scan(&revision)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return databaseError(ctx, err)
+			}
+			if err == nil {
+				if err = audit(ctx, tx, t.PrincipalID, "owner.first-login", revision); err != nil {
+					return databaseError(ctx, err)
+				}
+			}
+		}
 	}
 	result.AccessToken = token
 	result.ExpiresAt = expiry

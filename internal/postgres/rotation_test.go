@@ -23,7 +23,7 @@ import (
 
 func TestRootRotationStablePrincipalAndRevocation(t *testing.T) {
 	ctx, url := isolatedDatabase(t)
-	store, identity, err := Open(ctx, url)
+	store, identity, err := openManual(ctx, url)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestRootRotationStablePrincipalAndRevocation(t *testing.T) {
 		t.Fatal("Новый root создал другую идентичность")
 	}
 	store.Close()
-	reopened, _, err := Open(ctx, url)
+	reopened, _, err := openManual(ctx, url)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,7 +20,7 @@ import (
 
 func TestInvitationsAndLiveMembership(t *testing.T) {
 	ctx, url := isolatedDatabase(t)
-	store, identity, err := Open(ctx, url)
+	store, identity, err := openManual(ctx, url)
 	if err != nil {
 		t.Fatal(err)
 	}

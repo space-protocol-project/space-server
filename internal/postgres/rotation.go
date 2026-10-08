@@ -163,6 +163,9 @@ func (s *AuthService) CompleteRootRotation(ctx context.Context, req *pb.Complete
 	if json.Unmarshal(raw, &t) != nil {
 		return nil, denied()
 	}
+	if t.Origin != s.origin || t.ServerID != s.serverID || t.ChallengeID != req.ChallengeId {
+		return nil, denied()
+	}
 	now := time.Now()
 	if completed != nil {
 		now = time.Unix(t.IssuedAt, 0)

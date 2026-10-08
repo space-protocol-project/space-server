@@ -1,5 +1,5 @@
 // Package identityrotation задаёт экспериментальный proof ротации.
-// Он ещё не подключён к AuthService и не меняет состояние сервера.
+// Его использует экспериментальный серверный API; клиентский UI пока отсутствует.
 package identityrotation
 
 import (

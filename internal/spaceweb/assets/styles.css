@@ -175,3 +175,7 @@ summary:focus-visible {
     flex-wrap: wrap;
   }
 }
+
+#camera-dialog {width:min(620px,90vw);max-height:90vh;overflow:auto;background:var(--surface,#282828);color:var(--text,#ebdbb2);border:1px solid #665c54;border-radius:12px;}
+#camera-dialog::backdrop {background:#000a;}
+#camera-dialog video {display:block;width:100%;max-height:55vh;background:#1d2021;border-radius:12px;object-fit:contain;}

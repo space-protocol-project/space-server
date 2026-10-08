@@ -22,7 +22,7 @@ func Handler() http.Handler {
 		types := map[string]string{"index.html": "text/html; charset=utf-8", "app.mjs": "text/javascript; charset=utf-8", "identity.mjs": "text/javascript; charset=utf-8", "styles.css": "text/css; charset=utf-8"}
 		types["recovery.mjs"] = "text/javascript; charset=utf-8"
 		types["pairing.mjs"] = "text/javascript; charset=utf-8"
-		for _, name := range []string{"root-history.mjs", "recovery-qr.mjs", "vendor/qrcode.mjs", "vendor/jsqr.mjs"} {
+		for _, name := range []string{"camera-scanner.mjs", "root-history.mjs", "recovery-qr.mjs", "vendor/qrcode.mjs", "vendor/jsqr.mjs"} {
 			types[name] = "text/javascript; charset=utf-8"
 		}
 		media, ok := types[file]
@@ -37,8 +37,9 @@ func Handler() http.Handler {
 		}
 		w.Header().Set("Content-Type", media)
 		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Permissions-Policy", "camera=(self), microphone=()")
 		if r.Method == "GET" {
 			_, _ = w.Write(content)
 		}

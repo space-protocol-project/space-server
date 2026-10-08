@@ -1,3 +1,4 @@
+import {installCameraScanner} from './camera-scanner.mjs';
 import { request, newKeys, proof, url64 } from "./identity.mjs";
 import { createRecoveryCard, openCard, keysFromCard } from "./recovery.mjs";
 import {
@@ -523,14 +524,23 @@ $("#card-form").addEventListener("submit", (event) => {
 $("#download-card").addEventListener("click", () => {
   if (record?.cardCipher) downloadCard(record.cardCipher);
 });
+let cameraPacket;
+const cameraStart=installCameraScanner($('#camera-dialog'),packet=>{
+  cameraPacket=packet;
+  $('#restore-file').value='';$('#restore-file').required=false;
+  $('#camera-card-ready').textContent='Карточка прочитана. Введите её пароль для восстановления.';
+  $('#restore-password').focus();
+});
+$('#scan-card-camera').addEventListener('click',cameraStart);
+$('#restore-file').addEventListener('change',()=>{cameraPacket=undefined;$('#restore-file').required=true;$('#camera-card-ready').textContent='';});
 $("#restore-form").addEventListener("submit", (event) => {
   event.preventDefault();
   run(async () => {
     const file = $("#restore-file").files[0];
-    if (!file || file.size > 8 * 1024 * 1024)
+    if ((!file && !cameraPacket) || (file && file.size > 8 * 1024 * 1024))
       throw new Error("Выберите карточку JSON или PNG до 8 MiB.");
     try {
-      const packet = await readCardFile(file),
+      const packet = cameraPacket || await readCardFile(file),
         payload = await openCard(packet, $("#restore-password").value);
       const response = await fetch("/.well-known/space-protocol", {
         redirect: "error",
@@ -568,6 +578,7 @@ $("#restore-form").addEventListener("submit", (event) => {
       stagedRecovery = undefined;
       $("#restore-password").value = "";
       $("#restore-file").value = "";
+      cameraPacket=undefined;$("#restore-file").required=true;$("#camera-card-ready").textContent="";
     }
   });
 });

@@ -52,6 +52,8 @@
         </details>
         <details>
           <summary>Восстановить прежнюю идентичность</summary>
+          <button id="scan-card-camera" class="secondary" type="button">Сканировать камерой</button>
+          <p id="camera-card-ready" class="note"></p>
           <form id="restore-form">
             <label
               >Карточка Space (JSON или PNG)<input
@@ -333,6 +335,13 @@
         компьютере сервера
       </footer>
     </main>
+    <dialog id="camera-dialog" aria-labelledby="camera-title">
+      <h2 id="camera-title">Сканировать карточку</h2>
+      <p>Кадры обрабатываются на этом устройстве и не отправляются серверу. Микрофон выключен.</p>
+      <video autoplay muted playsinline></video>
+      <p role="status" aria-live="polite"></p>
+      <button type="button">Закрыть камеру</button>
+    </dialog>
     <script type="module" src="/space/app.mjs"></script>
   </body>
 </html>

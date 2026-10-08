@@ -192,6 +192,10 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 	result := &pb.CompleteChallengeResponse{GrantId: transcript.GrantID, PrincipalId: transcript.PrincipalID}
 	switch transcript.Purpose {
 	case "device.register":
+		// Root-регистрация и ротация берут registry lock до строки pairing.
+		if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(73616003)"); err != nil {
+			return nil, databaseError(ctx, err)
+		}
 		if transcript.PairingID != "" {
 			if req.InvitationToken != "" {
 				return nil, status.Error(codes.InvalidArgument, "Сопряжение не использует приглашение")

@@ -174,13 +174,25 @@ func (s *AuthService) CompleteRootRotation(ctx context.Context, req *pb.Complete
 	if completed != nil {
 		return result, nil
 	}
+	expected := rotationExpected(t)
+	// Pairing → principal → grants: тот же порядок, что у approval/cancel.
+	pairs, pairErr := tx.Query(ctx, "SELECT id FROM device_pairings WHERE proposed_root_public_key=$1 AND state IN ('pending','approved') ORDER BY id FOR UPDATE", expected.RootPublicKey)
+	if pairErr != nil {
+		return nil, databaseError(ctx, pairErr)
+	}
+	for pairs.Next() {
+	}
+	pairErr = pairs.Err()
+	pairs.Close()
+	if pairErr != nil {
+		return nil, databaseError(ctx, pairErr)
+	}
 	var root []byte
 	var epoch int64
 	err = tx.QueryRow(ctx, "SELECT root_public_key,auth_epoch FROM principals WHERE id=$1 FOR UPDATE", t.PrincipalID).Scan(&root, &epoch)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	expected := rotationExpected(t)
 	if epoch != t.AuthEpoch || !bytes.Equal(root, expected.RootPublicKey) {
 		return nil, denied()
 	}
@@ -213,6 +225,9 @@ func (s *AuthService) CompleteRootRotation(ctx context.Context, req *pb.Complete
 	}
 	if used {
 		return nil, status.Error(codes.AlreadyExists, "Root уже использован")
+	}
+	if _, err = tx.Exec(ctx, "UPDATE device_pairings SET state='cancelled',code_hash=NULL,poll_hash=NULL WHERE proposed_root_public_key=$1 AND state IN ('pending','approved')", root); err != nil {
+		return nil, databaseError(ctx, err)
 	}
 	if _, err = tx.Exec(ctx, "UPDATE principal_roots SET retired_at=now() WHERE public_key=$1", root); err != nil {
 		return nil, databaseError(ctx, err)

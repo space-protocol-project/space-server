@@ -40,5 +40,13 @@ try {
   const delegated=await keysFromCard(await openCard(card,'Disposable browser rotation card'),origin,discovery);
   const device=await proof(origin,discovery,delegated,'device.register','');
   assert.equal(device.principalId,identity.principalId);
+  delegated.grantId=device.grantId;
+  const delegatedSession=await proof(origin,discovery,delegated,'auth.login',device.grantId);
+  await pairingInterop(origin,discovery,delegated,delegatedSession,{skipNativeSource:true,expectedRole:'member'});
+  const all=await request(origin,'/api/v1/auth/devices',undefined,session.accessToken);
+  const parent=all.devices.find(g=>g.id===delegated.recoveryGrantId);
+  const parentPub=await crypto.subtle.importKey('raw',Uint8Array.from(atob(parent.publicKey),c=>c.charCodeAt(0)),'Ed25519',true,['verify']);
+  await proof(origin,discovery,{...keys,device:{publicKey:parentPub}},'device.revoke',parent.id,'',{expectedScopes:parent.scopes});
+  await assert.rejects(request(origin,'/api/v1/channels/general/content',undefined,delegatedSession.accessToken),error=>error.status===401);
   console.log('WebCrypto/Dart/Go: recovery v2 после ротации, проверка двух подписей, прежний ID, эпоха 2 и отказ повышения роли — успешно.');
 } finally {await rm(directory,{recursive:true,force:true});}

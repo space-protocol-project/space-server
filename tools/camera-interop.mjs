@@ -44,9 +44,9 @@ try{
  await page.locator('#participant').waitFor({state:'visible'});
  // Новый захват отменяется пользователем; track также обязан закрыться.
  await page.evaluate(()=>document.querySelector('#participant-sign-out').click());
- await page.locator('#scan-card-camera').click();
- await page.waitForFunction(()=>window.cameraTracks.length>=2);
- if(await page.locator('#camera-dialog').evaluate(d=>d.open))await page.locator('#camera-dialog button').click();
+ await page.waitForFunction(()=>!document.querySelector('#scan-card-camera').disabled);
+ await page.evaluate(()=>{document.querySelector('#scan-card-camera').click();document.querySelector('#camera-dialog button').click();});
+ await page.waitForFunction(()=>window.cameraTracks.length>=2&&window.cameraTracks.every(t=>t.readyState==='ended'));
  assert.equal(await page.evaluate(()=>window.cameraTracks.every(t=>t.readyState==='ended')),true);
  await context.close();
  console.log('Браузер: синтетическая камера → QR → пароль → реальное восстановление; audio=false и остановка tracks — успешно.');

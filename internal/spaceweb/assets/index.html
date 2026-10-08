@@ -31,6 +31,26 @@
         </button>
         <p id="invite-preview" class="note"></p>
         <details>
+          <summary>Войти через существующее устройство</summary>
+          <p class="note">
+            Создаётся новый рабочий ключ. Подтвердите запрос в Flutter или
+            исходном браузере и сравните код проверки до выдачи подписи. Запрос
+            для панели включает space.manage; сервер дополнительно проверяет
+            вашу роль.
+          </p>
+          <button id="start-pair" class="secondary">
+            Начать сопряжение браузера
+          </button>
+          <div id="pair-pending" hidden>
+            <p>Передайте код на исходное устройство. Действует пять минут.</p>
+            <p id="pair-code" class="identity"></p>
+            <p id="pair-check"></p>
+            <button id="accept-pair" hidden>
+              Код совпадает — завершить вход</button
+            ><button id="cancel-pair" class="secondary">Отменить</button>
+          </div>
+        </details>
+        <details>
           <summary>Восстановить прежнюю идентичность</summary>
           <form id="restore-form">
             <label
@@ -233,6 +253,34 @@
       </section>
       <p id="status" role="status" aria-live="polite"></p>
       <section class="card" id="identity-tools" hidden>
+        <h2>Подтвердить новое устройство</h2>
+        <p class="note">
+          Введите одноразовый код с нового устройства. Сначала сверяются коды,
+          затем исходный root выдаёт подпись. В первом варианте нужна исходная
+          root-идентичность или корневая карточка Flutter; делегированная
+          карточка пока не подтверждает сопряжение.
+        </p>
+        <form id="prepare-pair-form">
+          <label
+            >Код сопряжения<input
+              id="approve-pair-code"
+              placeholder="pc_…"
+              autocomplete="off"
+              required /></label
+          ><button>Подготовить проверку</button>
+        </form>
+        <div id="prepared-pair" hidden>
+          <p id="prepared-device"></p>
+          <p id="prepared-check" class="identity"></p>
+          <form id="approve-pair-form">
+            <label
+              >Введите код проверки с нового устройства<input
+                id="approve-pair-check"
+                autocomplete="off"
+                required /></label
+            ><button>Коды совпадают — подписать</button>
+          </form>
+        </div>
         <h2>Восстановление и устройства</h2>
         <p class="note">
           Карточка содержит зашифрованный ключ восстановления для этого сервера.

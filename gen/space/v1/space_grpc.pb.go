@@ -265,6 +265,12 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	AuthService_ProposePairing_FullMethodName      = "/space.v1.AuthService/ProposePairing"
+	AuthService_CreatePairing_FullMethodName       = "/space.v1.AuthService/CreatePairing"
+	AuthService_InspectPairing_FullMethodName      = "/space.v1.AuthService/InspectPairing"
+	AuthService_PollPairing_FullMethodName         = "/space.v1.AuthService/PollPairing"
+	AuthService_CancelPairing_FullMethodName       = "/space.v1.AuthService/CancelPairing"
+	AuthService_ClaimPairing_FullMethodName        = "/space.v1.AuthService/ClaimPairing"
 	AuthService_RevokeCurrentDevice_FullMethodName = "/space.v1.AuthService/RevokeCurrentDevice"
 	AuthService_ListDevices_FullMethodName         = "/space.v1.AuthService/ListDevices"
 	AuthService_Logout_FullMethodName              = "/space.v1.AuthService/Logout"
@@ -276,6 +282,12 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
+	ProposePairing(ctx context.Context, in *ProposePairingRequest, opts ...grpc.CallOption) (*ProposePairingResponse, error)
+	CreatePairing(ctx context.Context, in *CreatePairingRequest, opts ...grpc.CallOption) (*CreatePairingResponse, error)
+	InspectPairing(ctx context.Context, in *InspectPairingRequest, opts ...grpc.CallOption) (*InspectPairingResponse, error)
+	PollPairing(ctx context.Context, in *PollPairingRequest, opts ...grpc.CallOption) (*PollPairingResponse, error)
+	CancelPairing(ctx context.Context, in *CancelPairingRequest, opts ...grpc.CallOption) (*CancelPairingResponse, error)
+	ClaimPairing(ctx context.Context, in *ClaimPairingRequest, opts ...grpc.CallOption) (*ClaimPairingResponse, error)
 	RevokeCurrentDevice(ctx context.Context, in *RevokeCurrentDeviceRequest, opts ...grpc.CallOption) (*RevokeCurrentDeviceResponse, error)
 	ListDevices(ctx context.Context, in *ListDevicesRequest, opts ...grpc.CallOption) (*ListDevicesResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
@@ -289,6 +301,66 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) ProposePairing(ctx context.Context, in *ProposePairingRequest, opts ...grpc.CallOption) (*ProposePairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProposePairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_ProposePairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CreatePairing(ctx context.Context, in *CreatePairingRequest, opts ...grpc.CallOption) (*CreatePairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreatePairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) InspectPairing(ctx context.Context, in *InspectPairingRequest, opts ...grpc.CallOption) (*InspectPairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InspectPairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_InspectPairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) PollPairing(ctx context.Context, in *PollPairingRequest, opts ...grpc.CallOption) (*PollPairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PollPairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_PollPairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CancelPairing(ctx context.Context, in *CancelPairingRequest, opts ...grpc.CallOption) (*CancelPairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelPairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_CancelPairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ClaimPairing(ctx context.Context, in *ClaimPairingRequest, opts ...grpc.CallOption) (*ClaimPairingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimPairingResponse)
+	err := c.cc.Invoke(ctx, AuthService_ClaimPairing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) RevokeCurrentDevice(ctx context.Context, in *RevokeCurrentDeviceRequest, opts ...grpc.CallOption) (*RevokeCurrentDeviceResponse, error) {
@@ -345,6 +417,12 @@ func (c *authServiceClient) CompleteChallenge(ctx context.Context, in *CompleteC
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
+	ProposePairing(context.Context, *ProposePairingRequest) (*ProposePairingResponse, error)
+	CreatePairing(context.Context, *CreatePairingRequest) (*CreatePairingResponse, error)
+	InspectPairing(context.Context, *InspectPairingRequest) (*InspectPairingResponse, error)
+	PollPairing(context.Context, *PollPairingRequest) (*PollPairingResponse, error)
+	CancelPairing(context.Context, *CancelPairingRequest) (*CancelPairingResponse, error)
+	ClaimPairing(context.Context, *ClaimPairingRequest) (*ClaimPairingResponse, error)
 	RevokeCurrentDevice(context.Context, *RevokeCurrentDeviceRequest) (*RevokeCurrentDeviceResponse, error)
 	ListDevices(context.Context, *ListDevicesRequest) (*ListDevicesResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
@@ -360,6 +438,24 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) ProposePairing(context.Context, *ProposePairingRequest) (*ProposePairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProposePairing not implemented")
+}
+func (UnimplementedAuthServiceServer) CreatePairing(context.Context, *CreatePairingRequest) (*CreatePairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreatePairing not implemented")
+}
+func (UnimplementedAuthServiceServer) InspectPairing(context.Context, *InspectPairingRequest) (*InspectPairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InspectPairing not implemented")
+}
+func (UnimplementedAuthServiceServer) PollPairing(context.Context, *PollPairingRequest) (*PollPairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PollPairing not implemented")
+}
+func (UnimplementedAuthServiceServer) CancelPairing(context.Context, *CancelPairingRequest) (*CancelPairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelPairing not implemented")
+}
+func (UnimplementedAuthServiceServer) ClaimPairing(context.Context, *ClaimPairingRequest) (*ClaimPairingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClaimPairing not implemented")
+}
 func (UnimplementedAuthServiceServer) RevokeCurrentDevice(context.Context, *RevokeCurrentDeviceRequest) (*RevokeCurrentDeviceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevokeCurrentDevice not implemented")
 }
@@ -394,6 +490,114 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_ProposePairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProposePairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ProposePairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ProposePairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ProposePairing(ctx, req.(*ProposePairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CreatePairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CreatePairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CreatePairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CreatePairing(ctx, req.(*CreatePairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_InspectPairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InspectPairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).InspectPairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_InspectPairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).InspectPairing(ctx, req.(*InspectPairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_PollPairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PollPairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).PollPairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_PollPairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).PollPairing(ctx, req.(*PollPairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CancelPairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelPairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CancelPairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CancelPairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CancelPairing(ctx, req.(*CancelPairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ClaimPairing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimPairingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ClaimPairing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ClaimPairing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ClaimPairing(ctx, req.(*ClaimPairingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_RevokeCurrentDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -493,6 +697,30 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ProposePairing",
+			Handler:    _AuthService_ProposePairing_Handler,
+		},
+		{
+			MethodName: "CreatePairing",
+			Handler:    _AuthService_CreatePairing_Handler,
+		},
+		{
+			MethodName: "InspectPairing",
+			Handler:    _AuthService_InspectPairing_Handler,
+		},
+		{
+			MethodName: "PollPairing",
+			Handler:    _AuthService_PollPairing_Handler,
+		},
+		{
+			MethodName: "CancelPairing",
+			Handler:    _AuthService_CancelPairing_Handler,
+		},
+		{
+			MethodName: "ClaimPairing",
+			Handler:    _AuthService_ClaimPairing_Handler,
+		},
 		{
 			MethodName: "RevokeCurrentDevice",
 			Handler:    _AuthService_RevokeCurrentDevice_Handler,

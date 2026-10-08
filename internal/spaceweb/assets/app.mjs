@@ -1,11 +1,24 @@
 import { request, newKeys, proof, url64 } from "./identity.mjs";
 import { createRecoveryCard, openCard, keysFromCard } from "./recovery.mjs";
+import {
+  startPairing,
+  observeProposal,
+  verifyPairing,
+  verificationCode,
+} from "./pairing.mjs";
 const $ = (selector) => document.querySelector(selector);
 const origin = location.origin;
 let currentRole = "",
   memberCursor = "",
   inviteCursor = "";
 let stagedRecovery;
+let stagedPairId = "",
+  pendingPair,
+  pairTimer,
+  preparedPair,
+  preparedCode = "",
+  preparedAuthority;
+let pollingPair = false;
 let serverReady = false;
 const roleLabel = (role) =>
   ({
@@ -174,6 +187,12 @@ async function signIn(forceGrant = false) {
     stagedRecovery = undefined;
   }
   await renew();
+  if (stagedPairId) {
+    await api("/api/v1/auth/pairings/claim", { pairingId: stagedPairId });
+    await vault(record);
+    stagedRecovery = undefined;
+    stagedPairId = "";
+  }
   $("#identity-tools").hidden = false;
   $("#download-card").hidden = !record.cardCipher;
   $("#device-password-label").hidden = !!record.root.privateKey;
@@ -636,6 +655,202 @@ async function loadDevices() {
   }
 }
 $("#reload-devices").addEventListener("click", () => run(loadDevices));
+$("#start-pair").addEventListener("click", () =>
+  run(async () => {
+    const response = await fetch("/.well-known/space-protocol", {
+      redirect: "error",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Discovery недоступен");
+    discovery = await response.json();
+    if (
+      discovery.protocol_version !== "0.1-experimental" ||
+      !/^srv_[0-9a-f]{32}$/.test(discovery.server_id) ||
+      !/^[A-Za-z0-9_-]{43}$/.test(discovery.signing_public_key)
+    )
+      throw new Error("Нужен совместимый сервер");
+    const existing = await vault();
+    if (
+      existing &&
+      (existing.serverId !== discovery.server_id ||
+        existing.serverKey !== discovery.signing_public_key)
+    )
+      throw new Error("Закреплённый серверный ключ изменился");
+    if (pendingPair) await cancelPendingPair();
+    pendingPair = await startPairing(origin, true);
+    $("#pair-pending").hidden = false;
+    $("#pair-code").textContent = pendingPair.request.code;
+    $("#pair-check").textContent = "Ожидаем подготовку исходного устройства…";
+    $("#accept-pair").hidden = true;
+    pairTimer = setInterval(pollPair, 2000);
+    status("Передайте одноразовый код на исходное устройство.");
+  }),
+);
+async function pollPair() {
+  const current = pendingPair;
+  if (!current || pollingPair || current.approval) return;
+  pollingPair = true;
+  try {
+    const result = await request(origin, "/api/v1/auth/pairings/poll", {
+      pollToken: current.request.pollToken,
+    });
+    if (current !== pendingPair) return;
+    if (result.pairing.state === "cancelled")
+      throw new Error("Сопряжение отменено");
+    const code = await observeProposal(discovery, current, result);
+    if (code)
+      $("#pair-check").textContent =
+        `Код проверки: ${code}. Введите его на исходном устройстве до выдачи подписи.`;
+    if (result.pairing.state === "approved") {
+      current.approval = await verifyPairing(
+        origin,
+        discovery,
+        current,
+        result,
+      );
+      clearInterval(pairTimer);
+      $("#pair-check").textContent =
+        `Root-подпись проверена. Код: ${current.approval.verification}.`;
+      $("#accept-pair").hidden = false;
+    }
+  } catch (error) {
+    clearInterval(pairTimer);
+    status(error.message || "Сопряжение не завершено");
+  } finally {
+    pollingPair = false;
+  }
+}
+async function cancelPendingPair() {
+  clearInterval(pairTimer);
+  const current = pendingPair;
+  pendingPair = undefined;
+  $("#pair-pending").hidden = true;
+  if (current)
+    try {
+      await request(origin, "/api/v1/auth/pairings/cancel", {
+        pollToken: current.request.pollToken,
+      });
+    } catch {}
+}
+$("#cancel-pair").addEventListener("click", () => run(cancelPendingPair));
+$("#accept-pair").addEventListener("click", () =>
+  run(async () => {
+    const current = pendingPair;
+    if (!current?.approval) throw new Error("Нет проверенного подтверждения");
+    if (
+      !confirm(
+        `Код ${current.approval.verification} совпадает с исходным устройством? Сохранённая идентичность этого браузера будет заменена. Сначала сохраните её карточку, если это другой аккаунт.`,
+      )
+    )
+      return;
+    stagedRecovery = current.approval.record;
+    stagedPairId = current.request.pairing.id;
+    try {
+      await signIn();
+      pendingPair = undefined;
+      $("#pair-pending").hidden = true;
+      status(
+        "Устройство подключено под прежней идентичностью. Корневой секрет не передавался.",
+      );
+    } finally {
+      stagedRecovery = undefined;
+      stagedPairId = "";
+    }
+  }),
+);
+$("#prepare-pair-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    const result = await request(origin, "/api/v1/auth/pairings/inspect", {
+      code: $("#approve-pair-code").value.trim(),
+    });
+    const p = result.pairing;
+    if (p.state !== "pending")
+      throw new Error("Запрос уже подтверждён или отменён");
+    const authority = record.root.privateKey ? record : await unlockAuthority();
+    if (!authority.root.privateKey)
+      throw new Error("Нужен исходный root или корневая карточка Flutter");
+    const localRoot = url64(
+      await crypto.subtle.exportKey("raw", record.root.publicKey),
+    );
+    if (
+      url64(await crypto.subtle.exportKey("raw", authority.root.publicKey)) !==
+      localRoot
+    )
+      throw new Error("Карточка относится к другой идентичности");
+    await api("/api/v1/auth/pairings/propose", { pairingId: p.id });
+    preparedCode = await verificationCode(
+      discovery.server_id,
+      p.id,
+      new Uint8Array(
+        await crypto.subtle.exportKey("raw", authority.root.publicKey),
+      ),
+      Uint8Array.from(atob(p.publicKey), (c) => c.charCodeAt(0)),
+      !!p.administrative,
+    );
+    preparedPair = p;
+    preparedAuthority = authority;
+    $("#prepared-pair").hidden = false;
+    $("#prepared-device").textContent =
+      `${p.deviceName}. ${p.administrative ? "Запрошено управление пространством с вашими правами." : "Запрошен доступ к чату с вашими правами."}`;
+    $("#prepared-check").textContent = preparedCode;
+    $("#approve-pair-check").value = "";
+    status("Подпись ещё не выдана. Введите код проверки с нового устройства.");
+  });
+});
+$("#approve-pair-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  run(async () => {
+    if (!preparedPair || !preparedAuthority)
+      throw new Error("Сначала подготовьте проверку");
+    if (
+      $("#approve-pair-check").value.replace(/[\s-]/g, "").toUpperCase() !==
+      preparedCode.replaceAll("-", "")
+    )
+      throw new Error("Коды не совпадают. Не подтверждайте подключение.");
+    if (
+      !confirm(
+        "Коды на двух устройствах совпадают? Выдать root-подпись для нового ключа с указанными правами?",
+      )
+    )
+      return;
+    const targetKey = await crypto.subtle.importKey(
+      "raw",
+      Uint8Array.from(atob(preparedPair.publicKey), (c) => c.charCodeAt(0)),
+      "Ed25519",
+      true,
+      ["verify"],
+    );
+    await proof(
+      origin,
+      discovery,
+      { ...preparedAuthority, device: { publicKey: targetKey } },
+      "device.register",
+      "",
+      "",
+      {
+        pairingId: preparedPair.id,
+        administrative: !!preparedPair.administrative,
+        expectedScopes: [
+          "chat.read",
+          "chat.write",
+          ...(preparedPair.administrative ? ["space.manage"] : []),
+        ],
+      },
+    );
+    preparedAuthority = undefined;
+    preparedPair = undefined;
+    $("#approve-pair-check").value = "";
+    $("#prepared-pair").hidden = true;
+    await loadDevices();
+    status("Подпись выдана. Завершите вход на новом устройстве.");
+  });
+});
+$("#approve-pair-code").addEventListener("input", () => {
+  preparedPair = undefined;
+  preparedAuthority = undefined;
+  $("#prepared-pair").hidden = true;
+});
 async function unlockAuthority() {
   if (!record.cardCipher)
     throw new Error("Нужна исходная карточка восстановления.");

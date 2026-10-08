@@ -27,6 +27,7 @@ type Transcript struct {
 	IssuedAt          int64    `json:"issued_at"`
 	Nonce             string   `json:"nonce"`
 	Origin            string   `json:"origin"`
+	PairingID         string   `json:"pairing_id,omitempty"`
 	PrincipalID       string   `json:"principal_id"`
 	Purpose           string   `json:"purpose"`
 	RootPublicKey     string   `json:"root_public_key"`
@@ -37,7 +38,7 @@ type Transcript struct {
 
 func (t Transcript) Canonical() ([]byte, error) {
 	stringsToCheck := []string{t.ChallengeID, t.DevicePublicKey, t.GrantID, t.Nonce, t.Origin, t.PrincipalID, t.Purpose, t.RootPublicKey, t.ServerID}
-	stringsToCheck = append(stringsToCheck, t.AuthorizerGrantID)
+	stringsToCheck = append(stringsToCheck, t.AuthorizerGrantID, t.PairingID)
 	stringsToCheck = append(stringsToCheck, t.Scopes...)
 	for _, value := range stringsToCheck {
 		for _, char := range value {
@@ -91,6 +92,8 @@ type Verifier interface {
 func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		switch info.FullMethod {
+		case "/space.v1.AuthService/CreatePairing", "/space.v1.AuthService/InspectPairing", "/space.v1.AuthService/PollPairing", "/space.v1.AuthService/CancelPairing":
+			return handler(ctx, req)
 		case "/space.v1.MembershipService/PreviewInvite", "/space.v1.ChannelService/GetManifest", "/space.v1.AuthService/CreateChallenge", "/space.v1.AuthService/CompleteChallenge", "/space.v1.AdminService/GetSetupStatus":
 			return handler(ctx, req)
 		}

@@ -53,6 +53,10 @@ export async function proof(
   invitationToken = "",
   options = {},
 ) {
+  if (options.pairingId && !keys.root.privateKey)
+    throw new Error(
+      "Сопряжение требует исходный root или корневую карточку Flutter.",
+    );
   if (purpose === "device.register" && !keys.root.privateKey)
     purpose = "device.delegate";
   if (purpose === "device.revoke" && !keys.root.privateKey)
@@ -69,7 +73,8 @@ export async function proof(
   if (purpose === "device.register") {
     input.rootPublicKey = base64(root);
     input.devicePublicKey = base64(device);
-    input.administrative = true;
+    input.administrative = options.administrative ?? true;
+    if (options.pairingId) input.pairingId = options.pairingId;
     input.recovery = !!options.recovery;
   } else if (purpose === "device.delegate") {
     input.devicePublicKey = base64(device);
@@ -102,6 +107,10 @@ export async function proof(
     "v",
   ];
   const names = Object.keys(transcript).sort();
+  if (options.pairingId) {
+    expected.push("pairing_id");
+    expected.sort();
+  }
   if (delegated) expected.splice(1, 0, "authorizer_grant_id");
   const canonical = JSON.stringify(
     Object.fromEntries(names.map((key) => [key, transcript[key]])),
@@ -109,6 +118,9 @@ export async function proof(
   const principal = `u_${hex(await crypto.subtle.digest("SHA-256", root))}`;
   const now = Math.floor(Date.now() / 1000);
   const valid =
+    ["auth_epoch", "issued_at", "expires_at", "grant_expires_at", "v"].every(
+      (key) => Number.isSafeInteger(transcript[key]),
+    ) &&
     raw === canonical &&
     JSON.stringify(names) === JSON.stringify(expected) &&
     transcript.v === 1 &&
@@ -116,6 +128,7 @@ export async function proof(
     transcript.origin === origin &&
     transcript.server_id === discovery.server_id &&
     transcript.purpose === purpose &&
+    (!options.pairingId || transcript.pairing_id === options.pairingId) &&
     transcript.principal_id === principal &&
     transcript.root_public_key === url64(root) &&
     transcript.device_public_key === url64(device) &&

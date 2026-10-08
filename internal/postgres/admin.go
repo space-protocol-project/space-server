@@ -86,7 +86,7 @@ func authorizeManagement(ctx context.Context, tx pgx.Tx) (string, error) {
 	hash := sha256.Sum256([]byte(token))
 	var principal string
 	var allowed bool
-	err := tx.QueryRow(ctx, `SELECT p.id,'space.manage'=ANY(g.scopes) FROM auth_sessions s JOIN device_grants g ON g.id=s.grant_id JOIN principals p ON p.id=g.principal_id WHERE s.token_hash=$1 AND s.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch`+activeParentCondition+` FOR SHARE OF g`, hash[:]).Scan(&principal, &allowed)
+	err := tx.QueryRow(ctx, `SELECT p.id,'space.manage'=ANY(g.scopes) FROM auth_sessions s JOIN device_grants g ON g.id=s.grant_id JOIN principals p ON p.id=g.principal_id WHERE s.token_hash=$1 AND s.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch`+activeParentCondition+activePairCondition+` FOR SHARE OF g`, hash[:]).Scan(&principal, &allowed)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", denied()
 	}

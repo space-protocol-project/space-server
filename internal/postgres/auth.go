@@ -52,6 +52,9 @@ func denied() error {
 }
 
 func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
+	if req.PairingId != "" && (req.Purpose != "device.register" || req.Recovery || req.RecoveryGrantId != "") {
+		return nil, status.Error(codes.InvalidArgument, "Сопряжение требует исходную root-подпись")
+	}
 	if req.Purpose == "device.delegate" || req.Purpose == "recovery.device.revoke" {
 		return s.createRecoveryChallenge(ctx, req)
 	}
@@ -89,6 +92,12 @@ func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallen
 			transcript.Scopes = append(transcript.Scopes, "space.manage")
 		}
 		transcript.PrincipalID = authn.PrincipalID(root)
+		if req.PairingId != "" {
+			if err = s.validatePairChallenge(ctx, tx, req, transcript.PrincipalID); err != nil {
+				return nil, err
+			}
+			transcript.PairingID = req.PairingId
+		}
 		err = tx.QueryRow(ctx, "SELECT auth_epoch FROM principals WHERE id=$1", transcript.PrincipalID).Scan(&transcript.AuthEpoch)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return nil, databaseError(ctx, err)
@@ -105,7 +114,7 @@ func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallen
 	} else {
 		var grantExpiry time.Time
 		err = tx.QueryRow(ctx, `SELECT p.id,p.root_public_key,g.device_public_key,p.auth_epoch,g.expires_at,g.scopes FROM device_grants g JOIN principals p ON p.id=g.principal_id
-   WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`+activeParentCondition, req.GrantId).Scan(&transcript.PrincipalID, &root, &device, &transcript.AuthEpoch, &grantExpiry, &transcript.Scopes)
+   WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`+activeParentCondition+activePairCondition, req.GrantId).Scan(&transcript.PrincipalID, &root, &device, &transcript.AuthEpoch, &grantExpiry, &transcript.Scopes)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, denied()
 		}
@@ -180,7 +189,14 @@ func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteCha
 	result := &pb.CompleteChallengeResponse{GrantId: transcript.GrantID, PrincipalId: transcript.PrincipalID}
 	switch transcript.Purpose {
 	case "device.register":
-		err = s.register(ctx, tx, transcript, canonical, req.Signature, req.InvitationToken)
+		if transcript.PairingID != "" {
+			if req.InvitationToken != "" {
+				return nil, status.Error(codes.InvalidArgument, "Сопряжение не использует приглашение")
+			}
+			err = s.registerPair(ctx, tx, transcript, canonical, req.Signature)
+		} else {
+			err = s.register(ctx, tx, transcript, canonical, req.Signature, req.InvitationToken)
+		}
 	case "auth.login":
 		err = s.login(ctx, tx, transcript, result)
 	case "device.revoke":
@@ -295,7 +311,7 @@ func (s *AuthService) login(ctx context.Context, tx pgx.Tx, t authn.Transcript, 
 
 func activeGrant(ctx context.Context, tx pgx.Tx, t authn.Transcript) error {
 	var id string
-	err := tx.QueryRow(ctx, `SELECT g.id FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND p.id=$2 AND p.auth_epoch=$3 AND g.auth_epoch=p.auth_epoch AND g.revoked_at IS NULL AND g.expires_at>now() `+activeParentCondition+` FOR UPDATE OF g`, t.GrantID, t.PrincipalID, t.AuthEpoch).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT g.id FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND p.id=$2 AND p.auth_epoch=$3 AND g.auth_epoch=p.auth_epoch AND g.revoked_at IS NULL AND g.expires_at>now() `+activeParentCondition+activePairCondition+` FOR UPDATE OF g`, t.GrantID, t.PrincipalID, t.AuthEpoch).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return denied()
 	}
@@ -319,7 +335,7 @@ func (s *AuthService) revoke(ctx context.Context, tx pgx.Tx, t authn.Transcript)
 }
 
 const sessionQuery = `SELECT p.id FROM auth_sessions s JOIN device_grants g ON g.id=s.grant_id JOIN principals p ON p.id=g.principal_id
- WHERE s.token_hash=$1 AND s.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch` + activeParentCondition
+ WHERE s.token_hash=$1 AND s.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch` + activeParentCondition + activePairCondition
 
 func (s *Store) Authenticate(ctx context.Context, token string) (string, error) {
 	if len(token) != 46 {

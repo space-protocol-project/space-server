@@ -15,7 +15,7 @@ go run ./cmd/space-server
 
 PostgreSQL можно поднять через [локальный Compose](../deploy/README.md). Пароль в URL должен быть URL-encoded. Без `SPACE_DATABASE_URL` обычный запуск останавливается; при недоступности базы автоматического перехода в память нет. Для демонстрации без базы: `go run ./cmd/space-server -demo`.
 
-Миграции `001_initial.sql`, `002_events_auth.sql` `003_space_settings.sql` и `004_membership.sql` встроены в бинарный файл. На старте они выполняются транзакционно под advisory lock; применённые контрольные суммы сохраняются. Изменённая миграция или более новая версия схемы отклоняется. Изменения схемы следует добавлять новой миграцией и расширять runner; сейчас он поддерживает версии 1–4. Upgrade сохраняет старые сообщения и создаёт для них события.
+Миграции `001_initial.sql`, `002_events_auth.sql` `003_space_settings.sql`, `004_membership.sql` и `005_recovery.sql` встроены в бинарный файл. На старте они выполняются транзакционно под advisory lock; применённые контрольные суммы сохраняются. Изменённая миграция или более новая версия схемы отклоняется. Изменения схемы следует добавлять новой миграцией и расширять runner; сейчас он поддерживает версии 1–5. Upgrade сохраняет старые сообщения и создаёт для них события.
 
 В PostgreSQL хранятся `server_state`, `channels`, `contents` и `schema_migrations`. `server_id` и seed серверного Ed25519-ключа создаются один раз. Потерянная identity в уже инициализированной базе вызывает отказ, а не тихую замену. Discovery публикует только публичный ключ в base64url без padding; подпись discovery/manifest пока не реализована.
 
@@ -57,7 +57,7 @@ go vet ./...
 
 В режиме PostgreSQL сообщения, ключи идемпотентности, server ID, серверный ключ, grants, token hashes и события сохраняются после перезапуска. В режиме `-demo` данные исчезают и ID остаётся условным `local-prototype`; вход и events API там отключены. В постоянном режиме actor берётся из проверенной сессии, ключ идемпотентности имеет область `(channel, principal, key)`.
 
-Работают одноразовые registration/login/revoke challenges, root/device Ed25519-подписи и opaque access tokens на 10 минут. Подробный формат и ограничения описаны в [ADR-016](../docs/adr/016-local-auth-events.md). Open registration даёт доступ только к одному общему чату; реализованы роли и приглашения для пространства, но ACL отдельных каналов, refresh, passkeys и recovery ещё предстоят.
+Работают одноразовые registration/login/revoke challenges, root/device Ed25519-подписи и opaque access tokens на 10 минут. Подробный формат и ограничения описаны в [ADR-016](../docs/adr/016-local-auth-events.md). Open registration даёт доступ только к одному общему чату; реализованы роли и приглашения для пространства, но ACL отдельных каналов, refresh, passkeys и полный master-seed recovery ещё предстоят. Зашифрованные JSON-карточки и devices реализованы экспериментальным ADR-021.
 
 `GET /api/v1/channels/general/events?after=event-1` возвращает до 100 событий и `nextCursor`. Событие записывается атомарно с сообщением; retry не добавляет событие. `Subscribe` передаёт replay/live events через gRPC и gateway endpoint `/api/v1/channels/general/events/subscribe`. Heartbeat, deadlines, revoke и ограничения описаны в [ADR-018](../docs/adr/018-event-stream.md). Сервер пока читает log каждые 500 ms; это не LISTEN/NOTIFY/outbox worker.
 

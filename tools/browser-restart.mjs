@@ -72,6 +72,7 @@ try {
   await page.locator('#restore-form button').click();
   await page.waitForFunction(() => document.querySelector('#status').textContent.includes('Неверный пароль'));
   assert.equal(await stored(page), null);
+  await page.locator('#restore-file').setInputFiles(join(directory,'card.png'));
   await page.locator('#restore-password').fill('Disposable CI card password 2026');
   await page.locator('#restore-form button').click();
   await page.locator('#participant').waitFor({state:'visible'});

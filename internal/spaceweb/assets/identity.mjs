@@ -53,10 +53,8 @@ export async function proof(
   invitationToken = "",
   options = {},
 ) {
-  if (options.pairingId && !keys.root.privateKey)
-    throw new Error(
-      "Сопряжение требует исходный root или корневую карточку Flutter.",
-    );
+  if (options.pairingId && !keys.root.privateKey && !keys.recoveryPrivate)
+    throw new Error("Для подписи нужна корневая или recovery-карточка.");
   if (purpose === "device.register" && !keys.root.privateKey)
     purpose = "device.delegate";
   if (purpose === "device.revoke" && !keys.root.privateKey)
@@ -78,8 +76,9 @@ export async function proof(
     input.recovery = !!options.recovery;
   } else if (purpose === "device.delegate") {
     input.devicePublicKey = base64(device);
-    input.administrative = true;
+    input.administrative = options.administrative ?? true;
     input.recoveryGrantId = keys.recoveryGrantId;
+    if (options.pairingId) input.pairingId = options.pairingId;
   } else {
     input.grantId = grantId;
     if (purpose === "device.revoke") input.rootPublicKey = base64(root);

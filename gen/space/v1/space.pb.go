@@ -691,14 +691,17 @@ func (x *PollPairingRequest) GetPollToken() string {
 }
 
 type PollPairingResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pairing       *Pairing               `protobuf:"bytes,1,opt,name=pairing,proto3" json:"pairing,omitempty"`
-	GrantId       string                 `protobuf:"bytes,2,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
-	RootPublicKey []byte                 `protobuf:"bytes,3,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
-	Transcript    []byte                 `protobuf:"bytes,4,opt,name=transcript,proto3" json:"transcript,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Pairing          *Pairing               `protobuf:"bytes,1,opt,name=pairing,proto3" json:"pairing,omitempty"`
+	GrantId          string                 `protobuf:"bytes,2,opt,name=grant_id,json=grantId,proto3" json:"grant_id,omitempty"`
+	RootPublicKey    []byte                 `protobuf:"bytes,3,opt,name=root_public_key,json=rootPublicKey,proto3" json:"root_public_key,omitempty"`
+	Transcript       []byte                 `protobuf:"bytes,4,opt,name=transcript,proto3" json:"transcript,omitempty"`
+	Signature        []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	ParentTranscript []byte                 `protobuf:"bytes,6,opt,name=parent_transcript,json=parentTranscript,proto3" json:"parent_transcript,omitempty"`
+	ParentSignature  []byte                 `protobuf:"bytes,7,opt,name=parent_signature,json=parentSignature,proto3" json:"parent_signature,omitempty"`
+	ParentGrantId    string                 `protobuf:"bytes,8,opt,name=parent_grant_id,json=parentGrantId,proto3" json:"parent_grant_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PollPairingResponse) Reset() {
@@ -764,6 +767,27 @@ func (x *PollPairingResponse) GetSignature() []byte {
 		return x.Signature
 	}
 	return nil
+}
+
+func (x *PollPairingResponse) GetParentTranscript() []byte {
+	if x != nil {
+		return x.ParentTranscript
+	}
+	return nil
+}
+
+func (x *PollPairingResponse) GetParentSignature() []byte {
+	if x != nil {
+		return x.ParentSignature
+	}
+	return nil
+}
+
+func (x *PollPairingResponse) GetParentGrantId() string {
+	if x != nil {
+		return x.ParentGrantId
+	}
+	return ""
 }
 
 type CancelPairingRequest struct {
@@ -3486,7 +3510,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\apairing\x18\x01 \x01(\v2\x11.space.v1.PairingR\apairing\"3\n" +
 	"\x12PollPairingRequest\x12\x1d\n" +
 	"\n" +
-	"poll_token\x18\x01 \x01(\tR\tpollToken\"\xc3\x01\n" +
+	"poll_token\x18\x01 \x01(\tR\tpollToken\"\xc3\x02\n" +
 	"\x13PollPairingResponse\x12+\n" +
 	"\apairing\x18\x01 \x01(\v2\x11.space.v1.PairingR\apairing\x12\x19\n" +
 	"\bgrant_id\x18\x02 \x01(\tR\agrantId\x12&\n" +
@@ -3494,7 +3518,10 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\n" +
 	"transcript\x18\x04 \x01(\fR\n" +
 	"transcript\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\"5\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\x12+\n" +
+	"\x11parent_transcript\x18\x06 \x01(\fR\x10parentTranscript\x12)\n" +
+	"\x10parent_signature\x18\a \x01(\fR\x0fparentSignature\x12&\n" +
+	"\x0fparent_grant_id\x18\b \x01(\tR\rparentGrantId\"5\n" +
 	"\x14CancelPairingRequest\x12\x1d\n" +
 	"\n" +
 	"poll_token\x18\x01 \x01(\tR\tpollToken\"\x17\n" +

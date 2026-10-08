@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { PNG } from "pngjs";
+import { qrRaster, qrText } from "../internal/spaceweb/assets/recovery-qr.mjs";
+import { pairingInterop } from "./pairing-interop.mjs";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -55,10 +58,21 @@ export async function recoveryInterop(origin, discovery, owner, ownerSession) {
     undefined,
     session.accessToken,
   );
+  await pairingInterop(origin, discovery, recovered, session, {
+    skipNativeSource: true,
+  });
   const directory = await mkdtemp(join(tmpdir(), "space-recovery-test-"));
   try {
-    const cardPath = join(directory, "card.json");
-    await writeFile(cardPath, packet);
+    const cardPath = join(directory, "card.png");
+    const raster = qrRaster(packet);
+    await writeFile(
+      cardPath,
+      PNG.sync.write({
+        width: raster.width,
+        height: raster.height,
+        data: Buffer.from(raster.data),
+      }),
+    );
     const result = await promisify(execFile)(
       "dart",
       [
@@ -71,6 +85,15 @@ export async function recoveryInterop(origin, discovery, owner, ownerSession) {
       { cwd: resolve("../client"), timeout: 90000, maxBuffer: 16384 },
     );
     process.stdout.write(result.stdout);
+    const nativePng = PNG.sync.read(await readFile(cardPath + ".dart.png"));
+    assert.equal(
+      qrText(
+        new Uint8ClampedArray(nativePng.data),
+        nativePng.width,
+        nativePng.height,
+      ),
+      await readFile(cardPath + ".dart.json", "utf8"),
+    );
     assert.deepEqual(
       await openCard(await readFile(cardPath + ".dart.json", "utf8"), pass),
       payload,

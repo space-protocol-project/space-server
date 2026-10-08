@@ -93,6 +93,8 @@ export async function verifyPairing(origin, discovery, pending, response) {
   const canonical = JSON.stringify(
     Object.fromEntries(names.map((n) => [n, t[n]])),
   );
+  const delegated = t.purpose === "device.delegate";
+  if (delegated) wanted.splice(1, 0, "authorizer_grant_id");
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", root));
   const principal =
     "u_" + Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -101,7 +103,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
     JSON.stringify(names) !== JSON.stringify(wanted) ||
     t.auth_epoch !== 1 ||
     t.v !== 1 ||
-    t.purpose !== "device.register" ||
+    t.purpose !== (delegated ? "device.delegate" : "device.register") ||
     t.pairing_id !== p.id ||
     t.origin !== origin ||
     t.server_id !== discovery.server_id ||
@@ -119,7 +121,10 @@ export async function verifyPairing(origin, discovery, pending, response) {
         ...(p.administrative ? ["space.manage"] : []),
       ]) ||
     t.expires_at !== t.issued_at + 60 ||
-    t.grant_expires_at !== t.issued_at + 30 * 86400 ||
+    (delegated
+      ? t.grant_expires_at > t.issued_at + 30 * 86400 ||
+        t.grant_expires_at <= t.expires_at
+      : t.grant_expires_at !== t.issued_at + 30 * 86400) ||
     t.issued_at < Number(p.createdAt) - 5 ||
     t.issued_at >= Number(p.expiresAt) ||
     t.issued_at > Date.now() / 1000 + 5
@@ -132,12 +137,25 @@ export async function verifyPairing(origin, discovery, pending, response) {
     true,
     ["verify"],
   );
+  let signer = publicKey;
+  if (delegated)
+    signer = await verifyRecoveryParent(origin, discovery, response, t, root);
+  else if (
+    response.parentGrantId ||
+    response.parentTranscript ||
+    response.parentSignature
+  )
+    throw new Error("Неожиданная цепочка подписи");
   if (
     !(await crypto.subtle.verify(
       "Ed25519",
-      publicKey,
+      signer,
       bytes(response.signature),
-      encoder.encode("space/device-register/v1\0" + canonical),
+      encoder.encode(
+        (delegated
+          ? "space/device-delegate/v1\0"
+          : "space/device-register/v1\0") + canonical,
+      ),
     ))
   )
     throw new Error("Root-подпись сопряжения неверна");
@@ -157,6 +175,91 @@ export async function verifyPairing(origin, discovery, pending, response) {
       !!p.administrative,
     ),
   };
+}
+async function verifyRecoveryParent(origin, discovery, response, child, root) {
+  if (
+    !response.parentTranscript ||
+    !response.parentSignature ||
+    response.parentGrantId !== child.authorizer_grant_id
+  )
+    throw new Error("Нет доказательства recovery authority");
+  const raw = atob(response.parentTranscript),
+    t = JSON.parse(raw),
+    keys = Object.keys(t).sort();
+  const expected = [
+    "auth_epoch",
+    "challenge_id",
+    "device_public_key",
+    "expires_at",
+    "grant_expires_at",
+    "grant_id",
+    "issued_at",
+    "nonce",
+    "origin",
+    "principal_id",
+    "purpose",
+    "root_public_key",
+    "scopes",
+    "server_id",
+    "v",
+  ];
+  const canonical = JSON.stringify(
+      Object.fromEntries(keys.map((k) => [k, t[k]])),
+    ),
+    managed = t.scopes?.includes("space.manage");
+  if (
+    raw !== canonical ||
+    JSON.stringify(keys) !== JSON.stringify(expected) ||
+    !["auth_epoch", "issued_at", "expires_at", "grant_expires_at", "v"].every(
+      (k) => Number.isSafeInteger(t[k]),
+    ) ||
+    t.v !== 1 ||
+    t.auth_epoch !== 1 ||
+    t.purpose !== "device.register" ||
+    t.origin !== origin ||
+    t.server_id !== discovery.server_id ||
+    t.root_public_key !== url64(root) ||
+    t.principal_id !== child.principal_id ||
+    t.grant_id !== response.parentGrantId ||
+    !/^dg_[A-Za-z0-9_-]{43}$/.test(t.grant_id) ||
+    !/^ac_[A-Za-z0-9_-]{43}$/.test(t.challenge_id) ||
+    !/^[A-Za-z0-9_-]{43}$/.test(t.nonce) ||
+    bytes(t.device_public_key.replaceAll("-", "+").replaceAll("_", "/"))
+      .length !== 32 ||
+    JSON.stringify(t.scopes) !==
+      JSON.stringify([
+        "chat.read",
+        "chat.write",
+        ...(managed ? ["space.manage"] : []),
+        "identity.recover",
+      ]) ||
+    (child.scopes.includes("space.manage") && !managed) ||
+    t.expires_at !== t.issued_at + 60 ||
+    t.grant_expires_at !== t.issued_at + 3650 * 86400 ||
+    t.grant_expires_at < Date.now() / 1000 ||
+    t.grant_expires_at < child.grant_expires_at ||
+    t.issued_at > child.issued_at + 5
+  )
+    throw new Error("Неподходящая цепочка recovery");
+  const rootKey = await crypto.subtle.importKey("raw", root, "Ed25519", true, [
+    "verify",
+  ]);
+  if (
+    !(await crypto.subtle.verify(
+      "Ed25519",
+      rootKey,
+      bytes(response.parentSignature),
+      encoder.encode("space/device-register/v1\0" + canonical),
+    ))
+  )
+    throw new Error("Root-подпись recovery неверна");
+  return crypto.subtle.importKey(
+    "raw",
+    bytes(t.device_public_key.replaceAll("-", "+").replaceAll("_", "/")),
+    "Ed25519",
+    true,
+    ["verify"],
+  );
 }
 export async function observeProposal(discovery, pending, response) {
   const p = response.pairing,

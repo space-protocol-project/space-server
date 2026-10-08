@@ -122,9 +122,14 @@ func (s *AuthService) PollPairing(ctx context.Context, req *pb.PollPairingReques
 	}
 	result := &pb.PollPairingResponse{Pairing: p, RootPublicKey: p.ProposedRootPublicKey}
 	if p.State == "approved" {
-		err = s.store.pool.QueryRow(ctx, `SELECT g.id,p.root_public_key,g.registration_transcript,g.root_signature FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`, grant).Scan(&result.GrantId, &result.RootPublicKey, &result.Transcript, &result.Signature)
+		err = s.store.pool.QueryRow(ctx, `SELECT g.id,p.root_public_key,g.registration_transcript,g.root_signature,COALESCE(g.parent_grant_id,'') FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`+activeParentCondition+activePairCondition, grant).Scan(&result.GrantId, &result.RootPublicKey, &result.Transcript, &result.Signature, &result.ParentGrantId)
 		if err != nil {
 			return nil, pairError(ctx, err)
+		}
+		if result.ParentGrantId != "" {
+			if err = s.store.pool.QueryRow(ctx, "SELECT registration_transcript,root_signature FROM device_grants WHERE id=$1 AND signature_kind='root' AND parent_grant_id IS NULL", result.ParentGrantId).Scan(&result.ParentTranscript, &result.ParentSignature); err != nil {
+				return nil, pairError(ctx, err)
+			}
 		}
 	}
 	return result, nil
@@ -147,7 +152,7 @@ func (s *AuthService) validatePairChallenge(ctx context.Context, tx pgx.Tx, req 
 	}
 	return nil
 }
-func (s *AuthService) registerPair(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte) error {
+func lockPairApproval(ctx context.Context, tx pgx.Tx, t authn.Transcript) error {
 	p, _, err := pairByID(ctx, tx, t.PairingID, "FOR UPDATE")
 	if err != nil {
 		return err
@@ -161,17 +166,28 @@ func (s *AuthService) registerPair(ctx context.Context, tx pgx.Tx, t authn.Trans
 	if p.Administrative {
 		expected = append(expected, "space.manage")
 	}
-	if !validPair(p) || !bytes.Equal(p.PublicKey, key) || !bytes.Equal(p.ProposedRootPublicKey, root) || !slices.Equal(t.Scopes, expected) || t.AuthorizerGrantID != "" {
+	if !validPair(p) || !bytes.Equal(p.PublicKey, key) || !bytes.Equal(p.ProposedRootPublicKey, root) || !slices.Equal(t.Scopes, expected) {
 		return status.Error(codes.FailedPrecondition, "Сопряжение истекло или уже использовано")
 	}
-	if err = s.register(ctx, tx, t, canonical, signature, ""); err != nil {
-		return err
-	}
-	_, err = tx.Exec(ctx, "UPDATE device_pairings SET state='approved',grant_id=$2 WHERE id=$1", p.Id, t.GrantID)
-	if err != nil {
+	return nil
+}
+func markPairApproved(ctx context.Context, tx pgx.Tx, id, grant string) error {
+	if _, err := tx.Exec(ctx, "UPDATE device_pairings SET state='approved',grant_id=$2 WHERE id=$1", id, grant); err != nil {
 		return databaseError(ctx, err)
 	}
 	return nil
+}
+func (s *AuthService) registerPair(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte) error {
+	if t.AuthorizerGrantID != "" {
+		return denied()
+	}
+	if err := lockPairApproval(ctx, tx, t); err != nil {
+		return err
+	}
+	if err := s.register(ctx, tx, t, canonical, signature, ""); err != nil {
+		return err
+	}
+	return markPairApproved(ctx, tx, t.PairingID, t.GrantID)
 }
 func (s *AuthService) CancelPairing(ctx context.Context, req *pb.CancelPairingRequest) (*pb.CancelPairingResponse, error) {
 	tx, err := s.store.pool.Begin(ctx)

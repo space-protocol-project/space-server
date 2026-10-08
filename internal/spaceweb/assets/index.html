@@ -54,10 +54,10 @@
           <summary>Восстановить прежнюю идентичность</summary>
           <form id="restore-form">
             <label
-              >Карточка Space (JSON)<input
+              >Карточка Space (JSON или PNG)<input
                 id="restore-file"
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.png,application/json,image/png"
                 required /></label
             ><label
               >Пароль карточки<input
@@ -287,7 +287,7 @@
           Она позволяет подключать новые устройства с вашей идентичностью.
           Сервер не получает пароль или приватный ключ. Ключ восстановления
           действует до 3650 дней; потеря файла и пароля не восстанавливается
-          сервером. QR-импорт появится отдельно.
+          сервером. QR-карточку можно скачать в PNG и открыть из изображения.
         </p>
         <form id="card-form">
           <label
@@ -306,14 +306,14 @@
               required /></label
           ><button>Создать и скачать карточку</button>
         </form>
-        <button id="download-card" class="secondary" hidden>
+        <button id="download-card-png" class="secondary" hidden>Скачать QR в PNG</button><button id="download-card" class="secondary" hidden>
           Скачать сохранённую карточку
         </button>
         <div class="row">
           <h3>Устройства вашей идентичности</h3>
           <button id="reload-devices" class="secondary">Обновить</button>
         </div>
-        <div id="devices"></div>
+        <div id="devices"></div><label>Карточка для подписи, если её нет в этом браузере<input id="authority-file" type="file" accept=".png,.json,image/png,application/json" /></label>
         <label id="device-password-label" hidden
           >Пароль сохранённой карточки для отзыва других устройств<input
             id="device-card-password"

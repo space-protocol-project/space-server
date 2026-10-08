@@ -165,4 +165,28 @@ func TestPairingApprovalClaimCancellationAndExpiry(t *testing.T) {
 	if err = store.pool.QueryRow(ctx, "SELECT revoked_at IS NOT NULL FROM device_grants WHERE id=$1", result.GrantId).Scan(&revoked); err != nil || !revoked {
 		t.Fatal(revoked, err)
 	}
+	recovery, recoveryPrivate, _ := ed25519.GenerateKey(rand.Reader)
+	parent := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose: "device.register", RootPublicKey: root, DevicePublicKey: recovery, Administrative: true, Recovery: true}, rootPrivate)
+	delegated := start()
+	prepare(delegated)
+	proof, err := auth.CreateChallenge(ctx, &pb.CreateChallengeRequest{Purpose: "device.delegate", DevicePublicKey: target, Administrative: true, RecoveryGrantId: parent.GrantId, PairingId: delegated.Pairing.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = auth.CompleteChallenge(ctx, signedProof(t, proof, recoveryPrivate)); err != nil {
+		t.Fatal(err)
+	}
+	chain, err := auth.PollPairing(ctx, &pb.PollPairingRequest{PollToken: delegated.PollToken})
+	if err != nil || len(chain.ParentSignature) != 64 || chain.ParentGrantId != parent.GrantId || len(chain.ParentTranscript) == 0 {
+		t.Fatal("Цепочка recovery не выдана", chain, err)
+	}
+	restored := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose: "auth.login", GrantId: chain.GrantId}, targetPrivate)
+	restoredContext := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+restored.AccessToken)
+	if _, err = auth.ClaimPairing(restoredContext, &pb.ClaimPairingRequest{PairingId: delegated.Pairing.Id}); err != nil {
+		t.Fatal(err)
+	}
+	complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose: "device.revoke", RootPublicKey: root, GrantId: parent.GrantId}, rootPrivate)
+	if _, err = store.Authenticate(ctx, restored.AccessToken); status.Code(err) != codes.Unauthenticated {
+		t.Fatal("Pairing пережило отзыв recovery card", err)
+	}
 }

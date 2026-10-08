@@ -52,8 +52,8 @@ func denied() error {
 }
 
 func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
-	if req.PairingId != "" && (req.Purpose != "device.register" || req.Recovery || req.RecoveryGrantId != "") {
-		return nil, status.Error(codes.InvalidArgument, "Сопряжение требует исходную root-подпись")
+	if req.PairingId != "" && ((req.Purpose != "device.register" && req.Purpose != "device.delegate") || req.Recovery) {
+		return nil, status.Error(codes.InvalidArgument, "Неверный purpose сопряжения")
 	}
 	if req.Purpose == "device.delegate" || req.Purpose == "recovery.device.revoke" {
 		return s.createRecoveryChallenge(ctx, req)

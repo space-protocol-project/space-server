@@ -6,6 +6,7 @@ import {
   verifyPairing,
   verificationCode,
 } from "./pairing.mjs";
+import { pngBlob, readCardFile } from "./recovery-qr.mjs";
 const $ = (selector) => document.querySelector(selector);
 const origin = location.origin;
 let currentRole = "",
@@ -195,6 +196,7 @@ async function signIn(forceGrant = false) {
   }
   $("#identity-tools").hidden = false;
   $("#download-card").hidden = !record.cardCipher;
+  $("#download-card-png").hidden = !record.cardCipher;
   $("#device-password-label").hidden = !!record.root.privateKey;
   await loadDevices();
   if (joinToken()) {
@@ -506,6 +508,7 @@ $("#card-form").addEventListener("submit", (event) => {
       record.cardCipher = packet;
       await vault(record);
       $("#download-card").hidden = false;
+      $("#download-card-png").hidden = false;
       downloadCard(packet);
       await loadDevices();
       status(
@@ -524,10 +527,10 @@ $("#restore-form").addEventListener("submit", (event) => {
   event.preventDefault();
   run(async () => {
     const file = $("#restore-file").files[0];
-    if (!file || file.size > 16384)
-      throw new Error("Выберите карточку JSON размером до 16 KiB.");
+    if (!file || file.size > 8 * 1024 * 1024)
+      throw new Error("Выберите карточку JSON или PNG до 8 MiB.");
     try {
-      const packet = await file.text(),
+      const packet = await readCardFile(file),
         payload = await openCard(packet, $("#restore-password").value);
       const response = await fetch("/.well-known/space-protocol", {
         redirect: "error",
@@ -772,8 +775,8 @@ $("#prepare-pair-form").addEventListener("submit", (event) => {
     if (p.state !== "pending")
       throw new Error("Запрос уже подтверждён или отменён");
     const authority = record.root.privateKey ? record : await unlockAuthority();
-    if (!authority.root.privateKey)
-      throw new Error("Нужен исходный root или корневая карточка Flutter");
+    if (!authority.root.privateKey && !authority.recoveryPrivate)
+      throw new Error("Нужен исходный root или recovery-карточка");
     const localRoot = url64(
       await crypto.subtle.exportKey("raw", record.root.publicKey),
     );
@@ -856,11 +859,13 @@ $("#approve-pair-code").addEventListener("input", () => {
   $("#prepared-pair").hidden = true;
 });
 async function unlockAuthority() {
-  if (!record.cardCipher)
+  if (!record.cardCipher && !$("#authority-file").files[0])
     throw new Error("Нужна исходная карточка восстановления.");
   try {
     const payload = await openCard(
-      record.cardCipher,
+      $("#authority-file").files[0]
+        ? await readCardFile($("#authority-file").files[0])
+        : record.cardCipher,
       $("#device-card-password").value || $("#renew-card-password").value,
     );
     if (
@@ -872,5 +877,21 @@ async function unlockAuthority() {
   } finally {
     $("#device-card-password").value = "";
     $("#renew-card-password").value = "";
+    $("#authority-file").value = "";
   }
 }
+
+$("#download-card-png").addEventListener("click", () =>
+  run(async () => {
+    if (!record?.cardCipher)
+      throw new Error("Сначала создайте или восстановите карточку");
+    const blob = await pngBlob(record.cardCipher),
+      url = URL.createObjectURL(blob),
+      link = document.createElement("a");
+    link.href = url;
+    link.download = "space-recovery.png";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status("QR-карточка сохранена в PNG. Пароль не входит в изображение.");
+  }),
+);

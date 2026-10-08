@@ -22,7 +22,13 @@ async function fileJSON(path) {
   }
   throw new Error("Тестовый клиент не подготовил сопряжение");
 }
-export async function pairingInterop(origin, discovery, owner, session) {
+export async function pairingInterop(
+  origin,
+  discovery,
+  owner,
+  session,
+  options = {},
+) {
   const root = new Uint8Array(
     await crypto.subtle.exportKey("raw", owner.root.publicKey),
   );
@@ -175,6 +181,7 @@ export async function pairingInterop(origin, discovery, owner, session) {
     "WebCrypto/Go: pairing браузера, независимая root-подпись, management scope, одноразовость и подмена подписи — успешно.",
   );
   const nativeSourceTarget = await startPairing(origin, true);
+  if (options.skipNativeSource) return;
   const sourceDirectory = await mkdtemp(join(tmpdir(), "space-pair-source-"));
   const sourceChild = spawn(
     "dart",

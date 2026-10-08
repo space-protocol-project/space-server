@@ -118,8 +118,13 @@ func (s *AuthService) createRecoveryChallenge(ctx context.Context, req *pb.Creat
 	if err != nil {
 		return nil, err
 	}
+	if req.PairingId != "" {
+		if err = s.validatePairChallenge(ctx, tx, &pb.CreateChallengeRequest{PairingId: req.PairingId, RootPublicKey: parent.root, DevicePublicKey: req.DevicePublicKey, Administrative: req.Administrative}, parent.principal); err != nil {
+			return nil, err
+		}
+	}
 	now := time.Now().UTC().Truncate(time.Second)
-	t := authn.Transcript{AuthEpoch: parent.epoch, AuthorizerGrantID: req.RecoveryGrantId, PrincipalID: parent.principal, RootPublicKey: base64.RawURLEncoding.EncodeToString(parent.root), Purpose: req.Purpose, Origin: s.origin, ServerID: s.serverID, Version: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix()}
+	t := authn.Transcript{AuthEpoch: parent.epoch, AuthorizerGrantID: req.RecoveryGrantId, PairingID: req.PairingId, PrincipalID: parent.principal, RootPublicKey: base64.RawURLEncoding.EncodeToString(parent.root), Purpose: req.Purpose, Origin: s.origin, ServerID: s.serverID, Version: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix()}
 	if req.Purpose == "device.delegate" {
 		t.GrantID, err = randomString("dg_")
 		if err != nil {
@@ -173,6 +178,11 @@ func (s *AuthService) createRecoveryChallenge(ctx context.Context, req *pb.Creat
 }
 
 func (s *AuthService) completeRecovery(ctx context.Context, tx pgx.Tx, t authn.Transcript, canonical, signature []byte) error {
+	if t.PairingID != "" {
+		if err := lockPairApproval(ctx, tx, t); err != nil {
+			return err
+		}
+	}
 	// Один порядок регистрации устройств одного principal и проверки родителя.
 	if _, err := tx.Exec(ctx, "SELECT id FROM principals WHERE id=$1 FOR UPDATE", t.PrincipalID); err != nil {
 		return databaseError(ctx, err)
@@ -210,6 +220,9 @@ func (s *AuthService) completeRecovery(ctx context.Context, tx pgx.Tx, t authn.T
 	_, err = tx.Exec(ctx, `INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature,scopes,parent_grant_id,signature_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'recovery')`, t.GrantID, t.PrincipalID, device, t.AuthEpoch, time.Unix(t.GrantExpiresAt, 0), canonical, signature, t.Scopes, t.AuthorizerGrantID)
 	if err != nil {
 		return databaseError(ctx, err)
+	}
+	if t.PairingID != "" {
+		return markPairApproved(ctx, tx, t.PairingID, t.GrantID)
 	}
 	return nil
 }

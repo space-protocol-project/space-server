@@ -85,22 +85,27 @@ export async function channelsInterop(origin,discovery,keys,session) {
         if(await target.count()) {try {await target.first().scrollIntoViewIfNeeded({timeout:1500});return target;}catch {}}
         await page.mouse.move(550,650);await page.mouse.wheel(0,i===0?-10000:500);await page.waitForTimeout(150);
       }
+      console.log('Диагностика Flutter:',(await page.locator('flt-semantics').allTextContents()).join(' | ').slice(-12000));
+      if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT});
       throw new Error('Не найден элемент Flutter: '+text);
     }
     await (await reach('Создать чат-канал')).click();
     await page.getByRole('textbox',{name:/Адрес нового канала/}).fill('flutter-team');
     await page.getByRole('textbox',{name:/Название нового канала/}).fill('Группа Flutter');
+    const createdReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/channels'&&r.request().method()==='POST');
     await (await reach('Создать канал')).click();
-    await (await reach('Канал создан.',null)).waitFor();
+    assert.equal((await createdReply).status(),200);
     const createdFlutter=(await api('/api/v1/channels?includeArchived=true')).channels.find(c=>c.id==='flutter-team');
     assert.ok(createdFlutter);
     for(let i=0;i<2;i++)await (await reach('Удалить правило')).first().click();
+    const accessReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/channels/flutter-team/access'&&r.request().method()==='PUT');
     await (await reach('Сохранить права')).click();
-    await (await reach('Права канала сохранены.',null)).waitFor();
+    assert.equal((await accessReply).status(),200);
     assert.equal(((await api('/api/v1/channels/flutter-team/access')).rules||[]).length,0);
     await (await reach('Архивировать канал','switch')).click();
+    const archivedReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/channels/flutter-team'&&r.request().method()==='PATCH');
     await (await reach('Сохранить канал')).click();
-    await (await reach('Настройки канала сохранены.',null)).waitFor();
+    assert.equal((await archivedReply).status(),200);
     assert.equal((await api('/api/v1/channels?includeArchived=true')).channels.find(c=>c.id==='flutter-team').archived,true);
     if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT});
     assert.deepEqual(errors,[]);

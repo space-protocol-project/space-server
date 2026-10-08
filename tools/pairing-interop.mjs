@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -174,4 +174,96 @@ export async function pairingInterop(origin, discovery, owner, session) {
   console.log(
     "WebCrypto/Go: pairing браузера, независимая root-подпись, management scope, одноразовость и подмена подписи — успешно.",
   );
+  const nativeSourceTarget = await startPairing(origin, true);
+  const sourceDirectory = await mkdtemp(join(tmpdir(), "space-pair-source-"));
+  const sourceChild = spawn(
+    "dart",
+    [
+      "run",
+      "tool/pairing_approval_interoperability.dart",
+      origin,
+      nativeSourceTarget.request.code,
+      sourceDirectory,
+    ],
+    { cwd: resolve("../client"), stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let sourceOutput = "",
+    sourceErrors = "";
+  sourceChild.stdout.on("data", (chunk) => (sourceOutput += chunk));
+  sourceChild.stderr.on("data", (chunk) => (sourceErrors += chunk));
+  const sourceFinished = new Promise((resolve, reject) => {
+    sourceChild.on("error", reject);
+    sourceChild.on("exit", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error("Native approver test failed: " + sourceErrors)),
+    );
+  });
+  sourceFinished.catch(() => {});
+  try {
+    const sourceInfo = await fileJSON(join(sourceDirectory, "source.json"));
+    const preflight = await request(origin, "/api/v1/auth/pairings/poll", {
+      pollToken: nativeSourceTarget.request.pollToken,
+    });
+    const targetCode = await observeProposal(
+      discovery,
+      nativeSourceTarget,
+      preflight,
+    );
+    assert.equal(targetCode, sourceInfo.verification);
+    await writeFile(
+      join(sourceDirectory, "confirm.json"),
+      JSON.stringify({ verification: targetCode }),
+    );
+    await sourceFinished;
+    process.stdout.write(sourceOutput);
+    const signed = await request(origin, "/api/v1/auth/pairings/poll", {
+      pollToken: nativeSourceTarget.request.pollToken,
+    });
+    const verified = await verifyPairing(
+      origin,
+      discovery,
+      nativeSourceTarget,
+      signed,
+    );
+    const nativeLogin = await proof(
+      origin,
+      discovery,
+      verified.record,
+      "auth.login",
+      verified.record.grantId,
+    );
+    assert.equal(nativeLogin.principalId, sourceInfo.principalId);
+    await request(
+      origin,
+      "/api/v1/auth/pairings/claim",
+      { pairingId: signed.pairing.id },
+      nativeLogin.accessToken,
+    );
+    const member = await request(
+      origin,
+      "/api/v1/membership",
+      undefined,
+      nativeLogin.accessToken,
+    );
+    assert.equal(member.member.role, "member");
+    await assert.rejects(
+      request(
+        origin,
+        "/api/v1/space/settings",
+        undefined,
+        nativeLogin.accessToken,
+      ),
+      (e) => e.status === 403,
+    );
+    await request(
+      origin,
+      "/api/v1/auth/devices/current/revoke",
+      {},
+      nativeLogin.accessToken,
+    );
+  } finally {
+    if (sourceChild.exitCode === null) sourceChild.kill();
+    await rm(sourceDirectory, { recursive: true, force: true });
+  }
 }

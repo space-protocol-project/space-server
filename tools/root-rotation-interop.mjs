@@ -1,3 +1,4 @@
+import {pairingInterop} from './pairing-interop.mjs';
 import {PNG} from 'pngjs';
 import {qrText} from '../internal/spaceweb/assets/recovery-qr.mjs';
 import assert from 'node:assert/strict';
@@ -33,6 +34,7 @@ try {
   const session=await proof(origin,discovery,keys,'auth.login',keys.grantId);
   const membership=await request(origin,'/api/v1/membership',undefined,session.accessToken);
   assert.equal(membership.member.role,'member');
+  await pairingInterop(origin,discovery,keys,session,{skipNativeSource:true,expectedRole:'member'});
   await assert.rejects(request(origin,'/api/v1/space/settings',undefined,session.accessToken),error=>error.status===403);
   const card=await createRecoveryCard(keys,origin,discovery,'Disposable browser rotation card',authority=>proof(origin,discovery,authority,'device.register','','',{recovery:true}));
   const delegated=await keysFromCard(await openCard(card,'Disposable browser rotation card'),origin,discovery);

@@ -41,6 +41,7 @@ export async function pairingInterop(
       directory,
       origin,
       session.principalId,
+      options.expectedRole || "owner",
     ],
     { cwd: resolve("../client"), stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -164,7 +165,8 @@ export async function pairingInterop(
     { pairingId: p.id },
     login.accessToken,
   );
-  await request(origin, "/api/v1/space/settings", undefined, login.accessToken);
+  if(options.expectedRole==="member") await assert.rejects(request(origin,"/api/v1/space/settings",undefined,login.accessToken),error=>error.status===403);
+  else await request(origin, "/api/v1/space/settings", undefined, login.accessToken);
   await assert.rejects(
     request(origin, "/api/v1/auth/pairings/poll", {
       pollToken: pending.request.pollToken,

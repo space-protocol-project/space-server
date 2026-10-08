@@ -66,6 +66,18 @@ export async function channelsInterop(origin,discovery,keys,session) {
     assert.ok(await page.locator('[data-channel-id="ui-workshop"]').count());
     await page.locator('#chat-enabled').check();await page.locator('#settings-form button:not([type])').click();
     await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Настройки сохранены на сервере'));
+    await page.goto(origin+'/space/flutter/');
+    await page.getByRole('button',{name:'Войти с сохранёнными ключами',exact:true}).click();
+    await page.getByRole('textbox',{name:/Название пространства/}).waitFor();
+    const oldTitle=(await api('/api/v1/space/settings')).settings.title;
+    await page.getByRole('textbox',{name:/Название пространства/}).fill('Настройка из общего Flutter-модуля');
+    await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
+    await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
+    assert.equal((await api('/api/v1/space/settings')).settings.title,'Настройка из общего Flutter-модуля');
+    await page.getByRole('textbox',{name:/Название пространства/}).fill(oldTitle);
+    await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
+    await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
+    assert.deepEqual(errors,[]);
     await context.close();context=undefined;
 
     // До входа general не раскрывается, но Flutter всё равно входит по своему ключу.

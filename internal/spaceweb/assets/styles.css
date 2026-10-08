@@ -184,3 +184,5 @@ summary:focus-visible {
 .access-rule legend {overflow-wrap:anywhere;font-size:13px;}
 .access-rule .check {margin:10px 0;}
 #channel-editor {border-top:1px solid #504945;margin-top:24px;padding-top:16px;}
+
+a {color:#fabd2f;}

@@ -3,6 +3,7 @@ package spaceweb
 import (
 	"embed"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -34,6 +35,9 @@ func Handler() http.Handler {
 		if err != nil {
 			http.Error(w, "Панель недоступна", 500)
 			return
+		}
+		if file == "index.html" && os.Getenv("SPACE_ADMIN_WEB_DIR") != "" {
+			content = []byte(strings.Replace(string(content), "<main>", `<main><p><a href="/space/flutter/">Открыть предварительную Flutter-панель</a></p>`, 1))
 		}
 		w.Header().Set("Content-Type", media)
 		w.Header().Set("Cache-Control", "no-store")

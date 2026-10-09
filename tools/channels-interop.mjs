@@ -71,13 +71,16 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await page.getByRole('textbox',{name:/Название пространства/}).waitFor();
     const oldTitle=(await api('/api/v1/space/settings')).settings.title;
     await page.getByRole('textbox',{name:/Название пространства/}).fill('Настройка из общего Flutter-модуля');
+    const saveSettingsReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/settings'&&r.request().method()==='PATCH');
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
-    await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
+    assert.equal((await saveSettingsReply).status(),200);
     assert.equal((await api('/api/v1/space/settings')).settings.title,'Настройка из общего Flutter-модуля');
     if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT,fullPage:true});
     await page.getByRole('textbox',{name:/Название пространства/}).fill(oldTitle);
+    const restoreSettingsReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/settings'&&r.request().method()==='PATCH');
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
-    await page.getByText('Настройки сохранены на сервере.',{exact:true}).waitFor();
+    assert.equal((await restoreSettingsReply).status(),200);
+    assert.equal((await api('/api/v1/space/settings')).settings.title,oldTitle);
     // Каналы того же Flutter-модуля: создание, смена прав и архив.
     async function reach(text,role='button') {
       const target=role?page.getByRole(role,{name:text,exact:true}):page.getByText(text,{exact:true});

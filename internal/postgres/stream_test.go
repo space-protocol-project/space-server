@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -119,12 +120,30 @@ func TestSubscribeReplayLiveHTTPAndRevoke(t *testing.T) {
 			Code int `json:"code"`
 		} `json:"error"`
 	}
-	if err = decoder.Decode(&chunk); err != nil || chunk.Result == nil || !chunk.Result.Heartbeat {
+	decode := func() error {
+		var wire struct {
+			Result json.RawMessage `json:"result"`
+			Error  struct {
+				Code int `json:"code"`
+			} `json:"error"`
+		}
+		if err := decoder.Decode(&wire); err != nil {
+			return err
+		}
+		chunk.Result = nil
+		chunk.Error.Code = wire.Error.Code
+		if len(wire.Result) > 0 && string(wire.Result) != "null" {
+			chunk.Result = new(pb.SubscribeResponse)
+			return protojson.Unmarshal(wire.Result, chunk.Result)
+		}
+		return nil
+	}
+	if err = decode(); err != nil || chunk.Result == nil || !chunk.Result.Heartbeat {
 		t.Fatalf("%v %v", chunk, err)
 	}
 	// Heartbeat после 15 секунд проверяет, что HTTP WriteTimeout=10s продлён.
 	chunk.Result = nil
-	if err = decoder.Decode(&chunk); err != nil || chunk.Result == nil || !chunk.Result.Heartbeat {
+	if err = decode(); err != nil || chunk.Result == nil || !chunk.Result.Heartbeat {
 		t.Fatalf("Heartbeat/flush: %v %v", chunk, err)
 	}
 	third, err := contents.CreateContent(authorized, &pb.CreateContentRequest{ChannelId: "general", Text: "Живое событие", IdempotencyKey: "third"})
@@ -132,7 +151,7 @@ func TestSubscribeReplayLiveHTTPAndRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	chunk.Result = nil
-	if err = decoder.Decode(&chunk); err != nil || chunk.Result == nil || chunk.Result.Event.GetContent().GetId() != third.Content.Id {
+	if err = decode(); err != nil || chunk.Result == nil || chunk.Result.Event.GetContent().GetId() != third.Content.Id || chunk.Result.Event.GetContent().GetSequence() != third.Content.Sequence {
 		t.Fatalf("Live: %v %v", chunk, err)
 	}
 	complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose: "device.revoke", RootPublicKey: root, GrantId: grant.GrantId}, rootPrivate)
@@ -147,7 +166,7 @@ func TestSubscribeReplayLiveHTTPAndRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	chunk.Result = nil
-	if err = decoder.Decode(&chunk); err != nil || chunk.Error.Code != int(codes.Unauthenticated) {
+	if err = decode(); err != nil || chunk.Error.Code != int(codes.Unauthenticated) {
 		t.Fatalf("Terminal HTTP frame: %v %v", chunk, err)
 	}
 }

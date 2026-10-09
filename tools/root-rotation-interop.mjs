@@ -1,15 +1,15 @@
 import {pairingInterop} from './pairing-interop.mjs';
 import {PNG} from 'pngjs';
-import {qrText} from '../internal/spaceweb/assets/recovery-qr.mjs';
+import {qrText} from './crypto_reference/recovery-qr.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {openCard,keysFromCard,createRecoveryCard} from '../internal/spaceweb/assets/recovery.mjs';
-import {proof,request,url64} from '../internal/spaceweb/assets/identity.mjs';
-import {verifyRootHistory} from '../internal/spaceweb/assets/root-history.mjs';
+import {openCard,keysFromCard,createRecoveryCard} from './crypto_reference/recovery.mjs';
+import {proof,request,url64} from './crypto_reference/identity.mjs';
+import {verifyRootHistory} from './crypto_reference/root-history.mjs';
 const origin='http://127.0.0.1:18080';
 const directory=await mkdtemp(join(tmpdir(),'space-root-rotation-'));
 try {

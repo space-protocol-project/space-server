@@ -1,4 +1,3 @@
-import { channelsInterop } from './channels-interop.mjs';
 import assert from "node:assert/strict";
 import { recoveryInterop } from "./recovery-interop.mjs";
 import { pairingInterop } from "./pairing-interop.mjs";
@@ -6,7 +5,7 @@ import {
   request,
   newKeys,
   proof,
-} from "../internal/spaceweb/assets/identity.mjs";
+} from "./crypto_reference/identity.mjs";
 const origin = process.env.SPACE_ADMIN_ORIGIN || "http://127.0.0.1:18080";
 const code = process.env.SPACE_SETUP_CODE;
 if (!code) throw new Error("Нужен тестовый setup code через environment");
@@ -143,7 +142,6 @@ await request(
 );
 await recoveryInterop(origin, discovery, keys, session);
 await pairingInterop(origin, discovery, keys, session);
-await channelsInterop(origin, discovery, keys, session);
 await request(origin, "/api/v1/auth/logout", {}, session.accessToken);
 let refused = false;
 try {

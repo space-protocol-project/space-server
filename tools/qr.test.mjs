@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { PNG } from "pngjs";
-import { qrRaster, qrText } from "../internal/spaceweb/assets/recovery-qr.mjs";
-import { sealCard, openCard } from "../internal/spaceweb/assets/recovery.mjs";
+import { qrRaster, qrText } from "./crypto_reference/recovery-qr.mjs";
+import { sealCard, openCard } from "./crypto_reference/recovery.mjs";
 const packet = await sealCard(
   { v: 1, credential: "root", secret: "synthetic fixture" },
   "Several random CI words 2026",

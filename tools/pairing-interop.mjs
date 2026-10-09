@@ -3,13 +3,13 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
-import { request, proof } from "../internal/spaceweb/assets/identity.mjs";
+import { request, proof } from "./crypto_reference/identity.mjs";
 import {
   startPairing,
   observeProposal,
   verifyPairing,
   verificationCode,
-} from "../internal/spaceweb/assets/pairing.mjs";
+} from "./crypto_reference/pairing.mjs";
 
 const raw = (value) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
 async function fileJSON(path) {

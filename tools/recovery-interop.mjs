@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { PNG } from "pngjs";
-import { qrRaster, qrText } from "../internal/spaceweb/assets/recovery-qr.mjs";
+import { qrRaster, qrText } from "./crypto_reference/recovery-qr.mjs";
 import { pairingInterop } from "./pairing-interop.mjs";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,12 +11,12 @@ import {
   newKeys,
   proof,
   request,
-} from "../internal/spaceweb/assets/identity.mjs";
+} from "./crypto_reference/identity.mjs";
 import {
   createRecoveryCard,
   openCard,
   keysFromCard,
-} from "../internal/spaceweb/assets/recovery.mjs";
+} from "./crypto_reference/recovery.mjs";
 
 export async function recoveryInterop(origin, discovery, owner, ownerSession) {
   const pass = "CI recovery password 2026";

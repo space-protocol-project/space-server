@@ -130,3 +130,45 @@ func TestConcurrentRetryAndPagination(t *testing.T) {
 		t.Fatalf("%v %v", second, err)
 	}
 }
+
+func TestRemovedFlutterPanelIsUnavailable(t *testing.T) {
+	_, _, origin := setup(t)
+	for _, path := range []string{"/space/flutter/", "/space/flutter/flutter_bootstrap.js"} {
+		response, err := http.Get(origin + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s: %d", path, response.StatusCode)
+		}
+	}
+}
+
+func TestRemovedPanelKeepsAPI(t *testing.T) {
+	ctx := context.Background()
+	connection, err := grpc.NewClient("127.0.0.1:1", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	handler, err := HandlerWithEndpoint(ctx, connection, "test-server", nil, "127.0.0.1:9090")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		path   string
+		status int
+	}{{"/space", 404}, {"/space/", 404}, {"/space/identity.mjs", 404}, {"/healthz", 204}, {"/.well-known/space-protocol", 200}} {
+		result := httptest.NewRecorder()
+		handler.ServeHTTP(result, httptest.NewRequest("GET", test.path, nil))
+		if result.Code != test.status {
+			t.Fatalf("%s: %d", test.path, result.Code)
+		}
+	}
+	result := httptest.NewRecorder()
+	handler.ServeHTTP(result, httptest.NewRequest("GET", "/api/v1/manifest", nil))
+	if result.Code == 404 {
+		t.Fatal("API удалён вместе с панелью")
+	}
+}

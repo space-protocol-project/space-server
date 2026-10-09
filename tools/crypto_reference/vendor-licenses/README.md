@@ -1,6 +1,6 @@
-# Локальные QR-библиотеки панели
+# QR-библиотеки тестов совместимости
 
-Панель не загружает код из CDN. Закреплены npm qrcode-generator 2.0.4 (MIT, Kazuhiko Arase) и jsqr 1.4.0 (Apache-2.0, сохранён исходный LICENSE). У jsQR только оболочка module.exports заменена локальным ES-module экспортом; алгоритм не изменён.
+Тесты используют локальные закреплённые алгоритмы. Закреплены npm qrcode-generator 2.0.4 (MIT, Kazuhiko Arase) и jsqr 1.4.0 (Apache-2.0, сохранён исходный LICENSE). У jsQR только оболочка module.exports заменена локальным ES-module экспортом; алгоритм не изменён.
 
 Источники: https://github.com/kazuhikoarase/qrcode-generator и https://github.com/cozmo/jsQR. Лицензии здесь относятся только к этим библиотекам и не выбирают лицензию проекта Space.
 

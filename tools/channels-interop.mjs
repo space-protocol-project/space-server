@@ -135,7 +135,7 @@ export async function channelsInterop(origin,discovery,keys,session) {
     const guestSession=await proof(origin,discovery,guestKeys,'auth.login',guestKeys.grantId);
     const memberListReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/members'&&r.request().method()==='GET');
     await (await reach('Обновить участников')).click();await memberListReply;
-    await page.getByRole('textbox',{name:'Поиск по идентификатору или роли',exact:true}).fill(guestGrant.principalId);
+    await (await reach('Поиск по идентификатору или роли','textbox')).fill(guestGrant.principalId);
     await (await reach('Изменить права')).click();
     await (await reach('Заблокировать участника','switch')).click();
     const memberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');

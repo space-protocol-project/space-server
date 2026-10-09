@@ -69,14 +69,21 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await page.goto(origin+'/space/flutter/');
     await page.getByRole('button',{name:'Войти с сохранёнными ключами',exact:true}).click();
     await page.getByRole('textbox',{name:/Название пространства/}).waitFor();
+    async function enter(locator,value) {
+      await locator.click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await locator.pressSequentially(value,{delay:5});
+      await page.keyboard.press('Tab');
+    }
     const oldTitle=(await api('/api/v1/space/settings')).settings.title;
-    await page.getByRole('textbox',{name:/Название пространства/}).fill('Настройка из общего Flutter-модуля');
+    await enter(page.getByRole('textbox',{name:/Название пространства/}),'Настройка из общего Flutter-модуля');
     const saveSettingsReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/settings'&&r.request().method()==='PATCH');
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
     assert.equal((await saveSettingsReply).status(),200);
     assert.equal((await api('/api/v1/space/settings')).settings.title,'Настройка из общего Flutter-модуля');
     if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT,fullPage:true});
-    await page.getByRole('textbox',{name:/Название пространства/}).fill(oldTitle);
+    await page.getByText('Настройки сохранены на сервере.',{exact:true}).first().waitFor();
+    await enter(page.getByRole('textbox',{name:/Название пространства/}),oldTitle);
     const restoreSettingsReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/settings'&&r.request().method()==='PATCH');
     await page.getByRole('button',{name:'Сохранить настройки',exact:true}).click();
     assert.equal((await restoreSettingsReply).status(),200);
@@ -139,9 +146,8 @@ export async function channelsInterop(origin,discovery,keys,session) {
     const guestSession=await proof(origin,discovery,guestKeys,'auth.login',guestKeys.grantId);
     const memberListReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/members'&&r.request().method()==='GET');
     await (await reach('Обновить участников')).click();await memberListReply;
-    await (await reach('Поиск по идентификатору или роли','textbox')).fill(guestGrant.principalId);
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(250);
+    await enter(await reach('Поиск по идентификатору или роли','textbox'),guestGrant.principalId);
+    await reach(guestGrant.principalId,null);
     await (await reach('Изменить права')).click();
     await (await reach('Заблокировать участника','switch')).click();
     const memberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');

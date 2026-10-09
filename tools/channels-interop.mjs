@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { request, proof } from '../internal/spaceweb/assets/identity.mjs';
+import { request, proof, newKeys } from '../internal/spaceweb/assets/identity.mjs';
 import { createRecoveryCard } from '../internal/spaceweb/assets/recovery.mjs';
 
 async function nextLine(lines) {
@@ -81,7 +81,7 @@ export async function channelsInterop(origin,discovery,keys,session) {
     // Каналы того же Flutter-модуля: создание, смена прав и архив.
     async function reach(text,role='button') {
       const target=role?page.getByRole(role,{name:text,exact:true}):page.getByText(text,{exact:true});
-      for(let i=0;i<15;i++) {
+      for(let i=0;i<60;i++) {
         if(await target.count()) {try {await target.first().scrollIntoViewIfNeeded({timeout:1500});return target;}catch {}}
         await page.mouse.move(550,650);await page.mouse.wheel(0,i===0?-10000:500);await page.waitForTimeout(150);
       }
@@ -107,6 +107,44 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await (await reach('Сохранить канал')).click();
     assert.equal((await archivedReply).status(),200);
     assert.equal((await api('/api/v1/channels?includeArchived=true')).channels.find(c=>c.id==='flutter-team').archived,true);
+    if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT});
+    // Общий модуль приглашений: выпуск и отзыв с подтверждением.
+    const inviteReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/invites'&&r.request().method()==='POST');
+    await (await reach('Создать приглашение')).click();
+    const inviteResult=await inviteReply;assert.equal(inviteResult.status(),200);
+    const issued=await inviteResult.json();
+    await (await reach('Скрыть код')).click();
+    assert.equal(await page.getByText(issued.token,{exact:true}).count(),0);
+    const available=await api('/api/v1/space/invites');
+    assert.ok(available.invites.every(i=>!Object.hasOwn(i,'token')));
+    const revokeReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/invites/${issued.invite.id}/revoke`&&r.request().method()==='POST');
+    const loadedInvites=(await api('/api/v1/space/invites')).invites;
+    const activeInvites=loadedInvites.filter(i=>!i.revoked&&Number(i.expiresAt)>Date.now()/1000&&Number(i.uses||0)<i.maxUses);
+    const issuedIndex=activeInvites.findIndex(i=>i.id===issued.invite.id);
+    assert.ok(issuedIndex>=0);
+    await (await reach('Отозвать приглашение')).nth(issuedIndex).scrollIntoViewIfNeeded();
+    await page.getByRole('button',{name:'Отозвать приглашение',exact:true}).nth(issuedIndex).click();
+    await page.getByRole('button',{name:'Отозвать приглашение',exact:true}).last().click();
+    assert.equal((await revokeReply).status(),200);
+    assert.equal((await api('/api/v1/space/invites')).invites.find(i=>i.id===issued.invite.id).revoked,true);
+    const guestKeys=await newKeys();
+    const guestGrant=await proof(origin,discovery,guestKeys,'device.register','');guestKeys.grantId=guestGrant.grantId;
+    const guestSession=await proof(origin,discovery,guestKeys,'auth.login',guestKeys.grantId);
+    const memberListReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/members'&&r.request().method()==='GET');
+    await (await reach('Обновить участников')).click();await memberListReply;
+    await page.getByRole('textbox',{name:'Поиск по идентификатору или роли',exact:true}).fill(guestGrant.principalId);
+    await (await reach('Изменить права')).click();
+    await (await reach('Заблокировать участника','switch')).click();
+    const memberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');
+    await (await reach('Сохранить права участника')).click();
+    await page.getByRole('button',{name:'Применить права',exact:true}).click();
+    assert.equal((await memberReply).status(),200);
+    assert.equal((await api('/api/v1/space/members')).members.find(m=>m.principalId===guestGrant.principalId).blocked,true);
+    await assert.rejects(request(origin,'/api/v1/channels/general/content',undefined,guestSession.accessToken),e=>e.status===403);
+    await (await reach('Заблокировать участника','switch')).click();
+    const restoredMemberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');
+    await (await reach('Сохранить права участника')).click();await page.getByRole('button',{name:'Применить права',exact:true}).click();
+    assert.equal((await restoredMemberReply).status(),200);
     if(process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT)await page.screenshot({path:process.env.SPACE_ADMIN_FLUTTER_SCREENSHOT});
     assert.deepEqual(errors,[]);
     await context.close();context=undefined;

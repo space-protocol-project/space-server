@@ -71,7 +71,10 @@ export async function channelsInterop(origin,discovery,keys,session) {
     await page.getByRole('textbox',{name:/Название пространства/}).waitFor();
     async function enter(locator,value) {
       await locator.click();
+      await page.waitForFunction(()=>['INPUT','TEXTAREA'].includes(document.activeElement?.tagName));
       await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('Backspace');
+      await page.waitForFunction(()=>document.activeElement?.value==='');
       await page.keyboard.type(value,{delay:5});
       await page.keyboard.press('Tab');
     }

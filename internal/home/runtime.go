@@ -75,7 +75,11 @@ func StartDatabase(root, data string) (string, func(), error) {
 	options := fmt.Sprintf("-h 127.0.0.1 -p %d -c unix_socket_directories='' -c logging_collector=on -c log_rotation_size=10MB -c log_truncate_on_rotation=on", port)
 	cmd := command(root, "pg_ctl", "-D", database, "-l", filepath.Join(data, "postgres-start.log"), "-o", options, "-w", "-t", "30", "start")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return "", nil, fmt.Errorf("pg_ctl: %w: %s", err, output)
+		startupLog, _ := os.ReadFile(filepath.Join(data, "postgres-start.log"))
+		if len(startupLog) > 8192 {
+			startupLog = startupLog[len(startupLog)-8192:]
+		}
+		return "", nil, fmt.Errorf("pg_ctl: %w: %s: %s", err, output, startupLog)
 	}
 	stop := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

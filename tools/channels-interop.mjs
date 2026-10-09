@@ -72,7 +72,7 @@ export async function channelsInterop(origin,discovery,keys,session) {
     async function enter(locator,value) {
       await locator.click();
       await page.keyboard.press('ControlOrMeta+A');
-      await locator.pressSequentially(value,{delay:5});
+      await page.keyboard.type(value,{delay:5});
       await page.keyboard.press('Tab');
     }
     const oldTitle=(await api('/api/v1/space/settings')).settings.title;

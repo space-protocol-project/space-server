@@ -147,7 +147,7 @@ export async function channelsInterop(origin,discovery,keys,session) {
     const memberListReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/members'&&r.request().method()==='GET');
     await (await reach('Обновить участников')).click();await memberListReply;
     await enter(await reach('Поиск по идентификатору или роли','textbox'),guestGrant.principalId);
-    await reach(guestGrant.principalId,null);
+    await page.waitForTimeout(250);
     await (await reach('Изменить права')).click();
     await (await reach('Заблокировать участника','switch')).click();
     const memberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');

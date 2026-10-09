@@ -57,3 +57,13 @@ func (s *Service) UpdateChannelAccess(ctx context.Context, req *pb.UpdateChannel
 	}
 	return store.UpdateChannelAccess(ctx, req)
 }
+
+func (s *Service) WatchChannels(req *pb.WatchChannelsRequest, stream pb.ChannelService_WatchChannelsServer) error {
+	source, ok := s.store.(interface {
+		WatchChannels(*pb.WatchChannelsRequest, pb.ChannelService_WatchChannelsServer) error
+	})
+	if !ok {
+		return status.Error(codes.Unimplemented, "Подписка каналов требует PostgreSQL")
+	}
+	return source.WatchChannels(req, stream)
+}

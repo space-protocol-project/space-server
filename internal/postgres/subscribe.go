@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
 	"github.com/space-protocol-project/space-protocol/server/internal/authn"
 	"google.golang.org/grpc/codes"
@@ -83,15 +84,19 @@ func (s *Store) sendAuthorizedFrame(channel string, stream pb.SyncService_Subscr
 // В каждый момент одна отправка. Возврат handler закрывает transport context,
 // поэтому зависшая Send завершается после deadline/cancel без роста очереди.
 func sendFrame(stream pb.SyncService_SubscribeServer, frame *pb.SubscribeResponse) error {
+	return sendWithDeadline(stream.Context(), func() error { return stream.Send(frame) })
+}
+
+func sendWithDeadline(ctx context.Context, send func() error) error {
 	result := make(chan error, 1)
-	go func() { result <- stream.Send(frame) }()
+	go func() { result <- send() }()
 	timeout := time.NewTimer(5 * time.Second)
 	defer timeout.Stop()
 	select {
 	case err := <-result:
 		return err
-	case <-stream.Context().Done():
-		return status.FromContextError(stream.Context().Err()).Err()
+	case <-ctx.Done():
+		return status.FromContextError(ctx.Err()).Err()
 	case <-timeout.C:
 		return status.Error(codes.DeadlineExceeded, "Клиент слишком медленно читает поток")
 	}

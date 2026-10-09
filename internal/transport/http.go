@@ -25,7 +25,9 @@ func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, 
 func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey []byte, endpoint string) (http.Handler, error) {
 	// Authorization прокидывается runtime отдельно; клиентская Grpc-Metadata-* не принимается.
 	gateway := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(string) (string, bool) { return "", false }), runtime.WithForwardResponseOption(func(_ context.Context, w http.ResponseWriter, message proto.Message) error {
-		if _, ok := message.(*pb.SubscribeResponse); !ok {
+		switch message.(type) {
+		case *pb.SubscribeResponse, *pb.WatchChannelsResponse:
+		default:
 			return nil
 		}
 		err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(20 * time.Second))

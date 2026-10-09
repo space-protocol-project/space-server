@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ChannelService_WatchChannels_FullMethodName       = "/space.v1.ChannelService/WatchChannels"
 	ChannelService_ListChannels_FullMethodName        = "/space.v1.ChannelService/ListChannels"
 	ChannelService_CreateChannel_FullMethodName       = "/space.v1.ChannelService/CreateChannel"
 	ChannelService_UpdateChannel_FullMethodName       = "/space.v1.ChannelService/UpdateChannel"
@@ -33,6 +34,7 @@ const (
 //
 // Экспериментальный контракт первого локального прототипа.
 type ChannelServiceClient interface {
+	WatchChannels(ctx context.Context, in *WatchChannelsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchChannelsResponse], error)
 	ListChannels(ctx context.Context, in *ListChannelsRequest, opts ...grpc.CallOption) (*ListChannelsResponse, error)
 	CreateChannel(ctx context.Context, in *CreateChannelRequest, opts ...grpc.CallOption) (*CreateChannelResponse, error)
 	UpdateChannel(ctx context.Context, in *UpdateChannelRequest, opts ...grpc.CallOption) (*UpdateChannelResponse, error)
@@ -48,6 +50,25 @@ type channelServiceClient struct {
 func NewChannelServiceClient(cc grpc.ClientConnInterface) ChannelServiceClient {
 	return &channelServiceClient{cc}
 }
+
+func (c *channelServiceClient) WatchChannels(ctx context.Context, in *WatchChannelsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchChannelsResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChannelService_ServiceDesc.Streams[0], ChannelService_WatchChannels_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[WatchChannelsRequest, WatchChannelsResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChannelService_WatchChannelsClient = grpc.ServerStreamingClient[WatchChannelsResponse]
 
 func (c *channelServiceClient) ListChannels(ctx context.Context, in *ListChannelsRequest, opts ...grpc.CallOption) (*ListChannelsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -115,6 +136,7 @@ func (c *channelServiceClient) GetManifest(ctx context.Context, in *GetManifestR
 //
 // Экспериментальный контракт первого локального прототипа.
 type ChannelServiceServer interface {
+	WatchChannels(*WatchChannelsRequest, grpc.ServerStreamingServer[WatchChannelsResponse]) error
 	ListChannels(context.Context, *ListChannelsRequest) (*ListChannelsResponse, error)
 	CreateChannel(context.Context, *CreateChannelRequest) (*CreateChannelResponse, error)
 	UpdateChannel(context.Context, *UpdateChannelRequest) (*UpdateChannelResponse, error)
@@ -131,6 +153,9 @@ type ChannelServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChannelServiceServer struct{}
 
+func (UnimplementedChannelServiceServer) WatchChannels(*WatchChannelsRequest, grpc.ServerStreamingServer[WatchChannelsResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method WatchChannels not implemented")
+}
 func (UnimplementedChannelServiceServer) ListChannels(context.Context, *ListChannelsRequest) (*ListChannelsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListChannels not implemented")
 }
@@ -169,6 +194,17 @@ func RegisterChannelServiceServer(s grpc.ServiceRegistrar, srv ChannelServiceSer
 	}
 	s.RegisterService(&ChannelService_ServiceDesc, srv)
 }
+
+func _ChannelService_WatchChannels_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchChannelsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChannelServiceServer).WatchChannels(m, &grpc.GenericServerStream[WatchChannelsRequest, WatchChannelsResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChannelService_WatchChannelsServer = grpc.ServerStreamingServer[WatchChannelsResponse]
 
 func _ChannelService_ListChannels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListChannelsRequest)
@@ -310,7 +346,13 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChannelService_GetManifest_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchChannels",
+			Handler:       _ChannelService_WatchChannels_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "space/v1/space.proto",
 }
 

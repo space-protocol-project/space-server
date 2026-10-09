@@ -47,12 +47,10 @@ assert.equal(updated.settings.revision, "3");
 const manifest = await request(origin, "/api/v1/manifest");
 assert.equal(manifest.title, "Проверка браузерного владельца");
 const html = await fetch(origin + "/space");
-assert.equal(html.status, 200);
-assert.ok(
-  html.headers
-    .get("content-security-policy")
-    .includes("frame-ancestors 'none'"),
-);
+assert.equal(html.status, 404);
+for (const path of ['/space/', '/space/app.mjs', '/space/flutter/']) {
+  assert.equal((await fetch(origin + path)).status, 404);
+}
 const denied = await fetch(origin + "/api/v1/space/settings");
 assert.equal(denied.status, 401);
 const invitation = await request(

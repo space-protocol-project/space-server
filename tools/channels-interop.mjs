@@ -85,7 +85,11 @@ export async function channelsInterop(origin,discovery,keys,session) {
     async function reach(text,role='button') {
       const target=role?page.getByRole(role,{name:text,exact:true}):page.getByText(text,{exact:true});
       for(let i=0;i<60;i++) {
-        if(await target.count()) {try {await target.first().scrollIntoViewIfNeeded({timeout:1500});return target;}catch {}}
+        if(await target.count()) {try {
+          await target.first().scrollIntoViewIfNeeded({timeout:500});
+          await target.first().click({trial:true,timeout:500});
+          return target;
+        }catch {}}
         await page.mouse.move(550,650);await page.mouse.wheel(0,i===0?-10000:500);await page.waitForTimeout(150);
       }
       console.log('Диагностика Flutter:',(await page.locator('flt-semantics').allTextContents()).join(' | ').slice(-12000));
@@ -136,6 +140,8 @@ export async function channelsInterop(origin,discovery,keys,session) {
     const memberListReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/space/members'&&r.request().method()==='GET');
     await (await reach('Обновить участников')).click();await memberListReply;
     await (await reach('Поиск по идентификатору или роли','textbox')).fill(guestGrant.principalId);
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(250);
     await (await reach('Изменить права')).click();
     await (await reach('Заблокировать участника','switch')).click();
     const memberReply=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/v1/space/members/${guestGrant.principalId}`&&r.request().method()==='PATCH');

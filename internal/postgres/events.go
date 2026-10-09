@@ -31,7 +31,7 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id
+	rows, err := tx.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id,c.sequence
  FROM events e JOIN contents c USING(channel_id,sequence)
  WHERE e.channel_id=$1 AND e.sequence>$2 ORDER BY e.sequence LIMIT 100`, req.ChannelId, after)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 	result := &pb.ListEventsResponse{NextCursor: req.After}
 	for rows.Next() {
 		event := &pb.Event{Content: new(pb.Content)}
-		if err := rows.Scan(&event.Cursor, &event.Type, &event.Content.Id, &event.Content.ChannelId, &event.Content.Text, &event.Content.AuthorId); err != nil {
+		if err := rows.Scan(&event.Cursor, &event.Type, &event.Content.Id, &event.Content.ChannelId, &event.Content.Text, &event.Content.AuthorId, &event.Content.Sequence); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Events = append(result.Events, event)

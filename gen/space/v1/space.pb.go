@@ -3095,8 +3095,10 @@ type Channel struct {
 	Revision      int64                  `protobuf:"varint,6,opt,name=revision,proto3" json:"revision,omitempty"`
 	Permissions   *ChannelPermissions    `protobuf:"bytes,7,opt,name=permissions,proto3" json:"permissions,omitempty"`
 	PublicPreview bool                   `protobuf:"varint,8,opt,name=public_preview,json=publicPreview,proto3" json:"public_preview,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Только для авторизованного read; иначе 0.
+	LatestMessageSequence int64 `protobuf:"varint,9,opt,name=latest_message_sequence,json=latestMessageSequence,proto3" json:"latest_message_sequence,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Channel) Reset() {
@@ -3183,6 +3185,13 @@ func (x *Channel) GetPublicPreview() bool {
 		return x.PublicPreview
 	}
 	return false
+}
+
+func (x *Channel) GetLatestMessageSequence() int64 {
+	if x != nil {
+		return x.LatestMessageSequence
+	}
+	return 0
 }
 
 // write требует read, read и manage требуют visible.
@@ -3873,6 +3882,7 @@ type Content struct {
 	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	AuthorId      string                 `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Sequence      int64                  `protobuf:"varint,5,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3933,6 +3943,13 @@ func (x *Content) GetAuthorId() string {
 		return x.AuthorId
 	}
 	return ""
+}
+
+func (x *Content) GetSequence() int64 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
 }
 
 type CreateContentRequest struct {
@@ -4870,7 +4887,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x10protocol_version\x18\x01 \x01(\tR\x0fprotocolVersion\x12\x1b\n" +
 	"\tserver_id\x18\x02 \x01(\tR\bserverId\x12-\n" +
 	"\bchannels\x18\x03 \x03(\v2\x11.space.v1.ChannelR\bchannels\x12\x14\n" +
-	"\x05title\x18\x04 \x01(\tR\x05title\"\x90\x02\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\"\xc8\x02\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12$\n" +
@@ -4879,7 +4896,8 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\barchived\x18\x05 \x01(\bR\barchived\x12\x1a\n" +
 	"\brevision\x18\x06 \x01(\x03R\brevision\x12>\n" +
 	"\vpermissions\x18\a \x01(\v2\x1c.space.v1.ChannelPermissionsR\vpermissions\x12%\n" +
-	"\x0epublic_preview\x18\b \x01(\bR\rpublicPreview\"p\n" +
+	"\x0epublic_preview\x18\b \x01(\bR\rpublicPreview\x126\n" +
+	"\x17latest_message_sequence\x18\t \x01(\x03R\x15latestMessageSequence\"p\n" +
 	"\x12ChannelPermissions\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12\x12\n" +
 	"\x04read\x18\x02 \x01(\bR\x04read\x12\x14\n" +
@@ -4927,13 +4945,14 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x05rules\x18\x03 \x03(\v2\x1b.space.v1.ChannelAccessRuleR\x05rules\"*\n" +
 	"\x04View\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"i\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\"\x85\x01\n" +
 	"\aContent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
-	"\tauthor_id\x18\x04 \x01(\tR\bauthorId\"r\n" +
+	"\tauthor_id\x18\x04 \x01(\tR\bauthorId\x12\x1a\n" +
+	"\bsequence\x18\x05 \x01(\x03R\bsequence\"r\n" +
 	"\x14CreateContentRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x12\n" +

@@ -152,6 +152,11 @@ func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool
 		c.Permissions.Read = false
 		c.Permissions.Write = false
 	}
+	if c.Permissions.Read {
+		if err = q.QueryRow(ctx, "SELECT next_sequence-1 FROM channels WHERE id=$1", id).Scan(&c.LatestMessageSequence); err != nil {
+			return nil, databaseError(ctx, err)
+		}
+	}
 	return c, nil
 }
 

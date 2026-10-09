@@ -107,8 +107,8 @@ export async function channelsInterop(origin,discovery,keys,session) {
       throw new Error('Не найден элемент Flutter: '+text);
     }
     await (await reach('Создать чат-канал')).click();
-    await page.getByRole('textbox',{name:/Адрес нового канала/}).fill('flutter-team');
-    await page.getByRole('textbox',{name:/Название нового канала/}).fill('Группа Flutter');
+    await enter(page.getByRole('textbox',{name:/Адрес нового канала/}),'flutter-team');
+    await enter(page.getByRole('textbox',{name:/Название нового канала/}),'Группа Flutter');
     const createdReply=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/v1/channels'&&r.request().method()==='POST');
     await (await reach('Создать канал')).click();
     assert.equal((await createdReply).status(),200);

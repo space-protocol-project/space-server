@@ -72,7 +72,11 @@ func StartDatabase(root, data string) (string, func(), error) {
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
-	options := fmt.Sprintf("-h 127.0.0.1 -p %d -c unix_socket_directories='' -c logging_collector=on -c log_rotation_size=10MB -c log_truncate_on_rotation=on", port)
+	// Конфигурационный файл избегает различий обработки кавычек в Windows/Unix.
+	if err := os.WriteFile(filepath.Join(database, "postgresql.auto.conf"), []byte("# Managed by Space\nunix_socket_directories = ''\n"), 0600); err != nil {
+		return "", nil, err
+	}
+	options := fmt.Sprintf("-h 127.0.0.1 -p %d -c logging_collector=on -c log_rotation_size=10MB -c log_truncate_on_rotation=on", port)
 	cmd := command(root, "pg_ctl", "-D", database, "-l", filepath.Join(data, "postgres-start.log"), "-o", options, "-w", "-t", "30", "start")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		startupLog, _ := os.ReadFile(filepath.Join(data, "postgres-start.log"))

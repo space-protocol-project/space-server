@@ -76,6 +76,11 @@ func StartDatabase(root, data string) (string, func(), error) {
 	cmd := command(root, "pg_ctl", "-D", database, "-l", filepath.Join(data, "postgres-start.log"), "-o", options, "-w", "-t", "30", "start")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		startupLog, _ := os.ReadFile(filepath.Join(data, "postgres-start.log"))
+		logs, _ := filepath.Glob(filepath.Join(database, "log", "*.log"))
+		for _, path := range logs {
+			content, _ := os.ReadFile(path)
+			startupLog = append(startupLog, content...)
+		}
 		if len(startupLog) > 8192 {
 			startupLog = startupLog[len(startupLog)-8192:]
 		}

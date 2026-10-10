@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -35,7 +36,7 @@ func main() {
 	}
 }
 
-func run() error {
+func run() (result error) {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
@@ -65,7 +66,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		defer stopDatabase()
+		defer func() { result = errors.Join(result, stopDatabase()) }()
 		if err := os.Setenv("SPACE_DATABASE_URL", databaseURL); err != nil {
 			return err
 		}

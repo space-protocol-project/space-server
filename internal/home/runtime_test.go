@@ -49,7 +49,11 @@ func TestBundledPostgresPreservesIdentityAndData(t *testing.T) {
 			t.Fatal(err)
 		}
 		func() {
-			defer stop()
+			defer func() {
+				if err := stop(); err != nil {
+					t.Error("База не остановилась", err)
+				}
+			}()
 			store, identity, err := postgres.Open(context.Background(), address)
 			if err != nil {
 				t.Fatal(err)

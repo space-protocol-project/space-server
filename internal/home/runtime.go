@@ -55,7 +55,7 @@ func runLogged(base *exec.Cmd, data string) ([]byte, error) {
 }
 
 // StartDatabase не изменяет системную PostgreSQL и никогда не слушает внешний адрес.
-func StartDatabase(root, data string) (string, func(), error) {
+func StartDatabase(root, data string) (string, func() error, error) {
 	if err := os.MkdirAll(data, 0700); err != nil {
 		return "", nil, err
 	}
@@ -113,14 +113,14 @@ func StartDatabase(root, data string) (string, func(), error) {
 		}
 		return "", nil, fmt.Errorf("pg_ctl: %w: %s: %s", err, output, startupLog)
 	}
-	stop := func() {
+	stop := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		base := command(root, "pg_ctl", "-D", database, "-m", "fast", "-w", "-t", "15", "stop")
 		cmd := exec.CommandContext(ctx, base.Path, base.Args[1:]...)
 		cmd.Env = base.Env
 		hideWindow(cmd)
-		_ = cmd.Run()
+		return cmd.Run()
 	}
 	address := &url.URL{Scheme: "postgres", Host: net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), Path: "/postgres", User: url.UserPassword("space", string(password)), RawQuery: "sslmode=disable"}
 	return address.String(), stop, nil

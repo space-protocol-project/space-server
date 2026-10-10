@@ -223,7 +223,7 @@ func run() error {
 				return
 			}
 			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
-				if !strings.EqualFold(r.Host, endpoint.Host) {
+				if !strings.EqualFold(r.Host, endpoint.Host) && !strings.EqualFold(r.Host, endpoint.Hostname()) {
 					http.Error(w, "Недопустимый Host", http.StatusForbidden)
 					return
 				}

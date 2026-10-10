@@ -31,6 +31,29 @@ func command(root, name string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+func runLogged(base *exec.Cmd, data string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, base.Path, base.Args[1:]...)
+	cmd.Env = base.Env
+	hideWindow(cmd)
+	path := filepath.Join(data, "bootstrap-command.log")
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, err
+	}
+	// Файл вместо pipe: фоновые процессы PostgreSQL в Windows наследуют handles.
+	cmd.Stdout = file
+	cmd.Stderr = file
+	err = cmd.Run()
+	file.Close()
+	output, _ := os.ReadFile(path)
+	if len(output) > 8192 {
+		output = output[len(output)-8192:]
+	}
+	return output, err
+}
+
 // StartDatabase не изменяет системную PostgreSQL и никогда не слушает внешний адрес.
 func StartDatabase(root, data string) (string, func(), error) {
 	if err := os.MkdirAll(data, 0700); err != nil {
@@ -57,7 +80,7 @@ func StartDatabase(root, data string) (string, func(), error) {
 		}
 		defer os.RemoveAll(staging)
 		cmd := command(root, "initdb", "-D", staging, "-U", "space", "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C", "--pwfile="+passwordPath)
-		if output, err := cmd.CombinedOutput(); err != nil {
+		if output, err := runLogged(cmd, data); err != nil {
 			return "", nil, fmt.Errorf("initdb: %w: %s", err, output)
 		}
 		if err := os.Rename(staging, database); err != nil {
@@ -78,7 +101,7 @@ func StartDatabase(root, data string) (string, func(), error) {
 	}
 	options := fmt.Sprintf("-h 127.0.0.1 -p %d -c logging_collector=on -c log_rotation_size=10MB -c log_truncate_on_rotation=on", port)
 	cmd := command(root, "pg_ctl", "-D", database, "-l", filepath.Join(data, "postgres-start.log"), "-o", options, "-w", "-t", "30", "start")
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if output, err := runLogged(cmd, data); err != nil {
 		startupLog, _ := os.ReadFile(filepath.Join(data, "postgres-start.log"))
 		logs, _ := filepath.Glob(filepath.Join(database, "log", "*.log"))
 		for _, path := range logs {

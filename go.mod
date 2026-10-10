@@ -1,4 +1,4 @@
-module github.com/space-protocol-project/space-protocol/server
+module github.com/space-protocol-project/space-server
 
 go 1.24.0
 

@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
-	"github.com/space-protocol-project/space-protocol/server/internal/authn"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	"github.com/space-protocol-project/space-server/internal/authn"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

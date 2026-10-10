@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
-	"github.com/space-protocol-project/space-protocol/server/internal/authn"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	"github.com/space-protocol-project/space-server/internal/authn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"

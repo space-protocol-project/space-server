@@ -20,12 +20,12 @@ import (
 	"syscall"
 	"time"
 
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
-	"github.com/space-protocol-project/space-protocol/server/internal/authn"
-	"github.com/space-protocol-project/space-protocol/server/internal/chat"
-	"github.com/space-protocol-project/space-protocol/server/internal/home"
-	"github.com/space-protocol-project/space-protocol/server/internal/postgres"
-	"github.com/space-protocol-project/space-protocol/server/internal/transport"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	"github.com/space-protocol-project/space-server/internal/authn"
+	"github.com/space-protocol-project/space-server/internal/chat"
+	"github.com/space-protocol-project/space-server/internal/home"
+	"github.com/space-protocol-project/space-server/internal/postgres"
+	"github.com/space-protocol-project/space-server/internal/transport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

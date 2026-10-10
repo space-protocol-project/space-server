@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/space-protocol-project/space-protocol/server/internal/postgres"
+	"github.com/space-protocol-project/space-server/internal/postgres"
 )
 
 func TestCertificateSurvivesRestartAndRejectsChangedIP(t *testing.T) {

@@ -82,7 +82,7 @@ export async function recoveryInterop(origin, discovery, owner, ownerSession) {
         pass,
         ownerSession.principalId,
       ],
-      { cwd: resolve("../client"), timeout: 90000, maxBuffer: 16384 },
+      { cwd: resolve(process.env.SPACE_APP_DIR ?? "../space-app/client"), timeout: 90000, maxBuffer: 16384 },
     );
     process.stdout.write(result.stdout);
     const nativePng = PNG.sync.read(await readFile(cardPath + ".dart.png"));

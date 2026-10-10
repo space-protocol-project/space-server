@@ -2,7 +2,7 @@ package chat
 
 import (
 	"context"
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

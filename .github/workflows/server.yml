@@ -1,0 +1,150 @@
+name: Проверка сервера
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      SPACE_APP_DIR: app-source/client
+      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-server
+          ref: ${{ github.repository == 'space-protocol-project/space-server' && github.sha || 'main' }}
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-app
+          path: app-source
+      - name: Проверка конфигурации локальной базы
+        env:
+          SPACE_POSTGRES_PASSWORD: ci-only-password
+        run: docker compose -f deploy/compose.yaml config --quiet
+      - name: Проверки UI-прототипа и согласия на оформление
+        run: |
+          python3 packaging/release_notes_test.py
+          npm ci --prefix tools
+          node tools/qr.test.mjs
+          node --check app-source/client/design/prototype/app.js
+          node --check app-source/client/design/prototype/theme.js
+          node app-source/client/design/prototype/theme.test.mjs
+          node --check tools/crypto_reference/identity.mjs
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Тесты с проверкой гонок
+        working-directory: .
+        run: go test -race ./...
+      - name: Статический анализ
+        working-directory: .
+        run: go vet ./...
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Анализ и тесты Flutter-клиента
+        working-directory: app-source/client
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+      - name: Сквозная проверка входа, событий и отзыва
+        working-directory: .
+        env:
+          SPACE_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+        run: |
+          go build -o "$RUNNER_TEMP/space-server" ./cmd/space-server
+          SPACE_SETUP_CODE=$("$RUNNER_TEMP/space-server" -setup-code)
+          echo "::add-mask::$SPACE_SETUP_CODE"
+          export SPACE_SETUP_CODE
+          "$RUNNER_TEMP/space-server" -http 127.0.0.1:18080 &
+          server_pid=$!
+          trap 'kill "$server_pid"; wait "$server_pid" || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz; then break; fi
+            sleep 1
+          done
+          go run ./cmd/space-demo -origin http://127.0.0.1:18080
+          node tools/admin-interop.mjs
+          node tools/root-rotation-interop.mjs
+          cd app-source/client
+          dart run tool/interoperability.dart http://127.0.0.1:18080
+      - name: Первый владелец без кода из нативного приложения
+        working-directory: .
+        env:
+          SPACE_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_first_owner?sslmode=disable
+        run: |
+          PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U space -d space_test -c 'CREATE DATABASE space_first_owner'
+          "$RUNNER_TEMP/space-server" -http 127.0.0.1:18081 -grpc 127.0.0.1:19091 &
+          bootstrap_pid=$!
+          trap 'kill "$bootstrap_pid"; wait "$bootstrap_pid" || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18081/healthz; then break; fi
+            sleep 1
+          done
+          cd app-source/client
+          dart run tool/first_owner_interoperability.dart http://127.0.0.1:18081
+      - name: Ручное назначение владельца из основного приложения
+        working-directory: .
+        env:
+          SPACE_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_manual_owner?sslmode=disable
+        run: |
+          PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U space -d space_test -c 'CREATE DATABASE space_manual_owner'
+          SPACE_SETUP_CODE=$("$RUNNER_TEMP/space-server" -setup-code)
+          echo "::add-mask::$SPACE_SETUP_CODE"
+          export SPACE_SETUP_CODE
+          "$RUNNER_TEMP/space-server" -http 127.0.0.1:18082 -grpc 127.0.0.1:19092 &
+          bootstrap_pid=$!
+          trap 'kill "$bootstrap_pid"; wait "$bootstrap_pid" || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18082/healthz; then break; fi
+            sleep 1
+          done
+          cd app-source/client
+          dart run tool/manual_owner_interoperability.dart http://127.0.0.1:18082
+  native-vault:
+    name: Нативное хранилище Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-server
+          ref: ${{ github.repository == 'space-protocol-project/space-server' && github.sha || 'main' }}
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-app
+          path: app-source
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Сборка отдельного проверочного приложения
+        working-directory: app-source/client
+        run: |
+          flutter pub get
+          flutter build windows --release --target tool/native_vault_drill.dart --dart-define=SPACE_VAULT_CRASH_TEST=true
+      - name: Перезапуск с настоящим системным vault
+        working-directory: app-source/client
+        run: ./tool/native_vault_drill.ps1

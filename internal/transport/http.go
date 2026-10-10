@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )

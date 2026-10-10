@@ -1,0 +1,16 @@
+# Локальные секреты и настройки
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.pem
+
+# Артефакты разработки
+.DS_Store
+Thumbs.db
+.dart_tool/
+build/
+node_modules/
+coverage/
+*.log

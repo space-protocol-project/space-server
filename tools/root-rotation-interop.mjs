@@ -14,7 +14,7 @@ const origin='http://127.0.0.1:18080';
 const directory=await mkdtemp(join(tmpdir(),'space-root-rotation-'));
 try {
   const path=join(directory,'new-card.json');
-  const native=await promisify(execFile)('dart',['run','tool/root_rotation_interoperability.dart',origin,path],{cwd:resolve('../client'),timeout:90000,maxBuffer:16384});
+  const native=await promisify(execFile)('dart',['run','tool/root_rotation_interoperability.dart',origin,path],{cwd:resolve(process.env.SPACE_APP_DIR ?? '../space-app/client'),timeout:90000,maxBuffer:16384});
   process.stdout.write(native.stdout);
   const discovery=await(await fetch(origin+'/.well-known/space-protocol')).json();
   const packet=await readFile(path,'utf8');

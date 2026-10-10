@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
-	"github.com/space-protocol-project/space-protocol/server/internal/authn"
-	rotation "github.com/space-protocol-project/space-protocol/server/internal/identityrotation"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	"github.com/space-protocol-project/space-server/internal/authn"
+	rotation "github.com/space-protocol-project/space-server/internal/identityrotation"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

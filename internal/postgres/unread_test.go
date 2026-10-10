@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"testing"
 )
 

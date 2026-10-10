@@ -3,7 +3,7 @@ package postgres
 import (
 	"bytes"
 	"github.com/jackc/pgx/v5/pgxpool"
-	pb "github.com/space-protocol-project/space-protocol/server/gen/space/v1"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"testing"
 )
 

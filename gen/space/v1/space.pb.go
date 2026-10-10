@@ -5056,7 +5056,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x11MembershipService\x12\x7f\n" +
 	"\rPreviewInvite\x12\x1e.space.v1.PreviewInviteRequest\x1a\x1f.space.v1.PreviewInviteResponse\"-\x82\xd3\xe4\x93\x02':\x01*\"\"/api/v1/membership/invites/preview\x12{\n" +
 	"\fAcceptInvite\x12\x1d.space.v1.AcceptInviteRequest\x1a\x1e.space.v1.AcceptInviteResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/membership/invites/accept\x12l\n" +
-	"\rGetMembership\x12\x1e.space.v1.GetMembershipRequest\x1a\x1f.space.v1.GetMembershipResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/membershipBNZLgithub.com/space-protocol-project/space-protocol/server/gen/space/v1;spacev1b\x06proto3"
+	"\rGetMembership\x12\x1e.space.v1.GetMembershipRequest\x1a\x1f.space.v1.GetMembershipResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/membershipBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_space_proto_rawDescOnce sync.Once

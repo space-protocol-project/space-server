@@ -43,7 +43,7 @@ export async function pairingInterop(
       session.principalId,
       options.expectedRole || "owner",
     ],
-    { cwd: resolve("../client"), stdio: ["ignore", "pipe", "pipe"] },
+    { cwd: resolve(process.env.SPACE_APP_DIR ?? "../space-app/client"), stdio: ["ignore", "pipe", "pipe"] },
   );
   let output = "",
     errors = "";
@@ -194,7 +194,7 @@ export async function pairingInterop(
       nativeSourceTarget.request.code,
       sourceDirectory,
     ],
-    { cwd: resolve("../client"), stdio: ["ignore", "pipe", "pipe"] },
+    { cwd: resolve(process.env.SPACE_APP_DIR ?? "../space-app/client"), stdio: ["ignore", "pipe", "pipe"] },
   );
   let sourceOutput = "",
     sourceErrors = "";

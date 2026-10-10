@@ -10,9 +10,9 @@ import tempfile
 import urllib.request
 import zipfile
 
-VERSION = os.environ.get("GITHUB_REF_NAME", "home-v0.1.0")
-if not VERSION.startswith("home-v"):
-    VERSION = "home-v0.1.0"
+VERSION = os.environ.get("GITHUB_REF_NAME", "v0.1.0")
+if not VERSION.startswith("v"):
+    VERSION = "v0.1.0"
 PG_VERSION = "17.11"
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"

@@ -2,12 +2,12 @@ name: Домашний сервер без Docker
 on:
   workflow_dispatch:
   push:
-    tags: ['home-v*']
+    tags: ['v*']
 permissions:
   contents: read
 jobs:
   verify-release:
-    if: startsWith(github.ref, 'refs/tags/home-v')
+    if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/server.yml
   runtime:
     strategy:
@@ -49,7 +49,7 @@ jobs:
             dist/*-arm64.json
           if-no-files-found: error
   publish:
-    if: startsWith(github.ref, 'refs/tags/home-v')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [runtime, verify-release]
     runs-on: ubuntu-latest
     permissions:
@@ -71,3 +71,4 @@ jobs:
           (cd dist && sha256sum Space-home-*.zip > SHA256SUMS.txt)
           files=(dist/Space-home-*.zip dist/*-x64.json dist/*-arm64.json dist/SHA256SUMS.txt)
           gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --title "Домашний сервер $GITHUB_REF_NAME" --notes-file dist/release-notes.md --prerelease --latest=false
+          gh release edit "$GITHUB_REF_NAME" --draft=false

@@ -28,6 +28,8 @@ go run ./cmd/space-server
 
 ## Проверки и релизы
 
+Первый экспериментальный выпуск: [v0.1.0](https://github.com/space-protocol-project/space-server/releases/tag/v0.1.0). Полный [CI 38065087775](https://github.com/space-protocol-project/space-server/actions/runs/38065087775) прошёл на трёх платформах и опубликовал архивы с описанием из Changelog. Установка этих публичных архивов самим Flutter-приложением дополнительно проверена в [CI приложения 38067026461](https://github.com/space-protocol-project/space-app/actions/runs/38067026461).
+
 `go test ./...` и `go vet ./...` выполняются из корня. Полные PostgreSQL и сквозные Flutter/Go/WebCrypto-проверки выполняются в CI. Flutter берётся из `space-app`; локальный Docker для этой работы не запускается.
 
 Теги `vX.Y.Z` собирают Windows x64, macOS arm64 и Linux x64, проверяют перезапуск и приглашённого участника через TLS, затем публикуют архивы и SHA-256. Описание берётся из соответствующего раздела [Changelog.md](Changelog.md). Без полного успешного CI публикации нет. Обычные и ручные сборки сохраняют артефакты.

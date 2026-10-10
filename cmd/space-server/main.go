@@ -138,6 +138,7 @@ func run() (result error) {
 		return nil
 	}
 	setup := ""
+	pendingSetup := filepath.Join(*homeData, "bootstrap-pending")
 	if homeMode {
 		status, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
 		if err != nil {
@@ -146,6 +147,9 @@ func run() (result error) {
 		if !status.Initialized {
 			setup, err = store.CreateSetupCode(ctx)
 			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(pendingSetup, []byte("private setup pending"), 0600); err != nil {
 				return err
 			}
 		}
@@ -201,7 +205,7 @@ func run() (result error) {
 			defer ticker.Stop()
 			for {
 				status, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
-				if err == nil && status.Initialized {
+				if err == nil && status.Initialized && finishHomeSetup(ctx, store, pendingSetup) == nil {
 					initialized.Store(true)
 					return
 				}
@@ -288,4 +292,16 @@ func authOrigin(local, public string) string {
 		return public
 	}
 	return local
+}
+
+func finishHomeSetup(ctx context.Context, store *postgres.Store, path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if err := store.SealHomeSetup(ctx); err != nil {
+		return err
+	}
+	return os.Remove(path)
 }

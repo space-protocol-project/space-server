@@ -9,6 +9,12 @@ import (
 
 // Host/Origin задаются конфигурацией, не вычисляются из пользовательских headers.
 func RestrictOrigin(next http.Handler, origin string) http.Handler {
+	return restrictOrigin(next, origin, false)
+}
+func RestrictOriginWithConnect(next http.Handler, origin string) http.Handler {
+	return restrictOrigin(next, origin, true)
+}
+func restrictOrigin(next http.Handler, origin string, connectEnabled bool) http.Handler {
 	expected, _ := url.Parse(origin)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -24,7 +30,8 @@ func RestrictOrigin(next http.Handler, origin string) http.Handler {
 		}
 		if r.Method == http.MethodPost || r.Method == http.MethodPatch {
 			media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if err != nil || media != "application/json" {
+			connectMedia := connectEnabled && isConnectProcedure(r.URL.Path) && (media == "application/proto" || media == "application/connect+proto" || media == "application/connect+json")
+			if err != nil || (media != "application/json" && !connectMedia) {
 				http.Error(w, "Нужен application/json", http.StatusUnsupportedMediaType)
 				return
 			}

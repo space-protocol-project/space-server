@@ -1,0 +1,107 @@
+package transport
+
+import (
+	"connectrpc.com/connect"
+	"context"
+	"errors"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	rpc "github.com/space-protocol-project/space-server/gen/space/v1/spacev1connect"
+	"github.com/space-protocol-project/space-server/internal/authn"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+type connectVerifier struct{}
+
+func (connectVerifier) Authenticate(_ context.Context, token string) (string, error) {
+	if token != "valid-token" {
+		return "", status.Error(codes.Unauthenticated, "Недействительный token")
+	}
+	return "u_test", nil
+}
+
+type connectBackend struct {
+	pb.UnimplementedChannelServiceServer
+	pb.UnimplementedSyncServiceServer
+	cancelled chan struct{}
+}
+
+func (s *connectBackend) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
+	return &pb.GetManifestResponse{ServerId: authn.Actor(ctx)}, nil
+}
+func (s *connectBackend) Subscribe(_ *pb.SubscribeRequest, stream pb.SyncService_SubscribeServer) error {
+	if err := stream.Send(&pb.SubscribeResponse{Heartbeat: true}); err != nil {
+		return err
+	}
+	<-stream.Context().Done()
+	close(s.cancelled)
+	return status.FromContextError(stream.Context().Err()).Err()
+}
+func TestConnectPrototypeKeepsGRPCAuthAndCancelsStream(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := &connectBackend{cancelled: make(chan struct{})}
+	server := grpc.NewServer(grpc.UnaryInterceptor(authn.Interceptor(connectVerifier{})), grpc.StreamInterceptor(authn.StreamInterceptor(connectVerifier{})))
+	pb.RegisterChannelServiceServer(server, backend)
+	pb.RegisterSyncServiceServer(server, backend)
+	go server.Serve(listener)
+	defer server.Stop()
+	connection, err := grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	httpServer := httptest.NewServer(WithConnectPrototype(http.NotFoundHandler(), connection))
+	defer httpServer.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for _, options := range [][]connect.ClientOption{nil, {connect.WithProtoJSON()}} {
+		client := rpc.NewChannelServiceClient(httpServer.Client(), httpServer.URL, options...)
+		req := connect.NewRequest(&pb.GetManifestRequest{})
+		req.Header().Set("Authorization", "Bearer valid-token")
+		reply, err := client.GetManifest(ctx, req)
+		if err != nil || reply.Msg.ServerId != "u_test" {
+			t.Fatalf("Manifest: %v %v", reply, err)
+		}
+		req.Header().Set("Authorization", "Bearer wrong")
+		if _, err := client.GetManifest(ctx, req); connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("Auth обойдена: %v", err)
+		}
+	}
+	sync := rpc.NewSyncServiceClient(httpServer.Client(), httpServer.URL)
+	denied, err := sync.Subscribe(ctx, connect.NewRequest(&pb.SubscribeRequest{ChannelId: "general"}))
+	if err == nil {
+		denied.Receive()
+		err = denied.Err()
+		denied.Close()
+	}
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("Поток без token: %v", err)
+	}
+	req := connect.NewRequest(&pb.SubscribeRequest{ChannelId: "general"})
+	req.Header().Set("Authorization", "Bearer valid-token")
+	stream, err := sync.Subscribe(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stream.Receive() || !stream.Msg().Heartbeat {
+		t.Fatal("Нет heartbeat")
+	}
+	if err := stream.Close(); err != nil && !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	select {
+	case <-backend.cancelled:
+	case <-ctx.Done():
+		t.Fatal("Отмена не достигла gRPC")
+	}
+}

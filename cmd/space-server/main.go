@@ -39,6 +39,7 @@ func main() {
 func run() (result error) {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
+	connectRPC := flag.Bool("connect-rpc", false, "Включить экспериментальные маршруты ConnectRPC")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
 	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
 	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
@@ -187,7 +188,15 @@ func run() (result error) {
 	if err != nil {
 		return err
 	}
-	handler = transport.RestrictOrigin(handler, origin)
+
+	if *connectRPC {
+		handler = transport.WithConnectPrototype(handler, connection)
+	}
+	if *connectRPC {
+		handler = transport.RestrictOriginWithConnect(handler, origin)
+	} else {
+		handler = transport.RestrictOrigin(handler, origin)
+	}
 	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 2)
 	localListener, err := net.Listen("tcp", *port)
@@ -221,7 +230,14 @@ func run() (result error) {
 		if err != nil {
 			return err
 		}
-		publicHandler = transport.RestrictOrigin(publicHandler, publicOrigin)
+		if *connectRPC {
+			publicHandler = transport.WithConnectPrototype(publicHandler, connection)
+		}
+		if *connectRPC {
+			publicHandler = transport.RestrictOriginWithConnect(publicHandler, publicOrigin)
+		} else {
+			publicHandler = transport.RestrictOrigin(publicHandler, publicOrigin)
+		}
 		combined := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !initialized.Load() {
 				http.Error(w, "Сначала настройте владельца локально", http.StatusServiceUnavailable)

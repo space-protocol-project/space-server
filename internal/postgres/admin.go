@@ -52,11 +52,12 @@ func (s *Store) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.
 		}
 	}
 	var title, serverID string
-	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &serverID)
+	icon := new(pb.ServerIcon)
+	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id,s.icon_preset,s.icon_media_type,s.icon_data FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &serverID, &icon.Preset, &icon.MediaType, &icon.Data)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title}
+	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title, Icon: icon}
 	response.Channels, err = s.channelList(ctx, tx, false, publicOnly, false)
 	return response, err
 }
@@ -114,11 +115,11 @@ func authorizeManagement(ctx context.Context, tx pgx.Tx) (string, error) {
 	return principal, nil
 }
 func settings(ctx context.Context, tx pgx.Tx, lock string) (*pb.SpaceSettings, string, []byte, *time.Time, error) {
-	result := new(pb.SpaceSettings)
+	result := &pb.SpaceSettings{Icon: new(pb.ServerIcon)}
 	var owner *string
 	var hash []byte
 	var expires *time.Time
-	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires)
+	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at,icon_preset,icon_media_type,icon_data FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires, &result.Icon.Preset, &result.Icon.MediaType, &result.Icon.Data)
 	id := ""
 	if owner != nil {
 		id = *owner
@@ -178,6 +179,9 @@ func (s *Store) GetSettings(ctx context.Context, _ *pb.GetSettingsRequest) (*pb.
 	return &pb.GetSettingsResponse{Settings: config}, nil
 }
 func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsRequest) (*pb.UpdateSettingsResponse, error) {
+	if err := validateServerIcon(req.Icon); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(req.Title) == "" || len(req.Title) > 320 || strings.TrimSpace(req.ChatTitle) == "" || len(req.ChatTitle) > 320 || (req.RegistrationPolicy != "open" && req.RegistrationPolicy != "closed") {
 		return nil, status.Error(codes.InvalidArgument, "Нужны названия до 320 байт и политика open/closed")
 	}
@@ -203,8 +207,19 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if current.Revision != req.ExpectedRevision {
 		return nil, status.Error(codes.Aborted, "Настройки уже изменились; загрузите их заново")
 	}
+	icon := current.Icon
+	if req.Icon != nil {
+		icon = req.Icon
+	}
 	revision := current.Revision + 1
 	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	iconData := icon.Data
+	if iconData == nil {
+		iconData = []byte{}
+	}
+	if _, err = tx.Exec(ctx, "UPDATE space_settings SET icon_preset=$1,icon_media_type=$2,icon_data=$3 WHERE singleton=true", icon.Preset, icon.MediaType, iconData); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	// Старое поле chat_title остаётся совместимым с названием general.
@@ -217,7 +232,7 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision}}, nil
+	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision, Icon: icon}}, nil
 }
 
 // Включение bootstrap не изменяет уже назначенного владельца.

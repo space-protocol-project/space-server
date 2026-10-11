@@ -21,8 +21,8 @@ func (s *Store) catalogFrame(req *pb.WatchChannelsRequest, stream pb.ChannelServ
 	if err = s.lockSession(ctx, tx); err != nil {
 		return nil, false, err
 	}
-	frame := new(pb.WatchChannelsResponse)
-	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true FOR SHARE OF s").Scan(&frame.SpaceTitle, &frame.ServerId)
+	frame := &pb.WatchChannelsResponse{Icon: new(pb.ServerIcon)}
+	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id,s.icon_preset,s.icon_media_type,s.icon_data FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true FOR SHARE OF s").Scan(&frame.SpaceTitle, &frame.ServerId, &frame.Icon.Preset, &frame.Icon.MediaType, &frame.Icon.Data)
 	if err != nil {
 		return nil, false, databaseError(ctx, err)
 	}

@@ -51,7 +51,7 @@ func TestUpgradePreservesIdentityAndBackfillsEvents(t *testing.T) {
 		t.Fatal("Upgrade изменил identity")
 	}
 	events, err := store.ListEvents(ctx, &pb.ListEventsRequest{ChannelId: "general"})
-	if err != nil || len(events.GetEvents()) != 1 || events.Events[0].Content.Text != "Старое сообщение" || events.Events[0].Content.AuthorId != "legacy-demo" {
+	if err != nil || len(events.GetEvents()) != 1 || events.Events[0].Content.Text != "Старое сообщение" || events.Events[0].Content.AuthorId != "legacy-demo" || events.Events[0].Content.CreatedAtUnixMs != 0 {
 		t.Fatalf("Backfill: %v %v", events, err)
 	}
 }

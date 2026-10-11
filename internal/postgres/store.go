@@ -192,7 +192,7 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	}
 	previous := new(pb.Content)
 	actor := authn.Actor(ctx)
-	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence)
+	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence, created_at_unix_ms FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence, &previous.CreatedAtUnixMs)
 	if err == nil {
 		if previous.Text != req.Text {
 			return nil, status.Error(codes.AlreadyExists, "Ключ уже использован с другим текстом")
@@ -206,7 +206,7 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 1000 сообщений")
 	}
 	content := &pb.Content{Id: fmt.Sprintf("message-%d", sequence), ChannelId: req.ChannelId, Text: req.Text, AuthorId: actor, Sequence: sequence}
-	_, err = tx.Exec(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id) VALUES($1,$2,$3,$4,$5,$6)", req.ChannelId, sequence, content.Id, req.Text, req.IdempotencyKey, actor)
+	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING created_at_unix_ms", req.ChannelId, sequence, content.Id, req.Text, req.IdempotencyKey, actor).Scan(&content.CreatedAtUnixMs)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -244,7 +244,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
+	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -252,7 +252,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 	result := &pb.ListContentResponse{NextCursor: req.After}
 	for rows.Next() {
 		content := new(pb.Content)
-		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence); err != nil {
+		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence, &content.CreatedAtUnixMs); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Contents = append(result.Contents, content)

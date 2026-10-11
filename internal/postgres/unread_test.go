@@ -14,15 +14,15 @@ func TestMessageSequencesAndPrivateWatermarks(t *testing.T) {
 		t.Fatal(err)
 	}
 	repeated, err := f.contents.CreateContent(f.owner, request)
-	if err != nil || first.Content.Sequence != 1 || repeated.Content.Sequence != 1 {
+	if err != nil || first.Content.Sequence != 1 || repeated.Content.Sequence != 1 || first.Content.CreatedAtUnixMs <= 0 || repeated.Content.CreatedAtUnixMs != first.Content.CreatedAtUnixMs {
 		t.Fatalf("%v %v", repeated, err)
 	}
 	history, err := f.contents.ListContent(member, &pb.ListContentRequest{ChannelId: "general"})
-	if err != nil || history.Contents[0].Sequence != 1 {
+	if err != nil || history.Contents[0].Sequence != 1 || history.Contents[0].CreatedAtUnixMs != first.Content.CreatedAtUnixMs {
 		t.Fatalf("%v %v", history, err)
 	}
 	events, err := f.sync.ListEvents(member, &pb.ListEventsRequest{ChannelId: "general"})
-	if err != nil || events.Events[0].Content.Sequence != 1 {
+	if err != nil || events.Events[0].Content.Sequence != 1 || events.Events[0].Content.CreatedAtUnixMs != first.Content.CreatedAtUnixMs {
 		t.Fatalf("%v %v", events, err)
 	}
 	secret := f.create(t, "unread-private")

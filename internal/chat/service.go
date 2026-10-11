@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
@@ -79,7 +80,7 @@ func (s *Service) CreateContent(ctx context.Context, req *pb.CreateContentReques
 	if len(s.messages) >= 1000 {
 		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 1000 сообщений")
 	}
-	message := &pb.Content{Id: fmt.Sprintf("message-%d", len(s.messages)+1), ChannelId: req.ChannelId, Text: req.Text, Sequence: int64(len(s.messages) + 1)}
+	message := &pb.Content{Id: fmt.Sprintf("message-%d", len(s.messages)+1), ChannelId: req.ChannelId, Text: req.Text, Sequence: int64(len(s.messages) + 1), CreatedAtUnixMs: time.Now().UnixMilli()}
 	s.messages = append(s.messages, message)
 	s.requests[req.IdempotencyKey] = message
 	return &pb.CreateContentResponse{Content: clone(message)}, nil

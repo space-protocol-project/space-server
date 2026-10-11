@@ -3877,14 +3877,16 @@ func (x *View) GetType() string {
 }
 
 type Content struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	AuthorId      string                 `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	Sequence      int64                  `protobuf:"varint,5,opt,name=sequence,proto3" json:"sequence,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ChannelId string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Text      string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	AuthorId  string                 `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Sequence  int64                  `protobuf:"varint,5,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	// Серверное время создания в миллисекундах Unix; 0 означает неизвестное время.
+	CreatedAtUnixMs int64 `protobuf:"varint,6,opt,name=created_at_unix_ms,json=createdAtUnixMs,proto3" json:"created_at_unix_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Content) Reset() {
@@ -3948,6 +3950,13 @@ func (x *Content) GetAuthorId() string {
 func (x *Content) GetSequence() int64 {
 	if x != nil {
 		return x.Sequence
+	}
+	return 0
+}
+
+func (x *Content) GetCreatedAtUnixMs() int64 {
+	if x != nil {
+		return x.CreatedAtUnixMs
 	}
 	return 0
 }
@@ -4945,14 +4954,15 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x05rules\x18\x03 \x03(\v2\x1b.space.v1.ChannelAccessRuleR\x05rules\"*\n" +
 	"\x04View\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"\x85\x01\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\"\xb2\x01\n" +
 	"\aContent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
 	"\tauthor_id\x18\x04 \x01(\tR\bauthorId\x12\x1a\n" +
-	"\bsequence\x18\x05 \x01(\x03R\bsequence\"r\n" +
+	"\bsequence\x18\x05 \x01(\x03R\bsequence\x12+\n" +
+	"\x12created_at_unix_ms\x18\x06 \x01(\x03R\x0fcreatedAtUnixMs\"r\n" +
 	"\x14CreateContentRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x12\n" +

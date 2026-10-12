@@ -52,7 +52,25 @@ func run() (result error) {
 	managed := flag.Bool("managed", false, "Завершаться при закрытии stdin управляющего приложения")
 	runtimeInfo := flag.Bool("runtime-info", false, "Показать совместимость runtime без запуска сервера")
 	checkDatabase := flag.Bool("check-database", false, "Проверить существующую домашнюю базу только чтением, без миграций")
+	backup := flag.String("home-backup", "", "Создать копию остановленного домашнего сервера в новом каталоге")
+	restore := flag.String("home-restore", "", "Путь проверенной резервной копии для восстановления")
+	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
 	flag.Parse()
+	if *backup != "" || *restore != "" || *restoreTo != "" {
+		if *backup != "" && *restore != "" || *runtimeInfo || *checkDatabase || *homeRuntime == "" {
+			return errors.New("Для копии или восстановления нужен home-runtime и одна операция")
+		}
+		if *backup != "" {
+			if *homeData == "" || *restoreTo != "" {
+				return errors.New("Для копии нужен home-data")
+			}
+			return home.CreateBackup(*homeRuntime, *homeData, *backup)
+		}
+		if *restore == "" || *restoreTo == "" || *homeData != "" {
+			return errors.New("Для восстановления нужны home-restore и home-restore-to без home-data")
+		}
+		return home.RestoreBackup(*homeRuntime, *restore, *restoreTo)
+	}
 	if *runtimeInfo && *checkDatabase {
 		return errors.New("Выберите одну проверку совместимости")
 	}

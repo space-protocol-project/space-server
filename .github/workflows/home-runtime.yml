@@ -40,6 +40,12 @@ jobs:
         run: |
           flutter pub get
           dart run tool/home_server_drill.dart ../../dist/home
+      - name: Обновление установленного v0.1.0 до собранного кандидата
+        working-directory: app-source/client
+        env:
+          SPACE_HOME_UPGRADE_CHECK: '1'
+          SPACE_HOME_CANDIDATE_DIRECTORY: '../../dist'
+        run: flutter test --no-pub test/home_runtime_upgrade_test.dart
       - uses: actions/upload-artifact@v4
         with:
           name: home-runtime-${{ matrix.os }}

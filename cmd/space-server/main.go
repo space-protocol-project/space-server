@@ -52,10 +52,26 @@ func run() (result error) {
 	managed := flag.Bool("managed", false, "Завершаться при закрытии stdin управляющего приложения")
 	runtimeInfo := flag.Bool("runtime-info", false, "Показать совместимость runtime без запуска сервера")
 	checkDatabase := flag.Bool("check-database", false, "Проверить существующую домашнюю базу только чтением, без миграций")
+	homeCheck := flag.Bool("home-check", false, "Проверить остановленную домашнюю базу без публичного входа")
+	homeMigrate := flag.Bool("home-migrate", false, "Применить миграции остановленной домашней базы без публичного входа")
+	homeStopped := flag.Bool("home-stopped", false, "Подтвердить чистую остановку PostgreSQL без проверки схемы")
 	backup := flag.String("home-backup", "", "Создать копию остановленного домашнего сервера в новом каталоге")
 	restore := flag.String("home-restore", "", "Путь проверенной резервной копии для восстановления")
 	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
 	flag.Parse()
+	if *homeCheck || *homeMigrate || *homeStopped {
+		if *homeCheck && *homeMigrate || *homeStopped && (*homeCheck || *homeMigrate) || *homeData == "" || *homeRuntime == "" || *backup != "" || *restore != "" || *restoreTo != "" || *runtimeInfo || *checkDatabase {
+			return errors.New("Для закрытой проверки или миграции нужны home-data, home-runtime и одна операция")
+		}
+		if *homeStopped {
+			return home.CheckStoppedDatabase(*homeRuntime, *homeData)
+		}
+		result, err := home.CheckOrMigrate(*homeRuntime, *homeData, *homeMigrate)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
 	if *backup != "" || *restore != "" || *restoreTo != "" {
 		if *backup != "" && *restore != "" || *runtimeInfo || *checkDatabase || *homeRuntime == "" {
 			return errors.New("Для копии или восстановления нужен home-runtime и одна операция")

@@ -56,6 +56,9 @@ func runLogged(base *exec.Cmd, data string) ([]byte, error) {
 
 // StartDatabase не изменяет системную PostgreSQL и никогда не слушает внешний адрес.
 func StartDatabase(root, data string) (string, func() error, error) {
+	if err := CheckDatabaseVersion(root, data); err != nil {
+		return "", nil, err
+	}
 	if err := os.MkdirAll(data, 0700); err != nil {
 		return "", nil, err
 	}

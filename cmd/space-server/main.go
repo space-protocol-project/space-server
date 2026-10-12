@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -49,7 +50,27 @@ func run() (result error) {
 	publicIP := flag.String("public-ip", "", "Статический публичный IP домашнего сервера")
 	httpsAddress := flag.String("https", "0.0.0.0:8443", "HTTPS/gRPC адрес домашнего сервера")
 	managed := flag.Bool("managed", false, "Завершаться при закрытии stdin управляющего приложения")
+	runtimeInfo := flag.Bool("runtime-info", false, "Показать совместимость runtime без запуска сервера")
+	checkDatabase := flag.Bool("check-database", false, "Проверить существующую домашнюю базу только чтением, без миграций")
 	flag.Parse()
+	if *runtimeInfo && *checkDatabase {
+		return errors.New("Выберите одну проверку совместимости")
+	}
+	if *runtimeInfo {
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
+		})
+	}
+	if *checkDatabase {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		result, err := postgres.CheckCompatibility(ctx, os.Getenv("SPACE_DATABASE_URL"))
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
 	homeMode := *homeData != ""
 	var certificate tls.Certificate
 	var publicOrigin string

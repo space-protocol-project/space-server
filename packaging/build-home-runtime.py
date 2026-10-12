@@ -74,6 +74,10 @@ def build():
         executable = "space-server.exe" if system == "Windows" else "space-server"
         flags = ["-ldflags=-H=windowsgui"] if system == "Windows" else []
         run("go", "build", "-trimpath", *flags, "-o", str(STAGE / executable), "./cmd/space-server", cwd=ROOT)
+        info = json.loads(subprocess.check_output([str(STAGE / executable), "-runtime-info"], text=True))
+        if info["format"] != 1 or info["postgresMajor"] != int(PG_VERSION.split(".")[0]):
+            raise RuntimeError("Сервер и комплект PostgreSQL несовместимы")
+        (STAGE / "runtime-info.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
         (STAGE / "SOURCE.txt").write_text("Space Protocol: https://github.com/space-protocol-project/space-server\nPostgreSQL 17.11: https://www.postgresql.org/\n", encoding="utf-8")
         # Проверка запуска и сохранения базы выполняется до публикации архива.
         env = dict(os.environ, SPACE_HOME_RUNTIME=str(STAGE))

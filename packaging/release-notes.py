@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 
 
-def release_notes(changelog, tag):
-    if not re.fullmatch(r"v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", tag):
+def release_notes(changelog, tag, allow_unreleased=False):
+    if not (allow_unreleased and tag == "Unreleased") and not re.fullmatch(r"v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", tag):
         raise ValueError("Некорректный тег выпуска")
     sections = list(re.finditer(r"^## (.+)$", changelog, re.MULTILINE))
     matches = []

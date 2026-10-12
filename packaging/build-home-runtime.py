@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import runpy
 import shutil
 import subprocess
 import tempfile
@@ -28,6 +29,12 @@ def run(*args, cwd=None, env=None):
 
 
 def build():
+    changelog = (ROOT / "Changelog.md").read_text(encoding="utf-8")
+    tagged = os.environ.get("GITHUB_REF", "").startswith("refs/tags/")
+    read_notes = runpy.run_path(str(ROOT / "packaging/release-notes.py"))["release_notes"]
+    notes = read_notes(changelog, VERSION if tagged else "Unreleased", allow_unreleased=not tagged)
+    if len(notes.encode("utf-8")) > 8192:
+        raise ValueError("Описание выпуска превышает 8 КиБ")
     DIST.mkdir(exist_ok=True)
     STAGE.mkdir(exist_ok=True)
     system = platform.system()
@@ -79,6 +86,7 @@ def build():
             raise RuntimeError("Сервер и комплект PostgreSQL несовместимы")
         (STAGE / "runtime-info.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
         (STAGE / "SOURCE.txt").write_text("Space Protocol: https://github.com/space-protocol-project/space-server\nPostgreSQL 17.11: https://www.postgresql.org/\n", encoding="utf-8")
+        (STAGE / "RELEASE-NOTES.md").write_text(notes, encoding="utf-8")
         # Проверка запуска и сохранения базы выполняется до публикации архива.
         env = dict(os.environ, SPACE_HOME_RUNTIME=str(STAGE))
         run("go", "test", "./internal/home", "-count=1", "-timeout=5m", cwd=ROOT, env=env)
@@ -88,8 +96,14 @@ def build():
                 if path.is_file():
                     archive.write(path, path.relative_to(STAGE).as_posix())
         digest = hashlib.sha256((DIST / filename).read_bytes()).hexdigest()
+        with zipfile.ZipFile(DIST / filename) as archive:
+            unpacked_bytes = sum(entry.file_size for entry in archive.infolist())
         manifest = {"version": VERSION, "platform": target, "url": f"https://github.com/space-protocol-project/space-server/releases/download/{VERSION}/{filename}", "sha256": digest, "bytes": (DIST / filename).stat().st_size}
-        (DIST / f"{target}.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        manifest.update(unpackedBytes=unpacked_bytes, releaseNotes=notes)
+        payload = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+        if len(payload.encode("utf-8")) > 16384:
+            raise ValueError("Метаданные выпуска превышают 16 КиБ")
+        (DIST / f"{target}.json").write_text(payload, encoding="utf-8")
 
 
 if __name__ == "__main__":

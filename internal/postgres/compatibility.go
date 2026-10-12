@@ -22,6 +22,9 @@ type Compatibility struct {
 // Проверяем существующую базу только чтением, без Open и миграций.
 func CheckCompatibility(ctx context.Context, databaseURL string) (Compatibility, error) {
 	var result Compatibility
+	if strings.TrimSpace(databaseURL) == "" {
+		return result, errors.New("Для проверки нужна явная настройка SPACE_DATABASE_URL")
+	}
 	conn, err := pgx.Connect(ctx, databaseURL)
 	if err != nil {
 		return result, errors.New("Не удалось подключиться для проверки совместимости")

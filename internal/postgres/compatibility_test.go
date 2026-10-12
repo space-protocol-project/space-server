@@ -1,10 +1,17 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 )
+
+func TestCompatibilityRequiresExplicitDatabase(t *testing.T) {
+	if _, err := CheckCompatibility(context.Background(), ""); err == nil {
+		t.Fatal("Проверка без явной базы разрешена")
+	}
+}
 
 func TestCompatibilityReadsOldSchemaWithoutMigrating(t *testing.T) {
 	ctx, url := isolatedDatabase(t)

@@ -281,6 +281,9 @@ func publishDirectory(destination string, prepare func(string) error) error {
 		return err
 	}
 	defer os.RemoveAll(staging) // Только созданный нами временный каталог.
+	if err := protectBackupDirectory(staging); err != nil {
+		return err
+	}
 	if err := prepare(staging); err != nil {
 		return err
 	}

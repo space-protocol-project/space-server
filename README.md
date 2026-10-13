@@ -28,7 +28,9 @@ go run ./cmd/space-server
 
 ## Проверки и релизы
 
-Первый экспериментальный выпуск: [v0.1.0](https://github.com/space-protocol-project/space-server/releases/tag/v0.1.0). Полный [CI 38065087775](https://github.com/space-protocol-project/space-server/actions/runs/38065087775) прошёл на трёх платформах и опубликовал архивы с описанием из Changelog. Установка этих публичных архивов самим Flutter-приложением дополнительно проверена в [CI приложения 38067026461](https://github.com/space-protocol-project/space-app/actions/runs/38067026461).
+Текущий экспериментальный выпуск: [runtime v0.2.2](https://github.com/space-protocol-project/space-server/releases/latest), опубликован 14 октября 2026 года. [CI выпуска 38482588850](https://github.com/space-protocol-project/space-server/actions/runs/38482588850) прошёл на Windows/macOS/Linux, включая обновление и восстановление реальной PostgreSQL. Runtime закреплён в [приложении v0.2.2](https://github.com/space-protocol-project/space-app/releases/latest); обычному пользователю достаточно установить приложение и создать пространство. [Обновление и ручное восстановление](https://github.com/space-protocol-project/space-app/blob/main/docs/HOME-RECOVERY.md).
+
+Новые каталоги копий и восстановления защищены до записи данных: Windows — владелец процесса и SYSTEM, Unix — 0700. Права уже созданных копий автоматически не изменяются. Контрольные суммы архивов доступны в [SHA256SUMS.txt](https://github.com/space-protocol-project/space-server/releases/latest/download/SHA256SUMS.txt).
 
 `go test ./...` и `go vet ./...` выполняются из корня. Полные PostgreSQL и сквозные Flutter/Go/WebCrypto-проверки выполняются в CI. Flutter берётся из `space-app`; локальный Docker для этой работы не запускается.
 
@@ -38,13 +40,13 @@ go run ./cmd/space-server
 
 Проект экспериментальный. Интернет-доступ через домашний роутер, установка и защищённое хранилище macOS/Linux, аварийное завершение, резервные копии и смена публичного IP требуют отдельных проверок или следующих этапов.
 
-В main/Unreleased добавлено серверное время Content.created_at_unix_ms. Миграция 010 сохраняет неизвестное время старой истории; создание, повтор, история и события возвращают одно сохранённое значение. [CI 38167063307](https://github.com/space-protocol-project/space-server/actions/runs/38167063307) подтвердил PostgreSQL и совместимость Dart/Go для 55a6a53. Выпуск v0.1.0 этим изменением не заменяется.
+Сервер сохраняет время Content.created_at_unix_ms. Миграция 010 сохраняет неизвестное время старой истории; создание, повтор, история и события возвращают одно сохранённое значение. [CI 38167063307](https://github.com/space-protocol-project/space-server/actions/runs/38167063307) подтвердил PostgreSQL и совместимость Dart/Go для 55a6a53. Ранее опубликованные выпуски не заменяются.
 
 ## Прототип ConnectRPC
 
 Флаг `-connect-rpc` включает только GetManifest, CreateChallenge, CompleteChallenge, Subscribe и DeleteChannel на маршрутах `/space.v1.…/…`. По умолчанию флаг выключен. Вызовы передаются в существующий gRPC-сервер, который проверяет токены, подписи и права. grpc-gateway и штатный Flutter-клиент сохранены. Размер входящего тела и распакованного сообщения ограничен 16 КиБ. Отмена Connect-потока отменяет внутренний gRPC; запись потока имеет возобновляемый таймаут 20 секунд.
 
-Генерация: `buf generate ../space-protocol/protocol/proto --template buf.connect.gen.yaml`. Connect-Go и генератор закреплены на 1.19.2; новые версии 1.20/1.21 требуют Go 1.25. Прямые Connect-обработчики, HTTP-аутентификация до декодирования и проверка TLS pinning из Dart остаются следующими срезами; закреплённый домашний выпуск v0.1.0 не изменяется.
+Генерация: `buf generate ../space-protocol/protocol/proto --template buf.connect.gen.yaml`. Connect-Go и генератор закреплены на 1.19.2; новые версии 1.20/1.21 требуют Go 1.25. Прямые Connect-обработчики, HTTP-аутентификация до декодирования и проверка TLS pinning из Dart остаются следующими срезами; ранее опубликованные выпуски не изменяются.
 
 Приёмка первого Connect-среза: [CI 38174641293](https://github.com/space-protocol-project/space-server/actions/runs/38174641293) успешен для 6e59209: PostgreSQL/race, Connect Dart/Go Protobuf/JSON, подписанный вход, событие и отзыв, прежний gRPC и нативный vault Windows. HTTP-аутентификация до декодирования при прямом переносе и домашний TLS pinning в Dart остаются следующими срезами.
 

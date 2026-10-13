@@ -55,6 +55,9 @@ const (
 	// ChannelServiceUpdateChannelProcedure is the fully-qualified name of the ChannelService's
 	// UpdateChannel RPC.
 	ChannelServiceUpdateChannelProcedure = "/space.v1.ChannelService/UpdateChannel"
+	// ChannelServiceDeleteChannelProcedure is the fully-qualified name of the ChannelService's
+	// DeleteChannel RPC.
+	ChannelServiceDeleteChannelProcedure = "/space.v1.ChannelService/DeleteChannel"
 	// ChannelServiceGetChannelAccessProcedure is the fully-qualified name of the ChannelService's
 	// GetChannelAccess RPC.
 	ChannelServiceGetChannelAccessProcedure = "/space.v1.ChannelService/GetChannelAccess"
@@ -153,6 +156,7 @@ type ChannelServiceClient interface {
 	ListChannels(context.Context, *connect.Request[v1.ListChannelsRequest]) (*connect.Response[v1.ListChannelsResponse], error)
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
 	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.UpdateChannelResponse], error)
+	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
 	GetChannelAccess(context.Context, *connect.Request[v1.GetChannelAccessRequest]) (*connect.Response[v1.GetChannelAccessResponse], error)
 	UpdateChannelAccess(context.Context, *connect.Request[v1.UpdateChannelAccessRequest]) (*connect.Response[v1.UpdateChannelAccessResponse], error)
 	GetManifest(context.Context, *connect.Request[v1.GetManifestRequest]) (*connect.Response[v1.GetManifestResponse], error)
@@ -193,6 +197,12 @@ func NewChannelServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(channelServiceMethods.ByName("UpdateChannel")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteChannel: connect.NewClient[v1.DeleteChannelRequest, v1.DeleteChannelResponse](
+			httpClient,
+			baseURL+ChannelServiceDeleteChannelProcedure,
+			connect.WithSchema(channelServiceMethods.ByName("DeleteChannel")),
+			connect.WithClientOptions(opts...),
+		),
 		getChannelAccess: connect.NewClient[v1.GetChannelAccessRequest, v1.GetChannelAccessResponse](
 			httpClient,
 			baseURL+ChannelServiceGetChannelAccessProcedure,
@@ -220,6 +230,7 @@ type channelServiceClient struct {
 	listChannels        *connect.Client[v1.ListChannelsRequest, v1.ListChannelsResponse]
 	createChannel       *connect.Client[v1.CreateChannelRequest, v1.CreateChannelResponse]
 	updateChannel       *connect.Client[v1.UpdateChannelRequest, v1.UpdateChannelResponse]
+	deleteChannel       *connect.Client[v1.DeleteChannelRequest, v1.DeleteChannelResponse]
 	getChannelAccess    *connect.Client[v1.GetChannelAccessRequest, v1.GetChannelAccessResponse]
 	updateChannelAccess *connect.Client[v1.UpdateChannelAccessRequest, v1.UpdateChannelAccessResponse]
 	getManifest         *connect.Client[v1.GetManifestRequest, v1.GetManifestResponse]
@@ -245,6 +256,11 @@ func (c *channelServiceClient) UpdateChannel(ctx context.Context, req *connect.R
 	return c.updateChannel.CallUnary(ctx, req)
 }
 
+// DeleteChannel calls space.v1.ChannelService.DeleteChannel.
+func (c *channelServiceClient) DeleteChannel(ctx context.Context, req *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error) {
+	return c.deleteChannel.CallUnary(ctx, req)
+}
+
 // GetChannelAccess calls space.v1.ChannelService.GetChannelAccess.
 func (c *channelServiceClient) GetChannelAccess(ctx context.Context, req *connect.Request[v1.GetChannelAccessRequest]) (*connect.Response[v1.GetChannelAccessResponse], error) {
 	return c.getChannelAccess.CallUnary(ctx, req)
@@ -266,6 +282,7 @@ type ChannelServiceHandler interface {
 	ListChannels(context.Context, *connect.Request[v1.ListChannelsRequest]) (*connect.Response[v1.ListChannelsResponse], error)
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
 	UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.UpdateChannelResponse], error)
+	DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error)
 	GetChannelAccess(context.Context, *connect.Request[v1.GetChannelAccessRequest]) (*connect.Response[v1.GetChannelAccessResponse], error)
 	UpdateChannelAccess(context.Context, *connect.Request[v1.UpdateChannelAccessRequest]) (*connect.Response[v1.UpdateChannelAccessResponse], error)
 	GetManifest(context.Context, *connect.Request[v1.GetManifestRequest]) (*connect.Response[v1.GetManifestResponse], error)
@@ -302,6 +319,12 @@ func NewChannelServiceHandler(svc ChannelServiceHandler, opts ...connect.Handler
 		connect.WithSchema(channelServiceMethods.ByName("UpdateChannel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	channelServiceDeleteChannelHandler := connect.NewUnaryHandler(
+		ChannelServiceDeleteChannelProcedure,
+		svc.DeleteChannel,
+		connect.WithSchema(channelServiceMethods.ByName("DeleteChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	channelServiceGetChannelAccessHandler := connect.NewUnaryHandler(
 		ChannelServiceGetChannelAccessProcedure,
 		svc.GetChannelAccess,
@@ -330,6 +353,8 @@ func NewChannelServiceHandler(svc ChannelServiceHandler, opts ...connect.Handler
 			channelServiceCreateChannelHandler.ServeHTTP(w, r)
 		case ChannelServiceUpdateChannelProcedure:
 			channelServiceUpdateChannelHandler.ServeHTTP(w, r)
+		case ChannelServiceDeleteChannelProcedure:
+			channelServiceDeleteChannelHandler.ServeHTTP(w, r)
 		case ChannelServiceGetChannelAccessProcedure:
 			channelServiceGetChannelAccessHandler.ServeHTTP(w, r)
 		case ChannelServiceUpdateChannelAccessProcedure:
@@ -359,6 +384,10 @@ func (UnimplementedChannelServiceHandler) CreateChannel(context.Context, *connec
 
 func (UnimplementedChannelServiceHandler) UpdateChannel(context.Context, *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.UpdateChannelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ChannelService.UpdateChannel is not implemented"))
+}
+
+func (UnimplementedChannelServiceHandler) DeleteChannel(context.Context, *connect.Request[v1.DeleteChannelRequest]) (*connect.Response[v1.DeleteChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ChannelService.DeleteChannel is not implemented"))
 }
 
 func (UnimplementedChannelServiceHandler) GetChannelAccess(context.Context, *connect.Request[v1.GetChannelAccessRequest]) (*connect.Response[v1.GetChannelAccessResponse], error) {

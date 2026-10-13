@@ -36,6 +36,12 @@ type connectBackend struct {
 func (s *connectBackend) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.GetManifestResponse, error) {
 	return &pb.GetManifestResponse{ServerId: authn.Actor(ctx)}, nil
 }
+func (s *connectBackend) DeleteChannel(ctx context.Context, req *pb.DeleteChannelRequest) (*pb.DeleteChannelResponse, error) {
+	if authn.Actor(ctx) != "u_test" || req.ChannelId != "team" || req.ExpectedRevision != 4 {
+		return nil, status.Error(codes.InvalidArgument, "Вызов изменён")
+	}
+	return &pb.DeleteChannelResponse{}, nil
+}
 func (s *connectBackend) Subscribe(_ *pb.SubscribeRequest, stream pb.SyncService_SubscribeServer) error {
 	if err := stream.Send(&pb.SubscribeResponse{Heartbeat: true}); err != nil {
 		return err
@@ -71,6 +77,16 @@ func TestConnectPrototypeKeepsGRPCAuthAndCancelsStream(t *testing.T) {
 		reply, err := client.GetManifest(ctx, req)
 		if err != nil || reply.Msg.ServerId != "u_test" {
 			t.Fatalf("Manifest: %v %v", reply, err)
+		}
+
+		deleteReq := connect.NewRequest(&pb.DeleteChannelRequest{ChannelId: "team", ExpectedRevision: 4})
+		deleteReq.Header().Set("Authorization", "Bearer valid-token")
+		if _, err := client.DeleteChannel(ctx, deleteReq); err != nil {
+			t.Fatal(err)
+		}
+		deleteReq.Header().Set("Authorization", "Bearer wrong")
+		if _, err := client.DeleteChannel(ctx, deleteReq); connect.CodeOf(err) != connect.CodeUnauthenticated {
+			t.Fatalf("Удаление без авторизации: %v", err)
 		}
 		req.Header().Set("Authorization", "Bearer wrong")
 		if _, err := client.GetManifest(ctx, req); connect.CodeOf(err) != connect.CodeUnauthenticated {

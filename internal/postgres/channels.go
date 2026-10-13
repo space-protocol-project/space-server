@@ -256,7 +256,7 @@ func (s *Store) CreateChannel(ctx context.Context, req *pb.CreateChannelRequest)
 	}
 	var exists bool
 	var count int
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM channels WHERE id=$1),count(*) FROM channels", req.ChannelId).Scan(&exists, &count); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT (EXISTS(SELECT 1 FROM channels WHERE id=$1) OR EXISTS(SELECT 1 FROM admin_audit WHERE action='channel.delete:' || $1)),count(*) FROM channels", req.ChannelId).Scan(&exists, &count); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if exists {
@@ -359,6 +359,65 @@ func (s *Store) UpdateChannel(ctx context.Context, req *pb.UpdateChannelRequest)
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.UpdateChannelResponse{Channel: c}, nil
+}
+
+func (s *Store) DeleteChannel(ctx context.Context, req *pb.DeleteChannelRequest) (*pb.DeleteChannelResponse, error) {
+	if !channelIDPattern.MatchString(req.ChannelId) || req.ExpectedRevision < 1 {
+		return nil, status.Error(codes.InvalidArgument, "Некорректный канал или revision")
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	defer tx.Rollback(ctx)
+	actor, err := authorizeManagement(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	m, err := membership(ctx, tx, actor, true)
+	if err != nil {
+		return nil, err
+	}
+	if m.Blocked {
+		return nil, forbidden()
+	}
+	if _, err = tx.Exec(ctx, "SELECT singleton FROM space_settings FOR UPDATE"); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	c, err := loadChannel(ctx, tx, req.ChannelId, "FOR UPDATE")
+	if err != nil {
+		return nil, err
+	}
+	p, err := effectivePermissions(ctx, tx, c.Id, m)
+	if err != nil {
+		return nil, err
+	}
+	if !p.Visible {
+		return nil, status.Error(codes.NotFound, "Канал не найден")
+	}
+	if !p.Manage {
+		return nil, forbidden()
+	}
+	if req.ExpectedRevision != c.Revision {
+		return nil, status.Error(codes.Aborted, "Канал уже изменился; загрузите его заново")
+	}
+	for _, query := range []string{
+		"DELETE FROM events WHERE channel_id=$1",
+		"DELETE FROM contents WHERE channel_id=$1",
+		"DELETE FROM channel_access WHERE channel_id=$1",
+		"DELETE FROM channels WHERE id=$1",
+	} {
+		if _, err = tx.Exec(ctx, query, c.Id); err != nil {
+			return nil, databaseError(ctx, err)
+		}
+	}
+	if err = audit(ctx, tx, actor, "channel.delete:"+c.Id, c.Revision+1); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	return &pb.DeleteChannelResponse{}, nil
 }
 
 func validPermissions(p *pb.ChannelPermissions) bool {

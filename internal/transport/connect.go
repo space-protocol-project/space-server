@@ -37,6 +37,14 @@ func (s connectChannels) GetManifest(ctx context.Context, req *connect.Request[p
 	return connect.NewResponse(reply), nil
 }
 
+func (s connectChannels) DeleteChannel(ctx context.Context, req *connect.Request[pb.DeleteChannelRequest]) (*connect.Response[pb.DeleteChannelResponse], error) {
+	reply, err := s.client.DeleteChannel(prototypeContext(ctx, req.Header()), req.Msg)
+	if err != nil {
+		return nil, prototypeError(err)
+	}
+	return connect.NewResponse(reply), nil
+}
+
 type connectAuth struct {
 	rpc.UnimplementedAuthServiceHandler
 	client pb.AuthServiceClient
@@ -91,6 +99,7 @@ func WithConnectPrototype(base http.Handler, connection *grpc.ClientConn) http.H
 	_, sync := rpc.NewSyncServiceHandler(connectSync{client: pb.NewSyncServiceClient(connection)}, options...)
 	mux := http.NewServeMux()
 	mux.Handle(rpc.ChannelServiceGetManifestProcedure, channels)
+	mux.Handle(rpc.ChannelServiceDeleteChannelProcedure, channels)
 	mux.Handle(rpc.AuthServiceCreateChallengeProcedure, auth)
 	mux.Handle(rpc.AuthServiceCompleteChallengeProcedure, auth)
 	mux.Handle(rpc.SyncServiceSubscribeProcedure, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { sync.ServeHTTP(connectStreamWriter{w}, r) }))
@@ -100,7 +109,7 @@ func WithConnectPrototype(base http.Handler, connection *grpc.ClientConn) http.H
 
 func isConnectProcedure(path string) bool {
 	switch path {
-	case rpc.ChannelServiceGetManifestProcedure, rpc.AuthServiceCreateChallengeProcedure, rpc.AuthServiceCompleteChallengeProcedure, rpc.SyncServiceSubscribeProcedure:
+	case rpc.ChannelServiceDeleteChannelProcedure, rpc.ChannelServiceGetManifestProcedure, rpc.AuthServiceCreateChallengeProcedure, rpc.AuthServiceCompleteChallengeProcedure, rpc.SyncServiceSubscribeProcedure:
 		return true
 	}
 	return false

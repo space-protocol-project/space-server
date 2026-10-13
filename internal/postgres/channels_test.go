@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -41,6 +42,53 @@ type channelFixture struct {
 	admin    pb.AdminServiceClient
 	owner    context.Context
 	ownerID  string
+}
+
+func TestDeleteChannelPermissionsRevisionAndHistory(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "remove_me")
+	member, _ := f.enroll(t, true)
+	if _, err := f.contents.CreateContent(f.owner, &pb.CreateContentRequest{ChannelId: c.Id, Text: "Удаляемая история", IdempotencyKey: "delete-test"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := f.channels.DeleteChannel(member, &pb.DeleteChannelRequest{ChannelId: c.Id, ExpectedRevision: c.Revision})
+	requireCode(t, err, codes.PermissionDenied)
+	_, err = f.channels.DeleteChannel(f.owner, &pb.DeleteChannelRequest{ChannelId: c.Id, ExpectedRevision: c.Revision + 1})
+	requireCode(t, err, codes.Aborted)
+	_, err = f.channels.DeleteChannel(f.owner, &pb.DeleteChannelRequest{ChannelId: c.Id, ExpectedRevision: c.Revision})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"channels", "contents", "events", "channel_access"} {
+		column := "channel_id"
+		if table == "channels" {
+			column = "id"
+		}
+		var count int
+		if err := f.store.pool.QueryRow(f.ctx, "SELECT count(*) FROM "+table+" WHERE "+column+"=$1", c.Id).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("В %s остались записи: %d", table, count)
+		}
+	}
+	_, err = f.channels.DeleteChannel(f.owner, &pb.DeleteChannelRequest{ChannelId: c.Id, ExpectedRevision: c.Revision})
+	requireCode(t, err, codes.NotFound)
+	listed, err := f.channels.ListChannels(f.owner, &pb.ListChannelsRequest{IncludeArchived: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, channel := range listed.Channels {
+		if channel.Id == c.Id {
+			t.Fatal("Удалённый канал остался в каталоге")
+		}
+	}
+	if _, err := f.contents.CreateContent(f.owner, &pb.CreateContentRequest{ChannelId: c.Id, Text: "После удаления", IdempotencyKey: "after-delete"}); status.Code(err) != codes.NotFound {
+		t.Fatal(err)
+	}
+	_, err = f.channels.CreateChannel(f.owner, &pb.CreateChannelRequest{ChannelId: c.Id, Title: "Повторное использование", ViewType: "chat"})
+	requireCode(t, err, codes.AlreadyExists)
+
 }
 
 func newChannelFixture(t *testing.T) *channelFixture {
@@ -444,6 +492,11 @@ func TestChannelHTTPAndConcurrentRevision(t *testing.T) {
 	if response.StatusCode != 401 {
 		t.Fatal(response.StatusCode)
 	}
+	current := new(pb.GetChannelAccessResponse)
+	call("GET", "/api/v1/channels/http/access", nil, current, 200)
+	call("DELETE", "/api/v1/channels/http?expectedRevision="+strconv.FormatInt(current.Revision, 10), nil, new(pb.DeleteChannelResponse), 200)
+	call("GET", "/api/v1/channels/http/access", nil, nil, 404)
+
 }
 
 func TestChannelRulesValidation(t *testing.T) {

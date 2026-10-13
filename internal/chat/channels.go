@@ -8,6 +8,7 @@ import (
 )
 
 type channelStore interface {
+	DeleteChannel(context.Context, *pb.DeleteChannelRequest) (*pb.DeleteChannelResponse, error)
 	ListChannels(context.Context, *pb.ListChannelsRequest) (*pb.ListChannelsResponse, error)
 	CreateChannel(context.Context, *pb.CreateChannelRequest) (*pb.CreateChannelResponse, error)
 	UpdateChannel(context.Context, *pb.UpdateChannelRequest) (*pb.UpdateChannelResponse, error)
@@ -42,6 +43,13 @@ func (s *Service) UpdateChannel(ctx context.Context, req *pb.UpdateChannelReques
 		return nil, err
 	}
 	return store.UpdateChannel(ctx, req)
+}
+func (s *Service) DeleteChannel(ctx context.Context, req *pb.DeleteChannelRequest) (*pb.DeleteChannelResponse, error) {
+	store, err := s.channels()
+	if err != nil {
+		return nil, err
+	}
+	return store.DeleteChannel(ctx, req)
 }
 func (s *Service) GetChannelAccess(ctx context.Context, req *pb.GetChannelAccessRequest) (*pb.GetChannelAccessResponse, error) {
 	store, err := s.channels()

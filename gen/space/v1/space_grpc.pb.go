@@ -23,6 +23,7 @@ const (
 	ChannelService_ListChannels_FullMethodName        = "/space.v1.ChannelService/ListChannels"
 	ChannelService_CreateChannel_FullMethodName       = "/space.v1.ChannelService/CreateChannel"
 	ChannelService_UpdateChannel_FullMethodName       = "/space.v1.ChannelService/UpdateChannel"
+	ChannelService_DeleteChannel_FullMethodName       = "/space.v1.ChannelService/DeleteChannel"
 	ChannelService_GetChannelAccess_FullMethodName    = "/space.v1.ChannelService/GetChannelAccess"
 	ChannelService_UpdateChannelAccess_FullMethodName = "/space.v1.ChannelService/UpdateChannelAccess"
 	ChannelService_GetManifest_FullMethodName         = "/space.v1.ChannelService/GetManifest"
@@ -38,6 +39,7 @@ type ChannelServiceClient interface {
 	ListChannels(ctx context.Context, in *ListChannelsRequest, opts ...grpc.CallOption) (*ListChannelsResponse, error)
 	CreateChannel(ctx context.Context, in *CreateChannelRequest, opts ...grpc.CallOption) (*CreateChannelResponse, error)
 	UpdateChannel(ctx context.Context, in *UpdateChannelRequest, opts ...grpc.CallOption) (*UpdateChannelResponse, error)
+	DeleteChannel(ctx context.Context, in *DeleteChannelRequest, opts ...grpc.CallOption) (*DeleteChannelResponse, error)
 	GetChannelAccess(ctx context.Context, in *GetChannelAccessRequest, opts ...grpc.CallOption) (*GetChannelAccessResponse, error)
 	UpdateChannelAccess(ctx context.Context, in *UpdateChannelAccessRequest, opts ...grpc.CallOption) (*UpdateChannelAccessResponse, error)
 	GetManifest(ctx context.Context, in *GetManifestRequest, opts ...grpc.CallOption) (*GetManifestResponse, error)
@@ -100,6 +102,16 @@ func (c *channelServiceClient) UpdateChannel(ctx context.Context, in *UpdateChan
 	return out, nil
 }
 
+func (c *channelServiceClient) DeleteChannel(ctx context.Context, in *DeleteChannelRequest, opts ...grpc.CallOption) (*DeleteChannelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteChannelResponse)
+	err := c.cc.Invoke(ctx, ChannelService_DeleteChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *channelServiceClient) GetChannelAccess(ctx context.Context, in *GetChannelAccessRequest, opts ...grpc.CallOption) (*GetChannelAccessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetChannelAccessResponse)
@@ -140,6 +152,7 @@ type ChannelServiceServer interface {
 	ListChannels(context.Context, *ListChannelsRequest) (*ListChannelsResponse, error)
 	CreateChannel(context.Context, *CreateChannelRequest) (*CreateChannelResponse, error)
 	UpdateChannel(context.Context, *UpdateChannelRequest) (*UpdateChannelResponse, error)
+	DeleteChannel(context.Context, *DeleteChannelRequest) (*DeleteChannelResponse, error)
 	GetChannelAccess(context.Context, *GetChannelAccessRequest) (*GetChannelAccessResponse, error)
 	UpdateChannelAccess(context.Context, *UpdateChannelAccessRequest) (*UpdateChannelAccessResponse, error)
 	GetManifest(context.Context, *GetManifestRequest) (*GetManifestResponse, error)
@@ -164,6 +177,9 @@ func (UnimplementedChannelServiceServer) CreateChannel(context.Context, *CreateC
 }
 func (UnimplementedChannelServiceServer) UpdateChannel(context.Context, *UpdateChannelRequest) (*UpdateChannelResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateChannel not implemented")
+}
+func (UnimplementedChannelServiceServer) DeleteChannel(context.Context, *DeleteChannelRequest) (*DeleteChannelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteChannel not implemented")
 }
 func (UnimplementedChannelServiceServer) GetChannelAccess(context.Context, *GetChannelAccessRequest) (*GetChannelAccessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChannelAccess not implemented")
@@ -260,6 +276,24 @@ func _ChannelService_UpdateChannel_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChannelService_DeleteChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).DeleteChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_DeleteChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).DeleteChannel(ctx, req.(*DeleteChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChannelService_GetChannelAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetChannelAccessRequest)
 	if err := dec(in); err != nil {
@@ -332,6 +366,10 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateChannel",
 			Handler:    _ChannelService_UpdateChannel_Handler,
+		},
+		{
+			MethodName: "DeleteChannel",
+			Handler:    _ChannelService_DeleteChannel_Handler,
 		},
 		{
 			MethodName: "GetChannelAccess",

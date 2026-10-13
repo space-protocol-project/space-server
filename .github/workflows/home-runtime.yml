@@ -1,6 +1,11 @@
 name: Домашний сервер без Docker
 on:
   workflow_dispatch:
+    inputs:
+      app_ref:
+        description: Коммит приложения для проверки обновления и восстановления
+        type: string
+        default: main
   push:
     tags: ['v*']
     branches: [main]
@@ -51,6 +56,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-app
+          ref: ${{ inputs.app_ref || 'main' }}
           path: app-source
       - name: Сквозной запуск, владелец и приглашённый участник через TLS
         working-directory: app-source/client

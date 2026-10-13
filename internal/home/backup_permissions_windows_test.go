@@ -3,8 +3,8 @@ package home
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -21,13 +21,36 @@ func TestBackupDirectoryProtectsRootAndChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	system, err := windows.CreateWellKnownSid(windows.WinLocalSystemSid)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, path := range []string{root, key} {
 		descriptor, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 		if err != nil {
 			t.Fatal(err)
 		}
-		text := descriptor.String()
-		if !strings.Contains(text, user.User.Sid.String()) || !strings.Contains(text, ";;;SY)") || strings.Contains(text, ";;;WD)") || strings.Contains(text, ";;;BU)") || strings.Contains(text, ";;;AU)") {
+		dacl, _, err := descriptor.DACL()
+		if err != nil || dacl == nil || dacl.AceCount != 2 {
+			t.Fatalf("Ожидались ровно два разрешения доступа: %s", path)
+		}
+		ownerFound, systemFound := false, false
+		for index := uint32(0); index < uint32(dacl.AceCount); index++ {
+			var ace *windows.ACCESS_ALLOWED_ACE
+			if err := windows.GetAce(dacl, index, &ace); err != nil {
+				t.Fatal(err)
+			}
+			if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Mask != 0x1f01ff {
+				t.Fatalf("Ожидалось разрешение полного доступа: %s", path)
+			}
+			sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+			ownerFound = ownerFound || sid.Equals(user.User.Sid)
+			systemFound = systemFound || sid.Equals(system)
+			if path == root && ace.Header.AceFlags&(windows.OBJECT_INHERIT_ACE|windows.CONTAINER_INHERIT_ACE) != windows.OBJECT_INHERIT_ACE|windows.CONTAINER_INHERIT_ACE {
+				t.Fatal("Права корня не наследуются файлами и каталогами копии")
+			}
+		}
+		if !ownerFound || !systemFound {
 			t.Fatalf("Права копии не ограничены владельцем и SYSTEM: %s", path)
 		}
 		if path == root {

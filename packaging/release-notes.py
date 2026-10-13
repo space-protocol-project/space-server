@@ -1,27 +1,29 @@
-"""Взять описание выпуска из одноимённого раздела Changelog.md."""
+"""Проверка тега и выбор описания выпуска из Changelog.md."""
 import re
 import sys
 from pathlib import Path
 
+TAG = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?")
+
+def tag_info(tag):
+    match = TAG.fullmatch(tag)
+    if match is None:
+        raise ValueError("Нужен тег vX.Y.Z или vX.Y.Z-rc.N")
+    return {"version": tag[1:], "native_version": ".".join(match.group(i) for i in (1, 2, 3)), "prerelease": match.group(4) is not None}
 
 def release_notes(changelog, tag, allow_unreleased=False):
-    if not (allow_unreleased and tag == "Unreleased") and not re.fullmatch(r"v\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", tag):
-        raise ValueError("Некорректный тег выпуска")
+    if not (allow_unreleased and tag == "Unreleased"):
+        tag_info(tag)
     sections = list(re.finditer(r"^## (.+)$", changelog, re.MULTILINE))
     matches = []
     for index, section in enumerate(sections):
-        title = section.group(1).strip()
-        version = title.split()[0].strip("[]")
-        if version != tag:
-            continue
-        end = sections[index + 1].start() if index + 1 < len(sections) else len(changelog)
-        content = changelog[section.end():end].strip()
-        if content:
-            matches.append(content)
-    if len(matches) != 1:
+        version = section.group(1).strip().split()[0].strip("[]")
+        if version == tag:
+            end = sections[index + 1].start() if index + 1 < len(sections) else len(changelog)
+            matches.append(changelog[section.end():end].strip())
+    if len(matches) != 1 or not matches[0]:
         raise ValueError("Нужен ровно один непустой раздел Changelog.md для " + tag)
     return matches[0] + "\n"
-
 
 if __name__ == "__main__":
     tag, source, destination = sys.argv[1:]

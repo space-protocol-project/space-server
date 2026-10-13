@@ -22,6 +22,14 @@ class ReleaseNotesTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 notes(text, tag)
 
+    def test_empty_duplicate_and_invalid_semver_fail(self):
+        with self.assertRaises(ValueError):
+            notes("## v0.3.0\n\n## v0.3.0\nЗаполненный раздел", "v0.3.0")
+        for tag in ["v01.2.3", "v1.2.3-..", "v1.2.3-rc.01", "v1.2", "v1.2.3+build"]:
+            with self.assertRaises(ValueError):
+                notes("## " + tag + "\nПункт", tag)
+        self.assertEqual(notes("## v0.3.0-rc.1\nПредварительный выпуск", "v0.3.0-rc.1"), "Предварительный выпуск\n")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,7 +22,7 @@ func Handler(ctx context.Context, connection *grpc.ClientConn, serverID string, 
 	return HandlerWithEndpoint(ctx, connection, serverID, key, "")
 }
 
-func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey []byte, endpoint string) (http.Handler, error) {
+func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serverID string, publicKey []byte, endpoint string, connectEnabled ...bool) (http.Handler, error) {
 	// Authorization прокидывается runtime отдельно; клиентская Grpc-Metadata-* не принимается.
 	gateway := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(func(string) (string, bool) { return "", false }), runtime.WithForwardResponseOption(func(_ context.Context, w http.ResponseWriter, message proto.Message) error {
 		switch message.(type) {
@@ -66,6 +66,9 @@ func HandlerWithEndpoint(ctx context.Context, connection *grpc.ClientConn, serve
 		}
 		if endpoint != "" {
 			discovery["grpc_endpoint"] = endpoint
+		}
+		if len(connectEnabled) > 0 && connectEnabled[0] {
+			discovery["connect_endpoint"] = "/"
 		}
 		_ = json.NewEncoder(w).Encode(discovery)
 	})

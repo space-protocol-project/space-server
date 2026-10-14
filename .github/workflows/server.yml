@@ -1,5 +1,11 @@
 name: Проверка сервера
 on:
+  workflow_dispatch:
+    inputs:
+      app_ref:
+        description: Коммит приложения для проверки совместимой пары
+        type: string
+        default: main
   push:
     branches: ['**']
   pull_request:

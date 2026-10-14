@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -25,6 +26,40 @@ func (connectVerifier) Authenticate(_ context.Context, token string) (string, er
 		return "", status.Error(codes.Unauthenticated, "Недействительный token")
 	}
 	return "u_test", nil
+}
+
+func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
+	handler := WithConnect(http.NotFoundHandler(), nil, connectVerifier{})
+	for _, path := range []string{
+		rpc.ChannelServiceListChannelsProcedure,
+		rpc.ChannelServiceWatchChannelsProcedure,
+		rpc.ContentServiceCreateContentProcedure,
+		rpc.AuthServiceListDevicesProcedure,
+		rpc.SyncServiceSubscribeProcedure,
+		rpc.AdminServiceUpdateSettingsProcedure,
+		rpc.MembershipServiceGetMembershipProcedure,
+	} {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader("не JSON"))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Connect-Protocol-Version", "1")
+			request.Header.Set("Authorization", "Bearer wrong")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), "unauthenticated") {
+				t.Fatalf("Авторизация выполняется после декодирования: %d %s", response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestConnectProcedureRegistryCoversServices(t *testing.T) {
+	if len(connectProcedures) != 37 {
+		t.Fatalf("Неполный набор Connect RPC: %d", len(connectProcedures))
+	}
+	if isConnectProcedure("/space.v1.AdminService/Unknown") {
+		t.Fatal("Неизвестная процедура разрешена")
+	}
 }
 
 type connectBackend struct {

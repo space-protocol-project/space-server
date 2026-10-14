@@ -40,7 +40,7 @@ func main() {
 func run() (result error) {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
-	connectRPC := flag.Bool("connect-rpc", false, "Включить экспериментальные маршруты ConnectRPC")
+	connectRPC := flag.Bool("connect-rpc", true, "Включить ConnectRPC; false сохраняет только прежние транспорты")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
 	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
 	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
@@ -215,7 +215,9 @@ func run() (result error) {
 		return err
 	}
 	options := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
+	var verifier authn.Verifier
 	if store != nil {
+		verifier = store
 		options = append(options, grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
 	}
 	server := grpc.NewServer(options...)
@@ -239,15 +241,13 @@ func run() (result error) {
 		return err
 	}
 	defer connection.Close()
-	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String())
+	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String(), *connectRPC)
 	if err != nil {
 		return err
 	}
 
 	if *connectRPC {
-		handler = transport.WithConnectPrototype(handler, connection)
-	}
-	if *connectRPC {
+		handler = transport.WithConnect(handler, connection, verifier)
 		handler = transport.RestrictOriginWithConnect(handler, origin)
 	} else {
 		handler = transport.RestrictOrigin(handler, origin)
@@ -281,14 +281,12 @@ func run() (result error) {
 			}
 		}()
 		endpoint, _ := url.Parse(publicOrigin)
-		publicHandler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host)
+		publicHandler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host, *connectRPC)
 		if err != nil {
 			return err
 		}
 		if *connectRPC {
-			publicHandler = transport.WithConnectPrototype(publicHandler, connection)
-		}
-		if *connectRPC {
+			publicHandler = transport.WithConnect(publicHandler, connection, verifier)
 			publicHandler = transport.RestrictOriginWithConnect(publicHandler, publicOrigin)
 		} else {
 			publicHandler = transport.RestrictOrigin(publicHandler, publicOrigin)

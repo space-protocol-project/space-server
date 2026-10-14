@@ -197,3 +197,14 @@ HTTPS Connect выполнен на отдельной PostgreSQL. Все 249 о
 успешен. Перенос на новом IP также проверен с незавершённой ротацией root.
 Подписанный Android APK собран локально: Android 7+, ARM32/ARM64/x86_64.
 Проверка на физическом Android-устройстве ещё не выполнена.
+
+## Выпуск переноса и Android
+
+Опубликованы [Space v0.2.5](https://github.com/space-protocol-project/space-app/releases/tag/v0.2.5)
+и [runtime v0.2.4](https://github.com/space-protocol-project/space-server/releases/tag/v0.2.4).
+Все задания [CI приложения 38556597924](https://github.com/space-protocol-project/space-app/actions/runs/38556597924)
+успешны: установщики Windows/macOS/Linux, подписанный Android APK, полный серверный
+CI и нативный Windows vault. Тег приложения закреплён на a2fd650, runtime — на 6a25fef.
+Манифест приложения проверен по опубликованным размерам и SHA-256 runtime.
+APK проверен apksigner; SHA-256 сертификата подписи:
+75d792704929d0135d2120d07fa6b557f94532bf0f2581857d770b908be7bda3.

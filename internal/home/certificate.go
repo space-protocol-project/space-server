@@ -20,21 +20,7 @@ import (
 func Certificate(data string, ip net.IP) (tls.Certificate, error) {
 	certPath, keyPath := filepath.Join(data, "server.crt"), filepath.Join(data, "server.key")
 	if _, err := os.Stat(certPath); err == nil {
-		certificate, err := tls.LoadX509KeyPair(certPath, keyPath)
-		if err != nil {
-			return tls.Certificate{}, err
-		}
-		leaf, err := x509.ParseCertificate(certificate.Certificate[0])
-		if err != nil {
-			return tls.Certificate{}, err
-		}
-		if err := leaf.VerifyHostname(ip.String()); err != nil {
-			return tls.Certificate{}, fmt.Errorf("IP изменился; нужна явная смена сертификата и ссылок: %w", err)
-		}
-		if time.Now().After(leaf.NotAfter) {
-			return tls.Certificate{}, fmt.Errorf("Сертификат истёк; нужна явная смена сертификата")
-		}
-		return certificate, nil
+		return loadHomeCertificate(certPath, keyPath, ip)
 	} else if !os.IsNotExist(err) {
 		return tls.Certificate{}, err
 	}
@@ -67,4 +53,22 @@ func Certificate(data string, ip net.IP) (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 	return tls.X509KeyPair(certPEM, keyPEM)
+}
+
+func loadHomeCertificate(certPath, keyPath string, ip net.IP) (tls.Certificate, error) {
+	certificate, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	leaf, err := x509.ParseCertificate(certificate.Certificate[0])
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	if err := leaf.VerifyHostname(ip.String()); err != nil {
+		return tls.Certificate{}, fmt.Errorf("IP изменился; нужна явная смена сертификата и ссылок: %w", err)
+	}
+	if time.Now().After(leaf.NotAfter) {
+		return tls.Certificate{}, fmt.Errorf("Сертификат истёк; нужна явная смена сертификата")
+	}
+	return certificate, nil
 }

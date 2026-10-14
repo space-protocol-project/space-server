@@ -182,9 +182,10 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if err := validateServerIcon(req.Icon); err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(req.Title) == "" || len(req.Title) > 320 || strings.TrimSpace(req.ChatTitle) == "" || len(req.ChatTitle) > 320 || (req.RegistrationPolicy != "open" && req.RegistrationPolicy != "closed") {
-		return nil, status.Error(codes.InvalidArgument, "Нужны названия до 320 байт и политика open/closed")
+	if err := validateSettingsRequest(req); err != nil {
+		return nil, err
 	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, databaseError(ctx, err)
@@ -198,11 +199,8 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if owner != principal {
-		member, roleErr := membership(ctx, tx, principal, false)
-		if roleErr != nil || member.Role != "admin" {
-			return nil, forbidden()
-		}
+	if err := requireSettingsOwner(ctx, tx, owner, principal); err != nil {
+		return nil, err
 	}
 	if current.Revision != req.ExpectedRevision {
 		return nil, status.Error(codes.Aborted, "Настройки уже изменились; загрузите их заново")
@@ -215,12 +213,8 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	iconData := icon.Data
-	if iconData == nil {
-		iconData = []byte{}
-	}
-	if _, err = tx.Exec(ctx, "UPDATE space_settings SET icon_preset=$1,icon_media_type=$2,icon_data=$3 WHERE singleton=true", icon.Preset, icon.MediaType, iconData); err != nil {
-		return nil, databaseError(ctx, err)
+	if err := updateSettingsIcon(ctx, tx, icon); err != nil {
+		return nil, err
 	}
 	// Старое поле chat_title остаётся совместимым с названием general.
 	if _, err = tx.Exec(ctx, "UPDATE channels SET title=$1,revision=revision+1 WHERE id='general' AND title<>$1", req.ChatTitle); err != nil {
@@ -253,4 +247,32 @@ func (s *Store) EnableFirstOwner(ctx context.Context) error {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func validateSettingsRequest(req *pb.UpdateSettingsRequest) error {
+	if strings.TrimSpace(req.Title) == "" || len(req.Title) > 320 || strings.TrimSpace(req.ChatTitle) == "" || len(req.ChatTitle) > 320 || (req.RegistrationPolicy != "open" && req.RegistrationPolicy != "closed") {
+		return status.Error(codes.InvalidArgument, "Нужны названия до 320 байт и политика open/closed")
+	}
+	return nil
+}
+
+func updateSettingsIcon(ctx context.Context, tx pgx.Tx, icon *pb.ServerIcon) error {
+	iconData := icon.Data
+	if iconData == nil {
+		iconData = []byte{}
+	}
+	if _, err := tx.Exec(ctx, "UPDATE space_settings SET icon_preset=$1,icon_media_type=$2,icon_data=$3 WHERE singleton=true", icon.Preset, icon.MediaType, iconData); err != nil {
+		return databaseError(ctx, err)
+	}
+	return nil
+}
+
+func requireSettingsOwner(ctx context.Context, tx pgx.Tx, owner, principal string) error {
+	if owner != principal {
+		member, roleErr := membership(ctx, tx, principal, false)
+		if roleErr != nil || member.Role != "admin" {
+			return forbidden()
+		}
+	}
+	return nil
 }

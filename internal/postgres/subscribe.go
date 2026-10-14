@@ -36,25 +36,13 @@ func (s *Store) Subscribe(req *pb.SubscribeRequest, stream pb.SyncService_Subscr
 		if _, err := s.Authenticate(ctx, token); err != nil {
 			return err
 		}
-		for _, event := range batch.Events {
-			if err := s.sendAuthorizedFrame(req.ChannelId, stream, &pb.SubscribeResponse{Event: event, Cursor: event.Cursor}); err != nil {
-				return err
-			}
-			cursor = event.Cursor
-			beat = time.Now()
+		cursor, beat, err = s.sendEventBatch(req.ChannelId, stream, batch.Events, cursor, beat)
+		if err != nil {
+			return err
 		}
-		if time.Since(beat) >= 15*time.Second {
-			if err := s.sendAuthorizedFrame(req.ChannelId, stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
-				return err
-			}
-			beat = time.Now()
-		}
-		if len(batch.Events) < 100 {
-			select {
-			case <-ctx.Done():
-				return status.FromContextError(ctx.Err()).Err()
-			case <-ticker.C:
-			}
+		beat, err = s.waitForNextEventBatch(ctx, req.ChannelId, stream, cursor, beat, len(batch.Events), ticker)
+		if err != nil {
+			return err
 		}
 		batch, err = s.ListEvents(ctx, &pb.ListEventsRequest{ChannelId: req.ChannelId, After: cursor})
 		if err != nil {
@@ -100,4 +88,32 @@ func sendWithDeadline(ctx context.Context, send func() error) error {
 	case <-timeout.C:
 		return status.Error(codes.DeadlineExceeded, "Клиент слишком медленно читает поток")
 	}
+}
+
+func (s *Store) sendEventBatch(channel string, stream pb.SyncService_SubscribeServer, events []*pb.Event, cursor string, beat time.Time) (string, time.Time, error) {
+	for _, event := range events {
+		if err := s.sendAuthorizedFrame(channel, stream, &pb.SubscribeResponse{Event: event, Cursor: event.Cursor}); err != nil {
+			return cursor, beat, err
+		}
+		cursor = event.Cursor
+		beat = time.Now()
+	}
+	return cursor, beat, nil
+}
+
+func (s *Store) waitForNextEventBatch(ctx context.Context, channel string, stream pb.SyncService_SubscribeServer, cursor string, beat time.Time, batchSize int, ticker *time.Ticker) (time.Time, error) {
+	if time.Since(beat) >= 15*time.Second {
+		if err := s.sendAuthorizedFrame(channel, stream, &pb.SubscribeResponse{Cursor: cursor, Heartbeat: true}); err != nil {
+			return beat, err
+		}
+		beat = time.Now()
+	}
+	if batchSize < 100 {
+		select {
+		case <-ctx.Done():
+			return beat, status.FromContextError(ctx.Err()).Err()
+		case <-ticker.C:
+		}
+	}
+	return beat, nil
 }

@@ -89,16 +89,9 @@ func effectivePermissions(ctx context.Context, q rowQuery, id string, m *pb.Memb
 // В транзакции порядок блокировок: grant → membership → settings → channel.
 // ACL изменяется только под FOR UPDATE канала; чтение удерживает FOR SHARE.
 func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool) (*pb.Channel, error) {
-	var m *pb.Member
-	if authn.Token(ctx) != "" {
-		var err error
-		m, err = membership(ctx, q, authn.Actor(ctx), lock)
-		if err != nil {
-			return nil, err
-		}
-		if m.Blocked {
-			return nil, forbidden()
-		}
+	m, err := channelMember(ctx, q, lock)
+	if err != nil {
+		return nil, err
 	}
 	var disabled bool
 	if err := enabledChat(ctx, q, lock); err != nil {
@@ -107,13 +100,7 @@ func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool
 		}
 		disabled = true
 	}
-	clause := ""
-	if lock {
-		clause = "FOR SHARE"
-	}
-	if lock && action == "write" {
-		clause = "FOR UPDATE"
-	}
+	clause := channelLockClause(lock, action)
 	c, err := loadChannel(ctx, q, id, clause)
 	if err != nil {
 		return nil, err
@@ -130,32 +117,11 @@ func channelAccess(ctx context.Context, q rowQuery, id, action string, lock bool
 	if !c.Permissions.Visible {
 		return nil, status.Error(codes.NotFound, "Канал не найден")
 	}
-	allowed := c.Permissions.Visible
-	switch action {
-	case "read":
-		allowed = c.Permissions.Read
-	case "write":
-		allowed = c.Permissions.Write
-	case "manage":
-		allowed = c.Permissions.Manage
+	if err := requireChannelAction(c, action); err != nil {
+		return nil, err
 	}
-	if !allowed {
-		return nil, forbidden()
-	}
-	if action == "write" && c.Archived {
-		return nil, status.Error(codes.FailedPrecondition, "Канал архивирован")
-	}
-	if c.Archived {
-		c.Permissions.Write = false
-	}
-	if disabled {
-		c.Permissions.Read = false
-		c.Permissions.Write = false
-	}
-	if c.Permissions.Read {
-		if err = q.QueryRow(ctx, "SELECT next_sequence-1 FROM channels WHERE id=$1", id).Scan(&c.LatestMessageSequence); err != nil {
-			return nil, databaseError(ctx, err)
-		}
+	if err := updateChannelReadState(ctx, q, c, disabled); err != nil {
+		return nil, err
 	}
 	return c, nil
 }
@@ -173,44 +139,17 @@ func (s *Store) channelList(ctx context.Context, tx pgx.Tx, archived, publicOnly
 		return nil, nil
 	}
 	// Сначала закрываем rows: пул ограничен, повторные запросы выполняются той же транзакцией.
-	rows, err := tx.Query(ctx, "SELECT id FROM channels WHERE ($1 OR NOT archived) AND (NOT $2 OR public_preview) ORDER BY position,id", archived, publicOnly)
+	ids, err := listedChannelIDs(ctx, tx, archived, publicOnly)
 	if err != nil {
-		return nil, databaseError(ctx, err)
-	}
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
-			rows.Close()
-			return nil, databaseError(ctx, err)
-		}
-		ids = append(ids, id)
-	}
-	rows.Close()
-	if err = rows.Err(); err != nil {
-		return nil, databaseError(ctx, err)
+		return nil, err
 	}
 	var result []*pb.Channel
 	for _, id := range ids {
-		if publicOnly {
-			c, err := loadChannel(ctx, tx, id, "FOR SHARE")
-			if err != nil {
-				return nil, err
-			}
-			// Повторная проверка после блокировки предотвращает утечку при смене public_preview.
-			if c.PublicPreview && !c.Archived {
-				result = append(result, c)
-			}
-			continue
-		}
-		c, err := channelAccess(ctx, tx, id, "visible", true)
-		if status.Code(err) == codes.NotFound {
-			continue
-		}
+		c, err := listedChannel(ctx, tx, id, archived, publicOnly)
 		if err != nil {
 			return nil, err
 		}
-		if archived || !c.Archived {
+		if c != nil {
 			result = append(result, c)
 		}
 	}
@@ -322,21 +261,12 @@ func (s *Store) UpdateChannel(ctx context.Context, req *pb.UpdateChannelRequest)
 	if err != nil {
 		return nil, err
 	}
-	p, err := effectivePermissions(ctx, tx, c.Id, m)
+	p, err := channelManagementPermissions(ctx, tx, c.Id, m)
 	if err != nil {
 		return nil, err
 	}
-	if !p.Visible {
-		return nil, status.Error(codes.NotFound, "Канал не найден")
-	}
-	if !p.Manage {
-		return nil, forbidden()
-	}
-	if req.PublicPreview != c.PublicPreview && m.Role != "owner" && m.Role != "admin" {
-		return nil, forbidden()
-	}
-	if req.ExpectedRevision != c.Revision {
-		return nil, status.Error(codes.Aborted, "Канал уже изменился; загрузите его заново")
+	if err := validateChannelUpdate(req, c, m); err != nil {
+		return nil, err
 	}
 	c.Title, c.Position, c.Archived, c.PublicPreview = req.Title, req.Position, req.Archived, req.PublicPreview
 	c.Revision++
@@ -347,10 +277,8 @@ func (s *Store) UpdateChannel(ctx context.Context, req *pb.UpdateChannelRequest)
 	if _, err = tx.Exec(ctx, "UPDATE channels SET title=$2,position=$3,archived=$4,public_preview=$5,revision=$6 WHERE id=$1", c.Id, c.Title, c.Position, c.Archived, c.PublicPreview, c.Revision); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if c.Id == "general" {
-		if _, err = tx.Exec(ctx, "UPDATE space_settings SET chat_title=$1,revision=revision+1 WHERE singleton=true AND chat_title<>$1", c.Title); err != nil {
-			return nil, databaseError(ctx, err)
-		}
+	if err := synchronizeGeneralTitle(ctx, tx, c); err != nil {
+		return nil, err
 	}
 	if err = audit(ctx, tx, actor, "channel.update:"+c.Id, c.Revision); err != nil {
 		return nil, databaseError(ctx, err)
@@ -388,15 +316,9 @@ func (s *Store) DeleteChannel(ctx context.Context, req *pb.DeleteChannelRequest)
 	if err != nil {
 		return nil, err
 	}
-	p, err := effectivePermissions(ctx, tx, c.Id, m)
+	_, err = channelManagementPermissions(ctx, tx, c.Id, m)
 	if err != nil {
 		return nil, err
-	}
-	if !p.Visible {
-		return nil, status.Error(codes.NotFound, "Канал не найден")
-	}
-	if !p.Manage {
-		return nil, forbidden()
 	}
 	if req.ExpectedRevision != c.Revision {
 		return nil, status.Error(codes.Aborted, "Канал уже изменился; загрузите его заново")
@@ -505,37 +427,14 @@ func (s *Store) UpdateChannelAccess(ctx context.Context, req *pb.UpdateChannelAc
 		return nil, status.Error(codes.Aborted, "Канал уже изменился; загрузите права заново")
 	}
 	// Проверяем всех субъектов до удаления старых правил. Блокировка пространства выше ACL.
-	for _, r := range req.Rules {
-		if r.PrincipalId == "" {
-			continue
-		}
-		m, err := membership(ctx, tx, r.PrincipalId, false)
-		if err != nil {
-			if status.Code(err) == codes.PermissionDenied {
-				return nil, status.Error(codes.InvalidArgument, "Субъект не является участником пространства")
-			}
-			return nil, err
-		}
-		if m.Role == "owner" || m.Role == "admin" {
-			return nil, status.Error(codes.InvalidArgument, "Правила для owner/admin не применяются")
-		}
+	if err := validateAccessMembers(ctx, tx, req.Rules); err != nil {
+		return nil, err
 	}
 	if _, err = tx.Exec(ctx, "DELETE FROM channel_access WHERE channel_id=$1", c.Id); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	for _, r := range req.Rules {
-		subject := "role:" + r.Role
-		var role, principal any
-		if r.Role != "" {
-			role = r.Role
-		} else {
-			principal = r.PrincipalId
-			subject = "principal:" + r.PrincipalId
-		}
-		p := r.Permissions
-		if _, err = tx.Exec(ctx, "INSERT INTO channel_access(channel_id,subject,role,principal_id,visible,can_read,can_write,can_manage) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", c.Id, subject, role, principal, p.Visible, p.Read, p.Write, p.Manage); err != nil {
-			return nil, databaseError(ctx, err)
-		}
+	if err := insertAccessRules(ctx, tx, c.Id, req.Rules); err != nil {
+		return nil, err
 	}
 	c.Revision++
 	if _, err = tx.Exec(ctx, "UPDATE channels SET revision=$2 WHERE id=$1", c.Id, c.Revision); err != nil {
@@ -552,4 +451,180 @@ func (s *Store) UpdateChannelAccess(ctx context.Context, req *pb.UpdateChannelAc
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.UpdateChannelAccessResponse{ChannelId: result.ChannelId, Revision: result.Revision, Rules: result.Rules}, nil
+}
+
+func channelMember(ctx context.Context, q rowQuery, lock bool) (*pb.Member, error) {
+	var m *pb.Member
+	if authn.Token(ctx) != "" {
+		var err error
+		m, err = membership(ctx, q, authn.Actor(ctx), lock)
+		if err != nil {
+			return nil, err
+		}
+		if m.Blocked {
+			return nil, forbidden()
+		}
+	}
+	return m, nil
+}
+
+func requireChannelAction(c *pb.Channel, action string) error {
+	allowed := c.Permissions.Visible
+	switch action {
+	case "read":
+		allowed = c.Permissions.Read
+	case "write":
+		allowed = c.Permissions.Write
+	case "manage":
+		allowed = c.Permissions.Manage
+	}
+	if !allowed {
+		return forbidden()
+	}
+	if action == "write" && c.Archived {
+		return status.Error(codes.FailedPrecondition, "Канал архивирован")
+	}
+	return nil
+}
+
+func listedChannelIDs(ctx context.Context, tx pgx.Tx, archived, publicOnly bool) ([]string, error) {
+	rows, err := tx.Query(ctx, "SELECT id FROM channels WHERE ($1 OR NOT archived) AND (NOT $2 OR public_preview) ORDER BY position,id", archived, publicOnly)
+	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, databaseError(ctx, err)
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	return ids, nil
+}
+
+func listedChannel(ctx context.Context, tx pgx.Tx, id string, archived, publicOnly bool) (*pb.Channel, error) {
+	if publicOnly {
+		c, err := loadChannel(ctx, tx, id, "FOR SHARE")
+		if err != nil {
+			return nil, err
+		}
+		if c.PublicPreview && !c.Archived {
+			return c, nil
+		}
+		return nil, nil
+	}
+	c, err := channelAccess(ctx, tx, id, "visible", true)
+	if status.Code(err) == codes.NotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if archived || !c.Archived {
+		return c, nil
+	}
+	return nil, nil
+}
+
+func channelLockClause(lock bool, action string) string {
+	clause := ""
+	if lock {
+		clause = "FOR SHARE"
+	}
+	if lock && action == "write" {
+		clause = "FOR UPDATE"
+	}
+	return clause
+}
+
+func validateAccessMembers(ctx context.Context, tx pgx.Tx, rules []*pb.ChannelAccessRule) error {
+	for _, r := range rules {
+		if r.PrincipalId == "" {
+			continue
+		}
+		m, err := membership(ctx, tx, r.PrincipalId, false)
+		if err != nil {
+			if status.Code(err) == codes.PermissionDenied {
+				return status.Error(codes.InvalidArgument, "Субъект не является участником пространства")
+			}
+			return err
+		}
+		if m.Role == "owner" || m.Role == "admin" {
+			return status.Error(codes.InvalidArgument, "Правила для owner/admin не применяются")
+		}
+	}
+	return nil
+}
+
+func insertAccessRules(ctx context.Context, tx pgx.Tx, id string, rules []*pb.ChannelAccessRule) error {
+	for _, r := range rules {
+		subject := "role:" + r.Role
+		var role, principal any
+		if r.Role != "" {
+			role = r.Role
+		} else {
+			principal = r.PrincipalId
+			subject = "principal:" + r.PrincipalId
+		}
+		p := r.Permissions
+		if _, err := tx.Exec(ctx, "INSERT INTO channel_access(channel_id,subject,role,principal_id,visible,can_read,can_write,can_manage) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", id, subject, role, principal, p.Visible, p.Read, p.Write, p.Manage); err != nil {
+			return databaseError(ctx, err)
+		}
+	}
+	return nil
+}
+
+func channelManagementPermissions(ctx context.Context, tx pgx.Tx, id string, m *pb.Member) (*pb.ChannelPermissions, error) {
+	p, err := effectivePermissions(ctx, tx, id, m)
+	if err != nil {
+		return nil, err
+	}
+	if !p.Visible {
+		return nil, status.Error(codes.NotFound, "Канал не найден")
+	}
+	if !p.Manage {
+		return nil, forbidden()
+	}
+	return p, nil
+}
+
+func synchronizeGeneralTitle(ctx context.Context, tx pgx.Tx, c *pb.Channel) error {
+	if c.Id == "general" {
+		if _, err := tx.Exec(ctx, "UPDATE space_settings SET chat_title=$1,revision=revision+1 WHERE singleton=true AND chat_title<>$1", c.Title); err != nil {
+			return databaseError(ctx, err)
+		}
+	}
+	return nil
+}
+
+func updateChannelReadState(ctx context.Context, q rowQuery, c *pb.Channel, disabled bool) error {
+	if c.Archived {
+		c.Permissions.Write = false
+	}
+	if disabled {
+		c.Permissions.Read = false
+		c.Permissions.Write = false
+	}
+	if c.Permissions.Read {
+		if err := q.QueryRow(ctx, "SELECT next_sequence-1 FROM channels WHERE id=$1", c.Id).Scan(&c.LatestMessageSequence); err != nil {
+			return databaseError(ctx, err)
+		}
+	}
+	return nil
+}
+
+func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Member) error {
+	if req.PublicPreview != c.PublicPreview && m.Role != "owner" && m.Role != "admin" {
+		return forbidden()
+	}
+	if req.ExpectedRevision != c.Revision {
+		return status.Error(codes.Aborted, "Канал уже изменился; загрузите его заново")
+	}
+	return nil
 }

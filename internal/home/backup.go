@@ -113,52 +113,64 @@ func copyFile(source, destination string) (result error) {
 
 func inventory(root string) (BackupManifest, error) {
 	manifest := BackupManifest{Format: 1, OS: runtime.GOOS, Arch: runtime.GOARCH, PostgresMajor: postgres.HomePostgresMajor, Files: map[string]string{}, Directories: []string{}}
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if path == root {
-			return nil
-		}
-		relative, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		name := filepath.ToSlash(relative)
-		if name == "backup.json" {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if entry.Type()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) {
-			return errors.New("Неподдерживаемый файл копии")
-		}
-		if len(manifest.Files)+len(manifest.Directories) >= 100000 {
-			return errors.New("Слишком много файлов копии")
-		}
-		if info.IsDir() {
-			manifest.Directories = append(manifest.Directories, name)
-			return nil
-		}
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		hash := sha256.New()
-		_, err = io.Copy(hash, file)
-		closeErr := file.Close()
-		if err != nil {
-			return err
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-		manifest.Files[name] = hex.EncodeToString(hash.Sum(nil))
-		return nil
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkError error) error {
+		return manifest.addEntry(root, path, entry, walkError)
 	})
 	return manifest, err
+}
+
+func (manifest *BackupManifest) addEntry(root, path string, entry fs.DirEntry, walkError error) error {
+	if walkError != nil {
+		return walkError
+	}
+	if path == root {
+		return nil
+	}
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return err
+	}
+	name := filepath.ToSlash(relative)
+	if name == "backup.json" {
+		return nil
+	}
+	info, err := entry.Info()
+	if err != nil {
+		return err
+	}
+	if entry.Type()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) {
+		return errors.New("Неподдерживаемый файл копии")
+	}
+	if len(manifest.Files)+len(manifest.Directories) >= 100000 {
+		return errors.New("Слишком много файлов копии")
+	}
+	if info.IsDir() {
+		manifest.Directories = append(manifest.Directories, name)
+		return nil
+	}
+	digest, err := backupFileDigest(path)
+	if err != nil {
+		return err
+	}
+	manifest.Files[name] = digest
+	return nil
+}
+
+func backupFileDigest(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	closeErr := file.Close()
+	if err != nil {
+		return "", err
+	}
+	if closeErr != nil {
+		return "", closeErr
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 // SHA-256 обнаруживает повреждение; это не подпись от подмены копии.

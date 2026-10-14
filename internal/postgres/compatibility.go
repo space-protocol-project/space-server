@@ -43,35 +43,8 @@ func CheckCompatibility(ctx context.Context, databaseURL string) (Compatibility,
 	if result.PostgresMajor != HomePostgresMajor {
 		return result, errors.New("Смена основной версии PostgreSQL требует отдельного переноса базы")
 	}
-	rows, err := tx.Query(ctx, "SELECT version,checksum FROM schema_migrations ORDER BY version")
-	if err != nil {
-		return result, errors.New("Нет доступной истории миграций существующей базы")
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var current int
-		var saved string
-		if err := rows.Scan(&current, &saved); err != nil {
-			return result, errors.New("Некорректная история миграций")
-		}
-		if current != result.SchemaVersion+1 || current > SchemaVersion() {
-			return result, errors.New("Несовместимая или неполная история миграций")
-		}
-		sql, err := migrations.ReadFile("migrations/" + migrationFiles[current-1])
-		if err != nil {
-			return result, err
-		}
-		hash := sha256.Sum256([]byte(strings.ReplaceAll(string(sql), "\r\n", "\n")))
-		if saved != hex.EncodeToString(hash[:]) {
-			return result, errors.New("Контрольная сумма применённой миграции изменилась")
-		}
-		result.SchemaVersion = current
-	}
-	if err := rows.Err(); err != nil {
-		return result, errors.New("Не удалось прочитать историю миграций")
-	}
-	if result.SchemaVersion == 0 {
-		return result, errors.New("База не является существующей установкой Space")
+	if err := checkMigrationHistory(ctx, tx, &result); err != nil {
+		return result, err
 	}
 	identity, err := loadIdentity(ctx, tx, false)
 	if err != nil {
@@ -80,4 +53,38 @@ func CheckCompatibility(ctx context.Context, databaseURL string) (Compatibility,
 	result.ServerID = identity.ServerID
 	result.TargetSchemaVersion = SchemaVersion()
 	return result, tx.Commit(ctx)
+}
+
+func checkMigrationHistory(ctx context.Context, tx pgx.Tx, result *Compatibility) error {
+	rows, err := tx.Query(ctx, "SELECT version,checksum FROM schema_migrations ORDER BY version")
+	if err != nil {
+		return errors.New("Нет доступной истории миграций существующей базы")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var current int
+		var saved string
+		if err := rows.Scan(&current, &saved); err != nil {
+			return errors.New("Некорректная история миграций")
+		}
+		if current != result.SchemaVersion+1 || current > SchemaVersion() {
+			return errors.New("Несовместимая или неполная история миграций")
+		}
+		sql, err := migrations.ReadFile("migrations/" + migrationFiles[current-1])
+		if err != nil {
+			return err
+		}
+		hash := sha256.Sum256([]byte(strings.ReplaceAll(string(sql), "\r\n", "\n")))
+		if saved != hex.EncodeToString(hash[:]) {
+			return errors.New("Контрольная сумма применённой миграции изменилась")
+		}
+		result.SchemaVersion = current
+	}
+	if err := rows.Err(); err != nil {
+		return errors.New("Не удалось прочитать историю миграций")
+	}
+	if result.SchemaVersion == 0 {
+		return errors.New("База не является существующей установкой Space")
+	}
+	return nil
 }

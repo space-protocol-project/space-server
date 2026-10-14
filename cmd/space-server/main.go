@@ -56,11 +56,8 @@ func run() (result error) {
 	if err := validateLocalAddresses(options); err != nil {
 		return err
 	}
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := serverContext(options.managed)
 	defer cancel()
-	if options.managed {
-		go func() { _, _ = io.Copy(io.Discard, os.Stdin); cancel() }()
-	}
 	service, identity, store, err := openService(ctx, options.demo)
 	if err != nil {
 		return err
@@ -76,27 +73,13 @@ func run() (result error) {
 	if err != nil {
 		return err
 	}
-	listener, err := net.Listen("tcp", options.grpcAddress)
+	bridge, err := startRPCBridge(options, service, store, identity, origin, publicOrigin, cancel)
 	if err != nil {
 		return err
 	}
-	server := newRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin))
-	var verifier authn.Verifier
-	if store != nil {
-		verifier = store
-	}
-	go func() {
-		if err := server.Serve(listener); err != nil {
-			log.Printf("gRPC: %v", err)
-			cancel()
-		}
-	}()
-	defer server.Stop()
-	connection, err := grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return err
-	}
-	defer connection.Close()
+	defer bridge.close()
+	listener, connection := bridge.listener, bridge.connection
+	verifier := storeVerifier(store)
 	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String(), true)
 	if err != nil {
 		return err
@@ -126,14 +109,7 @@ func run() (result error) {
 		defer publicServer.close()
 	}
 	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", options.port, identity.ServerID, options.demo)
-	select {
-	case err := <-failures:
-		return err
-	case <-ctx.Done():
-		shutdown, done := context.WithTimeout(context.Background(), 5*time.Second)
-		defer done()
-		return httpServer.Shutdown(shutdown)
-	}
+	return waitForServer(ctx, httpServer, failures)
 }
 
 // При ошибке подготовки база закрывается здесь; после успеха её закрывает run.
@@ -532,4 +508,61 @@ func requireHomeOwner(handler http.Handler, initialized *atomic.Bool) http.Handl
 		}
 		handler.ServeHTTP(response, request)
 	})
+}
+
+func serverContext(managed bool) (context.Context, context.CancelFunc) {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	if managed {
+		go func() { _, _ = io.Copy(io.Discard, os.Stdin); cancel() }()
+	}
+	return ctx, cancel
+}
+
+func storeVerifier(store *postgres.Store) authn.Verifier {
+	var verifier authn.Verifier
+	if store != nil {
+		verifier = store
+	}
+	return verifier
+}
+
+func waitForServer(ctx context.Context, httpServer *http.Server, failures <-chan error) error {
+	select {
+	case err := <-failures:
+		return err
+	case <-ctx.Done():
+		shutdown, done := context.WithTimeout(context.Background(), 5*time.Second)
+		defer done()
+		return httpServer.Shutdown(shutdown)
+	}
+}
+
+type rpcBridge struct {
+	listener   net.Listener
+	server     *grpc.Server
+	connection *grpc.ClientConn
+}
+
+func (bridge *rpcBridge) close() {
+	bridge.connection.Close()
+	bridge.server.Stop()
+}
+func startRPCBridge(options serverOptions, service *chat.Service, store *postgres.Store, identity postgres.Identity, origin, publicOrigin string, cancel context.CancelFunc) (*rpcBridge, error) {
+	listener, err := net.Listen("tcp", options.grpcAddress)
+	if err != nil {
+		return nil, err
+	}
+	server := newRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin))
+	go func() {
+		if err := server.Serve(listener); err != nil {
+			log.Printf("gRPC: %v", err)
+			cancel()
+		}
+	}()
+	connection, err := grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		server.Stop()
+		return nil, err
+	}
+	return &rpcBridge{listener, server, connection}, nil
 }

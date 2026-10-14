@@ -62,34 +62,8 @@ func StartDatabase(root, data string) (string, func() error, error) {
 	if err := os.MkdirAll(data, 0700); err != nil {
 		return "", nil, err
 	}
-	passwordPath := filepath.Join(data, "database-password")
-	password, err := os.ReadFile(passwordPath)
-	if os.IsNotExist(err) {
-		bytes := make([]byte, 32)
-		if _, err = rand.Read(bytes); err != nil {
-			return "", nil, err
-		}
-		password = []byte(base64.RawURLEncoding.EncodeToString(bytes))
-		err = os.WriteFile(passwordPath, password, 0600)
-	}
-	if err != nil || len(password) < 32 {
-		return "", nil, fmt.Errorf("Не удалось прочитать пароль домашней базы")
-	}
-	database := filepath.Join(data, "postgres")
-	if _, err = os.Stat(filepath.Join(database, "PG_VERSION")); os.IsNotExist(err) {
-		staging, err := os.MkdirTemp(data, "postgres-init-")
-		if err != nil {
-			return "", nil, err
-		}
-		defer os.RemoveAll(staging)
-		cmd := command(root, "initdb", "-D", staging, "-U", "space", "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C", "--pwfile="+passwordPath)
-		if output, err := runLogged(cmd, data); err != nil {
-			return "", nil, fmt.Errorf("initdb: %w: %s", err, output)
-		}
-		if err := os.Rename(staging, database); err != nil {
-			return "", nil, err
-		}
-	} else if err != nil {
+	password, database, err := prepareDatabaseFiles(root, data)
+	if err != nil {
 		return "", nil, err
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -127,4 +101,38 @@ func StartDatabase(root, data string) (string, func() error, error) {
 	}
 	address := &url.URL{Scheme: "postgres", Host: net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), Path: "/postgres", User: url.UserPassword("space", string(password)), RawQuery: "sslmode=disable"}
 	return address.String(), stop, nil
+}
+
+func prepareDatabaseFiles(root, data string) ([]byte, string, error) {
+	passwordPath := filepath.Join(data, "database-password")
+	password, err := os.ReadFile(passwordPath)
+	if os.IsNotExist(err) {
+		bytes := make([]byte, 32)
+		if _, err = rand.Read(bytes); err != nil {
+			return nil, "", err
+		}
+		password = []byte(base64.RawURLEncoding.EncodeToString(bytes))
+		err = os.WriteFile(passwordPath, password, 0600)
+	}
+	if err != nil || len(password) < 32 {
+		return nil, "", fmt.Errorf("Не удалось прочитать пароль домашней базы")
+	}
+	database := filepath.Join(data, "postgres")
+	if _, err = os.Stat(filepath.Join(database, "PG_VERSION")); os.IsNotExist(err) {
+		staging, err := os.MkdirTemp(data, "postgres-init-")
+		if err != nil {
+			return nil, "", err
+		}
+		defer os.RemoveAll(staging)
+		cmd := command(root, "initdb", "-D", staging, "-U", "space", "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C", "--pwfile="+passwordPath)
+		if output, err := runLogged(cmd, data); err != nil {
+			return nil, "", fmt.Errorf("initdb: %w: %s", err, output)
+		}
+		if err := os.Rename(staging, database); err != nil {
+			return nil, "", err
+		}
+	} else if err != nil {
+		return nil, "", err
+	}
+	return password, database, nil
 }

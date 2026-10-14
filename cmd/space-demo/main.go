@@ -48,24 +48,9 @@ func run() error {
 		return fmt.Errorf("Нужен локальный HTTP origin без пути")
 	}
 	c := &client{origin: *origin, http: &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return fmt.Errorf("Redirect запрещён") }}}
-	response, err := c.http.Get(c.origin + "/.well-known/space-protocol")
-	if err != nil {
+	if err := c.loadDiscovery(); err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	var discovery struct {
-		ServerID string `json:"server_id"`
-	}
-	if response.StatusCode != 200 {
-		return fmt.Errorf("Discovery: HTTP %d", response.StatusCode)
-	}
-	if err = json.NewDecoder(response.Body).Decode(&discovery); err != nil {
-		return err
-	}
-	if discovery.ServerID == "" {
-		return fmt.Errorf("Нет server_id")
-	}
-	c.serverID = discovery.ServerID
 	root, rootPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return err
@@ -194,5 +179,27 @@ func (c *client) validate(t authn.Transcript, response *pb.CreateChallengeRespon
 	if !valid {
 		return fmt.Errorf("Transcript не соответствует ожидаемому локальному серверу, ключам или операции")
 	}
+	return nil
+}
+
+func (c *client) loadDiscovery() error {
+	response, err := c.http.Get(c.origin + "/.well-known/space-protocol")
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	var discovery struct {
+		ServerID string `json:"server_id"`
+	}
+	if response.StatusCode != 200 {
+		return fmt.Errorf("Discovery: HTTP %d", response.StatusCode)
+	}
+	if err = json.NewDecoder(response.Body).Decode(&discovery); err != nil {
+		return err
+	}
+	if discovery.ServerID == "" {
+		return fmt.Errorf("Нет server_id")
+	}
+	c.serverID = discovery.ServerID
 	return nil
 }

@@ -28,14 +28,32 @@ func restrictOrigin(next http.Handler, origin string, connectEnabled bool) http.
 			http.Error(w, "Недопустимый Origin", http.StatusForbidden)
 			return
 		}
-		if r.Method == http.MethodPost || r.Method == http.MethodPatch {
-			media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			connectMedia := connectEnabled && isConnectProcedure(r.URL.Path) && (media == "application/proto" || media == "application/connect+proto" || media == "application/connect+json")
-			if err != nil || (media != "application/json" && !connectMedia) {
-				http.Error(w, "Нужен application/json", http.StatusUnsupportedMediaType)
-				return
-			}
+		if !acceptRequestMedia(r, connectEnabled) {
+			http.Error(w, "Нужен application/json", http.StatusUnsupportedMediaType)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func acceptRequestMedia(request *http.Request, connectEnabled bool) bool {
+	if request.Method != http.MethodPost && request.Method != http.MethodPatch {
+		return true
+	}
+	media, _, err := mime.ParseMediaType(request.Header.Get("Content-Type"))
+	if err != nil {
+		return false
+	}
+	if media == "application/json" {
+		return true
+	}
+	if !connectEnabled || !isConnectProcedure(request.URL.Path) {
+		return false
+	}
+	switch media {
+	case "application/proto", "application/connect+proto", "application/connect+json":
+		return true
+	default:
+		return false
+	}
 }

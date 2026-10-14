@@ -34,14 +34,7 @@ func validateServerIcon(icon *pb.ServerIcon) error {
 	}
 	switch icon.MediaType {
 	case "image/png":
-		config, err := png.DecodeConfig(bytes.NewReader(icon.Data))
-		if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 256 || config.Height > 256 {
-			return invalid()
-		}
-		if _, err = png.Decode(bytes.NewReader(icon.Data)); err != nil {
-			return invalid()
-		}
-		return nil
+		return validatePNGIcon(icon.Data)
 	case "image/svg+xml":
 		if !utf8.Valid(icon.Data) || !safeSVG(icon.Data) {
 			return invalid()
@@ -145,4 +138,18 @@ func safeSVGAttribute(attribute xml.Attr, allowed map[string]bool) bool {
 	}
 	value := strings.ToLower(strings.Join(strings.Fields(attribute.Value), ""))
 	return !strings.Contains(value, "url(")
+}
+
+func validatePNGIcon(data []byte) error {
+	invalid := func() error {
+		return status.Error(codes.InvalidArgument, "Нужна стандартная иконка или безопасный PNG/SVG до 8 КиБ")
+	}
+	config, err := png.DecodeConfig(bytes.NewReader(data))
+	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 256 || config.Height > 256 {
+		return invalid()
+	}
+	if _, err = png.Decode(bytes.NewReader(data)); err != nil {
+		return invalid()
+	}
+	return nil
 }

@@ -100,14 +100,8 @@ func recoveryParent(ctx context.Context, tx pgx.Tx, id string) (*recoveryAuthori
 }
 
 func (s *AuthService) createRecoveryChallenge(ctx context.Context, req *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
-	if req.Recovery || len(req.RootPublicKey) != 0 || len(req.RecoveryGrantId) != 46 {
-		return nil, status.Error(codes.InvalidArgument, "Нужно разрешение ключа восстановления")
-	}
-	if req.Purpose == "device.delegate" && (len(req.DevicePublicKey) != 32 || req.GrantId != "") {
-		return nil, status.Error(codes.InvalidArgument, "Нужен новый публичный ключ устройства")
-	}
-	if req.Purpose == "recovery.device.revoke" && (len(req.DevicePublicKey) != 0 || len(req.GrantId) != 46 || req.Administrative || req.GrantId == req.RecoveryGrantId) {
-		return nil, status.Error(codes.InvalidArgument, "Нужно другое разрешение устройства для отзыва")
+	if err := validateRecoveryRequest(req); err != nil {
+		return nil, err
 	}
 	tx, err := s.challengeTransaction(ctx)
 	if err != nil {
@@ -125,33 +119,8 @@ func (s *AuthService) createRecoveryChallenge(ctx context.Context, req *pb.Creat
 	}
 	now := time.Now().UTC().Truncate(time.Second)
 	t := authn.Transcript{AuthEpoch: parent.epoch, AuthorizerGrantID: req.RecoveryGrantId, PairingID: req.PairingId, PrincipalID: parent.principal, RootPublicKey: base64.RawURLEncoding.EncodeToString(parent.root), Purpose: req.Purpose, Origin: s.origin, ServerID: s.serverID, Version: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix()}
-	if req.Purpose == "device.delegate" {
-		t.GrantID, err = randomString("dg_")
-		if err != nil {
-			return nil, err
-		}
-		t.DevicePublicKey = base64.RawURLEncoding.EncodeToString(req.DevicePublicKey)
-		t.Scopes = []string{"chat.read", "chat.write"}
-		if req.Administrative {
-			if !slices.Contains(parent.scopes, "space.manage") {
-				return nil, forbidden()
-			}
-			t.Scopes = append(t.Scopes, "space.manage")
-		}
-		t.GrantExpiresAt = min(now.Add(30*24*time.Hour).Unix(), parent.expiry.Unix())
-	} else {
-		var key []byte
-		var expiry time.Time
-		err = tx.QueryRow(ctx, "SELECT device_public_key,expires_at,scopes FROM device_grants WHERE id=$1 AND principal_id=$2 AND revoked_at IS NULL AND expires_at>now()", req.GrantId, parent.principal).Scan(&key, &expiry, &t.Scopes)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, denied()
-		}
-		if err != nil {
-			return nil, databaseError(ctx, err)
-		}
-		t.GrantID = req.GrantId
-		t.DevicePublicKey = base64.RawURLEncoding.EncodeToString(key)
-		t.GrantExpiresAt = expiry.Unix()
+	if err := prepareRecoveryGrant(ctx, tx, req, parent, &t, now); err != nil {
+		return nil, err
 	}
 	if t.GrantExpiresAt <= t.ExpiresAt {
 		return nil, denied()
@@ -197,14 +166,8 @@ func (s *AuthService) completeRecovery(ctx context.Context, tx pgx.Tx, t authn.T
 	if t.Purpose == "recovery.device.revoke" {
 		return s.revoke(ctx, tx, t)
 	}
-	if !slices.Equal(t.Scopes, []string{"chat.read", "chat.write"}) && !slices.Equal(t.Scopes, []string{"chat.read", "chat.write", "space.manage"}) {
-		return forbidden()
-	}
-	if slices.Contains(t.Scopes, "space.manage") && !slices.Contains(parent.scopes, "space.manage") {
-		return forbidden()
-	}
-	if t.GrantExpiresAt > parent.expiry.Unix() || t.GrantExpiresAt > time.Now().Add(30*24*time.Hour).Unix() {
-		return denied()
+	if err := validateRecoveryDelegation(t, parent); err != nil {
+		return err
 	}
 	var count int
 	if err = tx.QueryRow(ctx, "SELECT count(*) FROM device_grants WHERE principal_id=$1 AND revoked_at IS NULL AND expires_at>now()", t.PrincipalID).Scan(&count); err != nil {
@@ -247,4 +210,63 @@ func (s *AuthService) ListDevices(ctx context.Context, _ *pb.ListDevicesRequest)
 		return nil, databaseError(ctx, err)
 	}
 	return result, nil
+}
+
+func validateRecoveryRequest(req *pb.CreateChallengeRequest) error {
+	if req.Recovery || len(req.RootPublicKey) != 0 || len(req.RecoveryGrantId) != 46 {
+		return status.Error(codes.InvalidArgument, "Нужно разрешение ключа восстановления")
+	}
+	if req.Purpose == "device.delegate" && (len(req.DevicePublicKey) != 32 || req.GrantId != "") {
+		return status.Error(codes.InvalidArgument, "Нужен новый публичный ключ устройства")
+	}
+	if req.Purpose == "recovery.device.revoke" && (len(req.DevicePublicKey) != 0 || len(req.GrantId) != 46 || req.Administrative || req.GrantId == req.RecoveryGrantId) {
+		return status.Error(codes.InvalidArgument, "Нужно другое разрешение устройства для отзыва")
+	}
+	return nil
+}
+
+func prepareRecoveryGrant(ctx context.Context, tx pgx.Tx, req *pb.CreateChallengeRequest, parent *recoveryAuthority, t *authn.Transcript, now time.Time) error {
+	var err error
+	if req.Purpose == "device.delegate" {
+		t.GrantID, err = randomString("dg_")
+		if err != nil {
+			return err
+		}
+		t.DevicePublicKey = base64.RawURLEncoding.EncodeToString(req.DevicePublicKey)
+		t.Scopes = []string{"chat.read", "chat.write"}
+		if req.Administrative {
+			if !slices.Contains(parent.scopes, "space.manage") {
+				return forbidden()
+			}
+			t.Scopes = append(t.Scopes, "space.manage")
+		}
+		t.GrantExpiresAt = min(now.Add(30*24*time.Hour).Unix(), parent.expiry.Unix())
+	} else {
+		var key []byte
+		var expiry time.Time
+		err = tx.QueryRow(ctx, "SELECT device_public_key,expires_at,scopes FROM device_grants WHERE id=$1 AND principal_id=$2 AND revoked_at IS NULL AND expires_at>now()", req.GrantId, parent.principal).Scan(&key, &expiry, &t.Scopes)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return denied()
+		}
+		if err != nil {
+			return databaseError(ctx, err)
+		}
+		t.GrantID = req.GrantId
+		t.DevicePublicKey = base64.RawURLEncoding.EncodeToString(key)
+		t.GrantExpiresAt = expiry.Unix()
+	}
+	return nil
+}
+
+func validateRecoveryDelegation(t authn.Transcript, parent *recoveryAuthority) error {
+	if !slices.Equal(t.Scopes, []string{"chat.read", "chat.write"}) && !slices.Equal(t.Scopes, []string{"chat.read", "chat.write", "space.manage"}) {
+		return forbidden()
+	}
+	if slices.Contains(t.Scopes, "space.manage") && !slices.Contains(parent.scopes, "space.manage") {
+		return forbidden()
+	}
+	if t.GrantExpiresAt > parent.expiry.Unix() || t.GrantExpiresAt > time.Now().Add(30*24*time.Hour).Unix() {
+		return denied()
+	}
+	return nil
 }

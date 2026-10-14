@@ -8,12 +8,12 @@
 
 | Репозиторий / категория | Измеренных файлов | Функций | COG > 15 | Максимум COG |
 |---|---:|---:|---:|---:|
-| app / production | 90 | 1550 | 0 | 15 |
+| app / production | 90 | 1551 | 0 | 15 |
 | app / generated | 9 | 2806 | 0 | 9 |
 | app / test | 74 | 217 | 8 | 76 |
 | app / tool | 21 | 64 | 6 | 51 |
 | app / vendor | 5 | 92 | 3 | 31 |
-| app / prototype | 4 | 102 | 4 | 84 |
+| app / prototype | 6 | 138 | 4 | 84 |
 | server / production | 39 | 321 | 0 | 15 |
 | server / test | 31 | 89 | 21 | 50 |
 | server / generated | 4 | 967 | 6 | 52 |
@@ -187,5 +187,13 @@ Release CI runtime: https://github.com/space-protocol-project/space-server/actio
 В собственном измеренном рабочем коде по-прежнему нет COG выше 15. Kotlin, Gradle
 и XML численно не измеряются; конфигурация Android проверяется сборкой APK.
 Сквозной перенос с новым IP, старой карточкой владельца после ротации root и
-HTTPS Connect выполнен на отдельной PostgreSQL. Все 248 обычных Flutter-тестов
+HTTPS Connect выполнен на отдельной PostgreSQL. Все 249 обычных Flutter-тестов
 прошли, четыре проверки штатно пропущены.
+
+
+Домашний runtime v0.2.4 опубликован после успешного [CI 38554714316](https://github.com/space-protocol-project/space-server/actions/runs/38554714316).
+Первый прогон обнаружил отказ валидатора URL на служебном слоте Windows vault.
+Проверка сетевого endpoint отделена от имени слота; повтор нативного задания
+успешен. Перенос на новом IP также проверен с незавершённой ротацией root.
+Подписанный Android APK собран локально: Android 7+, ARM32/ARM64/x86_64.
+Проверка на физическом Android-устройстве ещё не выполнена.

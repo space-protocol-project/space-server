@@ -73,7 +73,7 @@ jobs:
         run: go vet ./...
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.6'
+          flutter-version: '3.47.7'
           channel: stable
           cache: true
       - name: Анализ и тесты Flutter-клиента
@@ -152,7 +152,7 @@ jobs:
           path: app-source
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.6'
+          flutter-version: '3.47.7'
           channel: stable
           cache: true
       - name: Сборка отдельного проверочного приложения

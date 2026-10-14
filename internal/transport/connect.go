@@ -264,11 +264,6 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	return http.MaxBytesHandler(connectAuthorization(mux, verifier), 16*1024)
 }
 
-// Совместимость с ранее существовавшей точкой входа тестового прототипа.
-func WithConnectPrototype(base http.Handler, connection *grpc.ClientConn) http.Handler {
-	return WithConnect(base, connection, nil)
-}
-
 func connectAuthorization(next http.Handler, verifier authn.Verifier) http.Handler {
 	writer := connect.NewErrorWriter()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

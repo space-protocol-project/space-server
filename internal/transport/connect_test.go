@@ -85,7 +85,7 @@ func (s *connectBackend) Subscribe(_ *pb.SubscribeRequest, stream pb.SyncService
 	close(s.cancelled)
 	return status.FromContextError(stream.Context().Err()).Err()
 }
-func TestConnectPrototypeKeepsGRPCAuthAndCancelsStream(t *testing.T) {
+func TestConnectKeepsInternalAuthAndCancelsStream(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestConnectPrototypeKeepsGRPCAuthAndCancelsStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	httpServer := httptest.NewServer(WithConnectPrototype(http.NotFoundHandler(), connection))
+	httpServer := httptest.NewServer(WithConnect(http.NotFoundHandler(), connection, connectVerifier{}))
 	defer httpServer.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

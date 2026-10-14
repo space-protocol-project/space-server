@@ -63,7 +63,7 @@ jobs:
         run: |
           flutter pub get
           dart run tool/home_server_drill.dart ../../dist/home
-      - name: Обновление установленного v0.1.0 до собранного кандидата
+      - name: Обновление Connect runtime и восстановление данных
         working-directory: app-source/client
         env:
           SPACE_HOME_UPGRADE_CHECK: '1'

@@ -91,7 +91,7 @@ jobs:
           SPACE_SETUP_CODE=$("$RUNNER_TEMP/space-server" -setup-code)
           echo "::add-mask::$SPACE_SETUP_CODE"
           export SPACE_SETUP_CODE
-          "$RUNNER_TEMP/space-server" -connect-rpc -http 127.0.0.1:18080 &
+          "$RUNNER_TEMP/space-server" -http 127.0.0.1:18080 &
           server_pid=$!
           trap 'kill "$server_pid"; wait "$server_pid" || true' EXIT
           for attempt in $(seq 1 20); do

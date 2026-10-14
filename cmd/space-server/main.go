@@ -40,7 +40,6 @@ func main() {
 func run() (result error) {
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
-	connectRPC := flag.Bool("connect-rpc", true, "Включить ConnectRPC; false сохраняет только прежние транспорты")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
 	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
 	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
@@ -241,17 +240,14 @@ func run() (result error) {
 		return err
 	}
 	defer connection.Close()
-	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String(), *connectRPC)
+	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String(), true)
 	if err != nil {
 		return err
 	}
 
-	if *connectRPC {
-		handler = transport.WithConnect(handler, connection, verifier)
-		handler = transport.RestrictOriginWithConnect(handler, origin)
-	} else {
-		handler = transport.RestrictOrigin(handler, origin)
-	}
+	handler = transport.WithConnect(handler, connection, verifier)
+	handler = transport.RestrictOriginWithConnect(handler, origin)
+
 	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 2)
 	localListener, err := net.Listen("tcp", *port)
@@ -281,29 +277,19 @@ func run() (result error) {
 			}
 		}()
 		endpoint, _ := url.Parse(publicOrigin)
-		publicHandler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host, *connectRPC)
+		publicHandler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host, true)
 		if err != nil {
 			return err
 		}
-		if *connectRPC {
-			publicHandler = transport.WithConnect(publicHandler, connection, verifier)
-			publicHandler = transport.RestrictOriginWithConnect(publicHandler, publicOrigin)
-		} else {
-			publicHandler = transport.RestrictOrigin(publicHandler, publicOrigin)
-		}
+		publicHandler = transport.WithConnect(publicHandler, connection, verifier)
+		publicHandler = transport.RestrictOriginWithConnect(publicHandler, publicOrigin)
+
 		combined := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !initialized.Load() {
 				http.Error(w, "Сначала настройте владельца локально", http.StatusServiceUnavailable)
 				return
 			}
-			if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
-				if !strings.EqualFold(r.Host, endpoint.Host) && !strings.EqualFold(r.Host, endpoint.Hostname()) {
-					http.Error(w, "Недопустимый Host", http.StatusForbidden)
-					return
-				}
-				server.ServeHTTP(w, r)
-				return
-			}
+
 			publicHandler.ServeHTTP(w, r)
 		})
 		secureServer := &http.Server{Addr: *httpsAddress, Handler: combined, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{certificate}}}

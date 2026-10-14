@@ -395,6 +395,8 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	ContentService_UpdateContent_FullMethodName = "/space.v1.ContentService/UpdateContent"
+	ContentService_DeleteContent_FullMethodName = "/space.v1.ContentService/DeleteContent"
 	ContentService_CreateContent_FullMethodName = "/space.v1.ContentService/CreateContent"
 	ContentService_ListContent_FullMethodName   = "/space.v1.ContentService/ListContent"
 )
@@ -403,6 +405,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContentServiceClient interface {
+	UpdateContent(ctx context.Context, in *UpdateContentRequest, opts ...grpc.CallOption) (*UpdateContentResponse, error)
+	DeleteContent(ctx context.Context, in *DeleteContentRequest, opts ...grpc.CallOption) (*DeleteContentResponse, error)
 	CreateContent(ctx context.Context, in *CreateContentRequest, opts ...grpc.CallOption) (*CreateContentResponse, error)
 	ListContent(ctx context.Context, in *ListContentRequest, opts ...grpc.CallOption) (*ListContentResponse, error)
 }
@@ -413,6 +417,26 @@ type contentServiceClient struct {
 
 func NewContentServiceClient(cc grpc.ClientConnInterface) ContentServiceClient {
 	return &contentServiceClient{cc}
+}
+
+func (c *contentServiceClient) UpdateContent(ctx context.Context, in *UpdateContentRequest, opts ...grpc.CallOption) (*UpdateContentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateContentResponse)
+	err := c.cc.Invoke(ctx, ContentService_UpdateContent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contentServiceClient) DeleteContent(ctx context.Context, in *DeleteContentRequest, opts ...grpc.CallOption) (*DeleteContentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteContentResponse)
+	err := c.cc.Invoke(ctx, ContentService_DeleteContent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *contentServiceClient) CreateContent(ctx context.Context, in *CreateContentRequest, opts ...grpc.CallOption) (*CreateContentResponse, error) {
@@ -439,6 +463,8 @@ func (c *contentServiceClient) ListContent(ctx context.Context, in *ListContentR
 // All implementations must embed UnimplementedContentServiceServer
 // for forward compatibility.
 type ContentServiceServer interface {
+	UpdateContent(context.Context, *UpdateContentRequest) (*UpdateContentResponse, error)
+	DeleteContent(context.Context, *DeleteContentRequest) (*DeleteContentResponse, error)
 	CreateContent(context.Context, *CreateContentRequest) (*CreateContentResponse, error)
 	ListContent(context.Context, *ListContentRequest) (*ListContentResponse, error)
 	mustEmbedUnimplementedContentServiceServer()
@@ -451,6 +477,12 @@ type ContentServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContentServiceServer struct{}
 
+func (UnimplementedContentServiceServer) UpdateContent(context.Context, *UpdateContentRequest) (*UpdateContentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateContent not implemented")
+}
+func (UnimplementedContentServiceServer) DeleteContent(context.Context, *DeleteContentRequest) (*DeleteContentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteContent not implemented")
+}
 func (UnimplementedContentServiceServer) CreateContent(context.Context, *CreateContentRequest) (*CreateContentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateContent not implemented")
 }
@@ -476,6 +508,42 @@ func RegisterContentServiceServer(s grpc.ServiceRegistrar, srv ContentServiceSer
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ContentService_ServiceDesc, srv)
+}
+
+func _ContentService_UpdateContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContentServiceServer).UpdateContent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContentService_UpdateContent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContentServiceServer).UpdateContent(ctx, req.(*UpdateContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContentService_DeleteContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContentServiceServer).DeleteContent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContentService_DeleteContent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContentServiceServer).DeleteContent(ctx, req.(*DeleteContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ContentService_CreateContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -521,6 +589,14 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.ContentService",
 	HandlerType: (*ContentServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "UpdateContent",
+			Handler:    _ContentService_UpdateContent_Handler,
+		},
+		{
+			MethodName: "DeleteContent",
+			Handler:    _ContentService_DeleteContent_Handler,
+		},
 		{
 			MethodName: "CreateContent",
 			Handler:    _ContentService_CreateContent_Handler,

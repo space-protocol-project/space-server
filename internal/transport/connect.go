@@ -106,6 +106,13 @@ func (s connectContent) CreateContent(ctx context.Context, req *connect.Request[
 	return bridgeUnary(ctx, req, s.client.CreateContent)
 }
 
+func (s connectContent) UpdateContent(ctx context.Context, req *connect.Request[pb.UpdateContentRequest]) (*connect.Response[pb.UpdateContentResponse], error) {
+	return bridgeUnary(ctx, req, s.client.UpdateContent)
+}
+func (s connectContent) DeleteContent(ctx context.Context, req *connect.Request[pb.DeleteContentRequest]) (*connect.Response[pb.DeleteContentResponse], error) {
+	return bridgeUnary(ctx, req, s.client.DeleteContent)
+}
+
 func (s connectContent) ListContent(ctx context.Context, req *connect.Request[pb.ListContentRequest]) (*connect.Response[pb.ListContentResponse], error) {
 	return bridgeUnary(ctx, req, s.client.ListContent)
 }
@@ -293,6 +300,8 @@ var connectProcedures = map[string]bool{
 	rpc.ChannelServiceUpdateChannelAccessProcedure: true,
 	rpc.ChannelServiceGetManifestProcedure:         true,
 	rpc.ChannelServiceWatchChannelsProcedure:       true,
+	rpc.ContentServiceUpdateContentProcedure:       true,
+	rpc.ContentServiceDeleteContentProcedure:       true,
 	rpc.ContentServiceCreateContentProcedure:       true,
 	rpc.ContentServiceListContentProcedure:         true,
 	rpc.AuthServiceCreateRootRotationProcedure:     true,

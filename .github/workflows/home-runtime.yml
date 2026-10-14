@@ -50,7 +50,7 @@ jobs:
         run: python packaging/build-home-runtime.py
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.6'
+          flutter-version: '3.47.7'
           channel: stable
           cache: true
       - uses: actions/checkout@v4

@@ -51,7 +51,12 @@ func TestUpgradePreservesIdentityAndBackfillsEvents(t *testing.T) {
 		t.Fatal("Upgrade изменил identity")
 	}
 	events, err := store.ListEvents(ctx, &pb.ListEventsRequest{ChannelId: "general"})
-	if err != nil || len(events.GetEvents()) != 1 || events.Events[0].Content.Text != "Старое сообщение" || events.Events[0].Content.AuthorId != "legacy-demo" || events.Events[0].Content.CreatedAtUnixMs != 0 {
+	if err != nil || len(events.GetEvents()) != 1 || events.Events[0].Content.Text != "Старое сообщение" || events.Events[0].Content.AuthorId != "legacy-demo" || events.Events[0].Content.CreatedAtUnixMs != 0 || events.Events[0].Content.Revision != 1 || events.Events[0].Content.Deleted {
 		t.Fatalf("Backfill: %v %v", events, err)
 	}
+	var nextEvent int64
+	if err := store.pool.QueryRow(ctx, "SELECT next_event_sequence FROM channels WHERE id='general'").Scan(&nextEvent); err != nil || nextEvent != 2 {
+		t.Fatalf("Миграция курсора событий: %d %v", nextEvent, err)
+	}
+
 }

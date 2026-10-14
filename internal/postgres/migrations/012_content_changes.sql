@@ -1,0 +1,18 @@
+ALTER TABLE contents ADD COLUMN revision bigint NOT NULL DEFAULT 1 CHECK (revision > 0);
+ALTER TABLE contents ADD COLUMN updated_at_unix_ms bigint NOT NULL DEFAULT 0;
+ALTER TABLE contents ADD COLUMN deleted boolean NOT NULL DEFAULT false;
+ALTER TABLE contents DROP CONSTRAINT contents_text_check;
+ALTER TABLE contents ADD CHECK ((deleted AND text='') OR (NOT deleted AND octet_length(text) BETWEEN 1 AND 4096));
+ALTER TABLE channels ADD COLUMN next_event_sequence bigint NOT NULL DEFAULT 1;
+UPDATE channels SET next_event_sequence=next_sequence;
+ALTER TABLE events ADD COLUMN content_sequence bigint;
+UPDATE events SET content_sequence=sequence;
+ALTER TABLE events ALTER COLUMN content_sequence SET NOT NULL;
+ALTER TABLE events DROP CONSTRAINT events_channel_id_sequence_fkey;
+ALTER TABLE events ADD FOREIGN KEY(channel_id,content_sequence) REFERENCES contents(channel_id,sequence);
+ALTER TABLE events DROP CONSTRAINT events_type_check;
+ALTER TABLE events ADD CHECK (type IN ('content.created','content.updated','content.deleted'));
+ALTER TABLE contents ADD COLUMN request_text_hash bytea;
+UPDATE contents SET request_text_hash=sha256(convert_to(text,'UTF8'));
+ALTER TABLE contents ALTER COLUMN request_text_hash SET NOT NULL;
+ALTER TABLE contents ADD CHECK(octet_length(request_text_hash)=32);

@@ -34,6 +34,8 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ChannelServiceListChannelsProcedure,
 		rpc.ChannelServiceWatchChannelsProcedure,
 		rpc.ContentServiceCreateContentProcedure,
+		rpc.ContentServiceUpdateContentProcedure,
+		rpc.ContentServiceDeleteContentProcedure,
 		rpc.AuthServiceListDevicesProcedure,
 		rpc.SyncServiceSubscribeProcedure,
 		rpc.AdminServiceUpdateSettingsProcedure,
@@ -54,7 +56,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 }
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
-	if len(connectProcedures) != 37 {
+	if len(connectProcedures) != 39 {
 		t.Fatalf("Неполный набор Connect RPC: %d", len(connectProcedures))
 	}
 	if isConnectProcedure("/space.v1.AdminService/Unknown") {

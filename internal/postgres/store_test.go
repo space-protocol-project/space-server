@@ -187,14 +187,14 @@ func TestDamagedMigrationAndMissingIdentityFailClosed(t *testing.T) {
 	if _, err := store.pool.Exec(ctx, "UPDATE schema_migrations SET checksum=$1 WHERE version=1", checksum); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES(12,'future')"); err != nil {
+	if _, err := store.pool.Exec(ctx, "INSERT INTO schema_migrations VALUES($1,'future')", SchemaVersion()+1); err != nil {
 		t.Fatal(err)
 	}
 	if reopened, _, err := openManual(ctx, databaseURL); err == nil {
 		reopened.Close()
 		t.Fatal("Новая схема принята старым сервером")
 	}
-	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=12"); err != nil {
+	if _, err := store.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version=$1", SchemaVersion()+1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.pool.Exec(ctx, "DELETE FROM server_state"); err != nil {

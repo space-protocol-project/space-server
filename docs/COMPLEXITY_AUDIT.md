@@ -155,7 +155,7 @@ python -X utf8 tools/complexity_audit.py --analyzer C:/path/to/treesitter_cyclom
 
 Нужны Neovim и парсеры Go/Dart/Python/JavaScript в `.ci/parsers/parser` анализатора. Закреплённые версии описаны в его `scripts/install-parsers.sh`. Скрипт выдаёт JSON с перечнем файлов, категориями, строками, CC и COG и возвращает ошибку при неуспешном запуске анализатора.
 
-Изменения после коммитов 409cdd4 (приложение) и 534dd32 (сервер) пока локальные. Старое пользовательское изменение space-bubble-design.png не входит в этот рефакторинг.
+Изменения после коммитов 409cdd4 (приложение) и 534dd32 (сервер) опубликованы в выпусках, указанных ниже. Старое пользовательское изменение space-bubble-design.png не входит в этот рефакторинг.
 
 ## Проверка итоговых исходников
 
@@ -169,3 +169,12 @@ python -X utf8 tools/complexity_audit.py --analyzer C:/path/to/treesitter_cyclom
 - git diff --check: ошибок нет.
 
 Сборки Linux/macOS, ручной сценарий Windows UI Automation и новый прогон CI на этом этапе не выполнялись. Проверка запуска и hot reload не является полной ручной проверкой всех экранов. SQL и порядок блокировок сопоставлены с исходной последовательностью; интеграционные тесты подтверждают покрытые ими сценарии.
+
+## Опубликованная совместимая пара
+
+14 октября опубликованы Space v0.2.4 и домашний runtime v0.2.3. Оба выпуска содержат полный комплект для Windows x64, Linux x64 и macOS arm64; GitHub Latest указывает на эти версии. Дескрипторы runtime в приложении проверены по SHA-256 и размерам опубликованных архивов.
+
+Release CI приложения: https://github.com/space-protocol-project/space-app/actions/runs/38543970928 — success.
+Release CI runtime: https://github.com/space-protocol-project/space-server/actions/runs/38542385203 — success после повтора Windows-задания (первый запуск: временный TLS-сбой скачивания PostgreSQL до сборки).
+
+Коммит рабочего кода приложения: 5c73245; тег v0.2.4 закреплён на 83ed19b с опубликованным манифестом runtime. Коммит и тег сервера v0.2.3: a6d276b. Старое пользовательское изменение space-bubble-design.png осталось вне коммитов.

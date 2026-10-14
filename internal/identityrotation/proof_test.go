@@ -77,3 +77,16 @@ func TestRotationProof(t *testing.T) {
 		}
 	})
 }
+
+func TestRotationOrigin(t *testing.T) {
+	for _, origin := range []string{"http://127.0.0.1:8080", "https://203.0.113.10:8443", "https://space.example", "https://[2001:db8::1]:8443"} {
+		if !validRotationOrigin(origin) {
+			t.Fatal("Допустимый адрес отклонён", origin)
+		}
+	}
+	for _, origin := range []string{"http://example.test:80", "https://user@example.test", "https://example.test/path", "https://example.test#fragment", "https://example.test?query", "https://example.test:", "https://example.test:0", "https://example.test:65536", "https://[broken"} {
+		if validRotationOrigin(origin) {
+			t.Fatal("Недопустимый адрес принят", origin)
+		}
+	}
+}

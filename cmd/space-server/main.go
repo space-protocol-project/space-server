@@ -73,20 +73,25 @@ func run() (result error) {
 	if err != nil {
 		return err
 	}
-	bridge, err := startRPCBridge(options, service, store, identity, origin, publicOrigin, cancel)
+	identityOrigin, err := homeIdentityOrigin(options, publicOrigin)
+	if err != nil {
+		return err
+	}
+	bridge, err := startRPCBridge(options, service, store, identity, origin, identityOrigin, cancel)
 	if err != nil {
 		return err
 	}
 	defer bridge.close()
 	listener, connection := bridge.listener, bridge.connection
-	verifier := storeVerifier(store)
-	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, listener.Addr().String(), true)
+	homeConfig := homeHTTPConfig{
+		address: options.httpsAddress, certificate: certificate,
+		localOrigin: origin, publicOrigin: publicOrigin, identityOrigin: identityOrigin, setupCode: setup,
+		pendingSetupPath: pendingSetup, statePath: filepath.Join(options.homeData, "state.json"),
+	}
+	handler, err := localHTTPHandler(ctx, connection, store, identity, homeConfig, listener.Addr().String())
 	if err != nil {
 		return err
 	}
-
-	handler = transport.WithConnect(handler, connection, verifier)
-	handler = transport.RestrictOriginWithConnect(handler, origin)
 
 	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 2)
@@ -98,11 +103,7 @@ func run() (result error) {
 	go func() { failures <- httpServer.Serve(localListener) }()
 	defer httpServer.Close()
 	if homeMode {
-		publicServer, err := startPublicServer(ctx, homeHTTPConfig{
-			address: options.httpsAddress, certificate: certificate,
-			localOrigin: origin, publicOrigin: publicOrigin, setupCode: setup,
-			pendingSetupPath: pendingSetup, statePath: filepath.Join(options.homeData, "state.json"),
-		}, connection, store, identity, failures)
+		publicServer, err := startPublicServer(ctx, homeConfig, connection, store, identity, failures)
 		if err != nil {
 			return err
 		}
@@ -122,7 +123,7 @@ func prepareHomeRuntime(options serverOptions) (tls.Certificate, string, func() 
 		}
 		return certificate, "", noop, nil
 	}
-	ip, origin, err := homeEndpoint(options)
+	_, origin, err := homeEndpoint(options)
 	if err != nil {
 		return certificate, "", noop, err
 	}
@@ -133,7 +134,7 @@ func prepareHomeRuntime(options serverOptions) (tls.Certificate, string, func() 
 	if err := os.Setenv("SPACE_DATABASE_URL", databaseURL); err != nil {
 		return certificate, "", noop, errors.Join(err, stopDatabase())
 	}
-	certificate, err = home.Certificate(options.homeData, ip)
+	certificate, err = homeCertificate(options.homeData, origin)
 	if err != nil {
 		return certificate, "", noop, errors.Join(err, stopDatabase())
 	}
@@ -196,28 +197,32 @@ func finishHomeSetup(ctx context.Context, store *postgres.Store, path string) er
 }
 
 type serverOptions struct {
-	port          string
-	grpcAddress   string
-	demo          bool
-	firstOwner    bool
-	setupCode     bool
-	originFlag    string
-	homeData      string
-	homeRuntime   string
-	publicIP      string
-	httpsAddress  string
-	managed       bool
-	runtimeInfo   bool
-	checkDatabase bool
-	homeCheck     bool
-	homeMigrate   bool
-	homeStopped   bool
-	backup        string
-	restore       string
-	restoreTo     string
+	portableExport, portableImport, portableTo string
+	port                                       string
+	grpcAddress                                string
+	demo                                       bool
+	firstOwner                                 bool
+	setupCode                                  bool
+	originFlag                                 string
+	homeData                                   string
+	homeRuntime                                string
+	publicIP                                   string
+	httpsAddress                               string
+	managed                                    bool
+	runtimeInfo                                bool
+	checkDatabase                              bool
+	homeCheck                                  bool
+	homeMigrate                                bool
+	homeStopped                                bool
+	backup                                     string
+	restore                                    string
+	restoreTo                                  string
 }
 
 func parseOptions() serverOptions {
+	portableExport := flag.String("home-export", "", "Экспорт пространства в переносимый ZIP")
+	portableImport := flag.String("home-import", "", "Импорт переносимого архива пространства")
+	portableTo := flag.String("home-import-to", "", "Новый каталог для импортируемого пространства")
 	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
 	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
 	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
@@ -239,7 +244,7 @@ func parseOptions() serverOptions {
 	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
 	flag.Parse()
 	return serverOptions{
-		port:          *port,
+		portableExport: *portableExport, portableImport: *portableImport, portableTo: *portableTo, port: *port,
 		grpcAddress:   *grpcAddress,
 		demo:          *demo,
 		firstOwner:    *firstOwner,
@@ -262,6 +267,9 @@ func parseOptions() serverOptions {
 }
 
 func performMaintenance(options serverOptions) (bool, error) {
+	if options.portableExport != "" || options.portableImport != "" || options.portableTo != "" {
+		return true, performPortableTransfer(options)
+	}
 	if options.homeCheck || options.homeMigrate || options.homeStopped {
 		return true, performHomeCheck(options)
 	}
@@ -273,7 +281,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
 	}
@@ -451,9 +459,9 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 }
 
 type homeHTTPConfig struct {
-	address, localOrigin, publicOrigin, setupCode string
-	pendingSetupPath, statePath                   string
-	certificate                                   tls.Certificate
+	address, localOrigin, publicOrigin, identityOrigin, setupCode string
+	pendingSetupPath, statePath                                   string
+	certificate                                                   tls.Certificate
 }
 
 type publicHTTPServer struct {
@@ -478,6 +486,10 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 		return nil, err
 	}
 	handler = transport.WithConnect(handler, connection, store)
+	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate)
+	if err != nil {
+		return nil, err
+	}
 	handler = transport.RestrictOriginWithConnect(handler, config.publicOrigin)
 	handler = requireHomeOwner(handler, initialized)
 
@@ -565,4 +577,20 @@ func startRPCBridge(options serverOptions, service *chat.Service, store *postgre
 		return nil, err
 	}
 	return &rpcBridge{listener, server, connection}, nil
+}
+
+func performPortableTransfer(options serverOptions) error {
+	if options.homeRuntime == "" || options.backup != "" || options.restore != "" || options.restoreTo != "" || options.homeCheck || options.homeMigrate || options.homeStopped || options.runtimeInfo || options.checkDatabase || options.firstOwner || options.setupCode {
+		return errors.New("Выберите только экспорт или импорт пространства и укажите runtime")
+	}
+	if options.portableExport != "" {
+		if options.portableImport != "" || options.portableTo != "" || options.homeData == "" {
+			return errors.New("Для экспорта нужен home-data")
+		}
+		return home.ExportPortable(options.homeRuntime, options.homeData, options.portableExport)
+	}
+	if options.portableImport == "" || options.portableTo == "" || options.homeData != "" {
+		return errors.New("Для импорта нужны архив и новый каталог")
+	}
+	return home.ImportPortable(options.homeRuntime, options.portableImport, options.portableTo, options.publicIP)
 }

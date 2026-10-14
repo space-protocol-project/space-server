@@ -1,5 +1,12 @@
 # Space Server
 
+Домашний runtime v0.2.4 поддерживает перенос пространства через приложение:
+[инструкция экспорта и импорта](https://github.com/space-protocol-project/space-app/blob/main/docs/SPACE-TRANSFER.md).
+Для остановленной домашней установки CLI предоставляет `-home-export`,
+`-home-import`, `-home-import-to` и необязательный `-public-ip` нового компьютера.
+Импорт создаёт новый каталог и не заменяет существующие данные. Ключ владельца
+восстанавливается отдельно от архива сервера.
+
 Сервер Space и домашний runtime. Один и тот же Go-сервер предоставляет discovery, gRPC/HTTP API, PostgreSQL, чат, каналы и ACL, участников, приглашения, устройства, recovery и сопряжение.
 
 - [Общее Flutter-приложение](https://github.com/space-protocol-project/space-app).

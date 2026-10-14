@@ -1,5 +1,5 @@
 // Package identityrotation задаёт экспериментальный proof ротации.
-// Его использует экспериментальный серверный API; клиентский UI пока отсутствует.
+// Подписи привязаны к постоянному адресу пространства, включая домашний HTTPS.
 package identityrotation
 
 import (
@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,13 +50,14 @@ type Expected struct {
 }
 
 var (
-	principalPattern = regexp.MustCompile(`^u_[0-9a-f]{64}$`)
-	serverPattern    = regexp.MustCompile(`^srv_[0-9a-f]{32}$`)
-	challengePattern = regexp.MustCompile(`^rc_[A-Za-z0-9_-]{43}$`)
-	operationPattern = regexp.MustCompile(`^ro_[A-Za-z0-9_-]{43}$`)
-	noncePattern     = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
-	originPattern    = regexp.MustCompile(`^http://127\.0\.0\.1:[1-9][0-9]{0,4}$`)
-	ErrProof         = errors.New("Недействительное доказательство ротации root")
+	principalPattern   = regexp.MustCompile(`^u_[0-9a-f]{64}$`)
+	serverPattern      = regexp.MustCompile(`^srv_[0-9a-f]{32}$`)
+	challengePattern   = regexp.MustCompile(`^rc_[A-Za-z0-9_-]{43}$`)
+	operationPattern   = regexp.MustCompile(`^ro_[A-Za-z0-9_-]{43}$`)
+	noncePattern       = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
+	originPattern      = regexp.MustCompile(`^http://127\.0\.0\.1:[1-9][0-9]{0,4}$`)
+	httpsOriginPattern = regexp.MustCompile(`^https://[A-Za-z0-9.\[\]:-]+$`)
+	ErrProof           = errors.New("Недействительное доказательство ротации root")
 )
 
 func encoded(key []byte) string { return base64.RawURLEncoding.EncodeToString(key) }
@@ -65,12 +67,7 @@ func key(value string) ([]byte, bool) {
 }
 
 func (t Transcript) Validate(expected Expected, now time.Time) error {
-	origin, err := url.Parse(t.Origin)
-	if err != nil {
-		return ErrProof
-	}
-	port, err := strconv.Atoi(origin.Port())
-	if err != nil || port < 1 || port > 65535 {
+	if !validRotationOrigin(t.Origin) {
 		return ErrProof
 	}
 	oldRoot, oldOK := key(t.OldRootPublicKey)
@@ -82,7 +79,7 @@ func (t Transcript) Validate(expected Expected, now time.Time) error {
 		t.AuthEpoch < 1 || t.AuthEpoch >= 9007199254740991 || t.AuthEpoch != expected.AuthEpoch ||
 		!principalPattern.MatchString(t.PrincipalID) || t.PrincipalID != expected.PrincipalID ||
 		!serverPattern.MatchString(t.ServerID) || t.ServerID != expected.ServerID ||
-		!originPattern.MatchString(t.Origin) || t.Origin != expected.Origin ||
+		t.Origin != expected.Origin ||
 		!challengePattern.MatchString(t.ChallengeID) || t.ChallengeID != expected.ChallengeID ||
 		!operationPattern.MatchString(t.OperationID) || t.OperationID != expected.OperationID ||
 		!noncePattern.MatchString(t.Nonce) || !validScopes || !slices.Equal(t.Scopes, expected.Scopes) ||
@@ -95,6 +92,21 @@ func (t Transcript) Validate(expected Expected, now time.Time) error {
 		return ErrProof
 	}
 	return nil
+}
+
+func validRotationOrigin(value string) bool {
+	if !originPattern.MatchString(value) && !httpsOriginPattern.MatchString(value) {
+		return false
+	}
+	origin, err := url.Parse(value)
+	if err != nil || origin.Hostname() == "" || strings.HasSuffix(origin.Host, ":") {
+		return false
+	}
+	if origin.Port() == "" {
+		return origin.Scheme == "https"
+	}
+	port, err := strconv.Atoi(origin.Port())
+	return err == nil && port >= 1 && port <= 65535
 }
 
 // SigningBytes возвращает отдельно разделённые доменом подписи старого и нового root.

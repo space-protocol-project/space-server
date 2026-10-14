@@ -69,6 +69,9 @@ jobs:
           SPACE_HOME_UPGRADE_CHECK: '1'
           SPACE_HOME_CANDIDATE_DIRECTORY: '../../dist'
         run: flutter test --no-pub test/home_runtime_upgrade_test.dart
+      - name: Перенос пространства со сменой адреса и восстановлением владельца
+        working-directory: app-source/client
+        run: dart run tool/home_transfer_drill.dart ../../dist/home
       - uses: actions/upload-artifact@v4
         with:
           name: home-runtime-${{ matrix.os }}

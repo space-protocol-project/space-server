@@ -50,62 +50,99 @@ func validateServerIcon(icon *pb.ServerIcon) error {
 	}
 	return invalid()
 }
-func safeSVG(data []byte) bool {
-	tags := map[string]bool{"svg": true, "g": true, "path": true, "rect": true, "circle": true, "ellipse": true, "line": true, "polyline": true, "polygon": true}
-	attrs := strings.Fields("xmlns viewBox width height d fill stroke stroke-width stroke-linecap stroke-linejoin fill-rule clip-rule cx cy r rx ry x y x1 y1 x2 y2 points transform opacity fill-opacity stroke-opacity")
-	allowed := map[string]bool{}
-	for _, a := range attrs {
-		allowed[a] = true
+
+const maxSVGTokens = 512
+const maxSVGDepth = 16
+
+type svgDocument struct {
+	depth, tokenCount, rootCount       int
+	allowedElements, allowedAttributes map[string]bool
+}
+
+func newSVGDocument() *svgDocument {
+	attributes := strings.Fields("xmlns viewBox width height d fill stroke stroke-width stroke-linecap stroke-linejoin fill-rule clip-rule cx cy r rx ry x y x1 y1 x2 y2 points transform opacity fill-opacity stroke-opacity")
+	allowedAttributes := make(map[string]bool, len(attributes))
+	for _, attribute := range attributes {
+		allowedAttributes[attribute] = true
 	}
+	return &svgDocument{
+		allowedElements:   map[string]bool{"svg": true, "g": true, "path": true, "rect": true, "circle": true, "ellipse": true, "line": true, "polyline": true, "polygon": true},
+		allowedAttributes: allowedAttributes,
+	}
+}
+
+func safeSVG(data []byte) bool {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
-	depth, count, roots := 0, 0, 0
+	document := newSVGDocument()
 	for {
 		token, err := decoder.Token()
 		if err == io.EOF {
-			return roots == 1 && depth == 0
+			return document.rootCount == 1 && document.depth == 0
 		}
-		if err != nil {
-			return false
-		}
-		count++
-		if count > 512 {
-			return false
-		}
-		switch t := token.(type) {
-		case xml.StartElement:
-			if !tags[t.Name.Local] || (t.Name.Space != "" && t.Name.Space != "http://www.w3.org/2000/svg") {
-				return false
-			}
-			if depth == 0 {
-				roots++
-				if t.Name.Local != "svg" || roots > 1 {
-					return false
-				}
-			}
-			depth++
-			if depth > 16 {
-				return false
-			}
-			for _, a := range t.Attr {
-				if !allowed[a.Name.Local] || (a.Name.Space != "" && a.Name.Space != "xmlns") || strings.Contains(strings.ToLower(strings.Join(strings.Fields(a.Value), "")), "url(") {
-					return false
-				}
-			}
-		case xml.EndElement:
-			depth--
-		case xml.Directive:
-			return false
-		case xml.ProcInst:
-			if t.Target != "xml" {
-				return false
-			}
-		case xml.CharData:
-			if strings.TrimSpace(string(t)) != "" {
-				return false
-			}
-		case xml.Comment:
-		default:
+		if err != nil || !document.acceptToken(token) {
 			return false
 		}
 	}
+}
+
+func (document *svgDocument) acceptToken(token xml.Token) bool {
+	document.tokenCount++
+	if document.tokenCount > maxSVGTokens {
+		return false
+	}
+	switch element := token.(type) {
+	case xml.StartElement:
+		return document.startElement(element)
+	case xml.EndElement:
+		document.depth--
+		return true
+	case xml.ProcInst:
+		return element.Target == "xml"
+	case xml.CharData:
+		return strings.TrimSpace(string(element)) == ""
+	case xml.Comment:
+		return true
+	default:
+		return false
+	}
+}
+
+func (document *svgDocument) startElement(element xml.StartElement) bool {
+	if !safeSVGElement(element, document.allowedElements, document.allowedAttributes) {
+		return false
+	}
+	if document.depth == 0 {
+		document.rootCount++
+		if element.Name.Local != "svg" || document.rootCount > 1 {
+			return false
+		}
+	}
+	document.depth++
+	return document.depth <= maxSVGDepth
+}
+
+func safeSVGElement(element xml.StartElement, tags, allowed map[string]bool) bool {
+	if !tags[element.Name.Local] {
+		return false
+	}
+	if element.Name.Space != "" && element.Name.Space != "http://www.w3.org/2000/svg" {
+		return false
+	}
+	for _, attribute := range element.Attr {
+		if !safeSVGAttribute(attribute, allowed) {
+			return false
+		}
+	}
+	return true
+}
+
+func safeSVGAttribute(attribute xml.Attr, allowed map[string]bool) bool {
+	if !allowed[attribute.Name.Local] {
+		return false
+	}
+	if attribute.Name.Space != "" && attribute.Name.Space != "xmlns" {
+		return false
+	}
+	value := strings.ToLower(strings.Join(strings.Fields(attribute.Value), ""))
+	return !strings.Contains(value, "url(")
 }

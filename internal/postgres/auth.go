@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -51,108 +50,45 @@ func denied() error {
 	return status.Error(codes.Unauthenticated, "Challenge, подпись или разрешение устройства недействительны")
 }
 
-func (s *AuthService) CreateChallenge(ctx context.Context, req *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
-	if req.PairingId != "" && ((req.Purpose != "device.register" && req.Purpose != "device.delegate") || req.Recovery) {
-		return nil, status.Error(codes.InvalidArgument, "Неверный purpose сопряжения")
+func (s *AuthService) CreateChallenge(ctx context.Context, request *pb.CreateChallengeRequest) (*pb.CreateChallengeResponse, error) {
+	if err := validatePairingPurpose(request); err != nil {
+		return nil, err
 	}
-	if req.Purpose == "device.delegate" || req.Purpose == "recovery.device.revoke" {
-		return s.createRecoveryChallenge(ctx, req)
+	if request.Purpose == "device.delegate" || request.Purpose == "recovery.device.revoke" {
+		return s.createRecoveryChallenge(ctx, request)
 	}
-	if req.RecoveryGrantId != "" || (req.Recovery && req.Purpose != "device.register") {
-		return nil, status.Error(codes.InvalidArgument, "Неверное использование recovery fields")
+	if err := validateChallengeRequest(request); err != nil {
+		return nil, err
 	}
-	if req.Administrative && req.Purpose != "device.register" {
-		return nil, status.Error(codes.InvalidArgument, "Administrative разрешён только при регистрации устройства")
-	}
-	if req.Purpose != "device.register" && req.Purpose != "auth.login" && req.Purpose != "device.revoke" {
-		return nil, status.Error(codes.InvalidArgument, "Неизвестный purpose")
-	}
-	if req.Purpose == "device.register" && (len(req.RootPublicKey) != 32 || len(req.DevicePublicKey) != 32 || req.GrantId != "") {
-		return nil, status.Error(codes.InvalidArgument, "Регистрация требует два публичных ключа Ed25519")
-	}
-	if req.Purpose != "device.register" && (req.GrantId == "" || len(req.GrantId) > 128 || len(req.DevicePublicKey) != 0) {
-		return nil, status.Error(codes.InvalidArgument, "Нужен grant_id без device_public_key")
-	}
-	if req.Purpose == "auth.login" && len(req.RootPublicKey) != 0 {
-		return nil, status.Error(codes.InvalidArgument, "Вход использует зарегистрированное устройство")
-	}
-	if req.Purpose == "device.revoke" && len(req.RootPublicKey) != 32 {
-		return nil, status.Error(codes.InvalidArgument, "Отзыв требует root_public_key")
-	}
-	tx, err := s.challengeTransaction(ctx)
+
+	transaction, err := s.challengeTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer transaction.Rollback(ctx)
+
 	now := time.Now().UTC().Truncate(time.Second)
-	transcript := authn.Transcript{Purpose: req.Purpose, Origin: s.origin, ServerID: s.serverID, Version: 1, AuthEpoch: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix(), Scopes: []string{"chat.read", "chat.write"}}
-	root, device := req.RootPublicKey, req.DevicePublicKey
-	if req.Purpose == "device.register" {
-		if req.Administrative {
-			transcript.Scopes = append(transcript.Scopes, "space.manage")
-		}
-		transcript.PrincipalID, transcript.AuthEpoch, err = principalForRoot(ctx, tx, root)
-		if err != nil {
-			return nil, err
-		}
-		if req.PairingId != "" {
-			if err = s.validatePairChallenge(ctx, tx, req, transcript.PrincipalID); err != nil {
-				return nil, err
-			}
-			transcript.PairingID = req.PairingId
-		}
-		err = tx.QueryRow(ctx, "SELECT auth_epoch FROM principals WHERE id=$1", transcript.PrincipalID).Scan(&transcript.AuthEpoch)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return nil, databaseError(ctx, err)
-		}
-		transcript.GrantID, err = randomString("dg_")
-		if err != nil {
-			return nil, err
-		}
-		transcript.GrantExpiresAt = now.Add(30 * 24 * time.Hour).Unix()
-		if req.Recovery {
-			transcript.Scopes = append(transcript.Scopes, "identity.recover")
-			transcript.GrantExpiresAt = now.Add(recoveryLifetime).Unix()
-		}
+	transcript := authn.Transcript{
+		Purpose: request.Purpose, Origin: s.origin, ServerID: s.serverID,
+		Version: 1, AuthEpoch: 1, IssuedAt: now.Unix(),
+		ExpiresAt: now.Add(time.Minute).Unix(), Scopes: []string{"chat.read", "chat.write"},
+	}
+	keys := challengeKeys{root: request.RootPublicKey, device: request.DevicePublicKey}
+	if request.Purpose == "device.register" {
+		err = s.prepareRegistrationChallenge(ctx, transaction, request, &transcript, now)
 	} else {
-		var grantExpiry time.Time
-		err = tx.QueryRow(ctx, `SELECT p.id,p.root_public_key,g.device_public_key,p.auth_epoch,g.expires_at,g.scopes FROM device_grants g JOIN principals p ON p.id=g.principal_id
-   WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch`+activeParentCondition+activePairCondition, req.GrantId).Scan(&transcript.PrincipalID, &root, &device, &transcript.AuthEpoch, &grantExpiry, &transcript.Scopes)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, denied()
-		}
-		if err != nil {
-			return nil, databaseError(ctx, err)
-		}
-		if req.Purpose == "device.revoke" && !bytes.Equal(req.RootPublicKey, root) {
-			return nil, denied()
-		}
-		transcript.GrantID = req.GrantId
-		transcript.GrantExpiresAt = grantExpiry.Unix()
+		keys, err = s.prepareGrantChallenge(ctx, transaction, request, &transcript)
 	}
-	transcript.RootPublicKey = base64.RawURLEncoding.EncodeToString(root)
-	transcript.DevicePublicKey = base64.RawURLEncoding.EncodeToString(device)
-	transcript.ChallengeID, err = randomString("ac_")
 	if err != nil {
 		return nil, err
 	}
-	transcript.Nonce, err = randomString("")
+	transcript.RootPublicKey = base64.RawURLEncoding.EncodeToString(keys.root)
+	transcript.DevicePublicKey = base64.RawURLEncoding.EncodeToString(keys.device)
+	canonical, err := saveChallenge(ctx, transaction, &transcript, keys)
 	if err != nil {
 		return nil, err
 	}
-	canonical, err := transcript.Canonical()
-	if err != nil {
-		return nil, err
-	}
-	key := root
-	if req.Purpose == "auth.login" {
-		key = device
-	}
-	_, err = tx.Exec(ctx, "INSERT INTO auth_challenges(id,purpose,transcript,verification_key,expires_at) VALUES($1,$2,$3,$4,$5)", transcript.ChallengeID, req.Purpose, canonical, key, time.Unix(transcript.ExpiresAt, 0))
-	if err != nil {
-		return nil, databaseError(ctx, err)
-	}
-	if err = tx.Commit(ctx); err != nil {
+	if err := transaction.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.CreateChallengeResponse{ChallengeId: transcript.ChallengeID, Transcript: canonical}, nil

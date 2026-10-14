@@ -38,195 +38,52 @@ func main() {
 }
 
 func run() (result error) {
-	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
-	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
-	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
-	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
-	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
-	originFlag := flag.String("origin", "", "Origin браузера, в том числе локальная сторона SSH-туннеля")
-	homeData := flag.String("home-data", "", "Каталог постоянных данных домашнего сервера")
-	homeRuntime := flag.String("home-runtime", "", "Каталог проверенного выпуска с PostgreSQL")
-	publicIP := flag.String("public-ip", "", "Статический публичный IP домашнего сервера")
-	httpsAddress := flag.String("https", "0.0.0.0:8443", "HTTPS/gRPC адрес домашнего сервера")
-	managed := flag.Bool("managed", false, "Завершаться при закрытии stdin управляющего приложения")
-	runtimeInfo := flag.Bool("runtime-info", false, "Показать совместимость runtime без запуска сервера")
-	checkDatabase := flag.Bool("check-database", false, "Проверить существующую домашнюю базу только чтением, без миграций")
-	homeCheck := flag.Bool("home-check", false, "Проверить остановленную домашнюю базу без публичного входа")
-	homeMigrate := flag.Bool("home-migrate", false, "Применить миграции остановленной домашней базы без публичного входа")
-	homeStopped := flag.Bool("home-stopped", false, "Подтвердить чистую остановку PostgreSQL без проверки схемы")
-	backup := flag.String("home-backup", "", "Создать копию остановленного домашнего сервера в новом каталоге")
-	restore := flag.String("home-restore", "", "Путь проверенной резервной копии для восстановления")
-	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
-	flag.Parse()
-	if *homeCheck || *homeMigrate || *homeStopped {
-		if *homeCheck && *homeMigrate || *homeStopped && (*homeCheck || *homeMigrate) || *homeData == "" || *homeRuntime == "" || *backup != "" || *restore != "" || *restoreTo != "" || *runtimeInfo || *checkDatabase {
-			return errors.New("Для закрытой проверки или миграции нужны home-data, home-runtime и одна операция")
-		}
-		if *homeStopped {
-			return home.CheckStoppedDatabase(*homeRuntime, *homeData)
-		}
-		result, err := home.CheckOrMigrate(*homeRuntime, *homeData, *homeMigrate)
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(os.Stdout).Encode(result)
+	options := parseOptions()
+	if handled, err := performMaintenance(options); handled {
+		return err
 	}
-	if *backup != "" || *restore != "" || *restoreTo != "" {
-		if *backup != "" && *restore != "" || *runtimeInfo || *checkDatabase || *homeRuntime == "" {
-			return errors.New("Для копии или восстановления нужен home-runtime и одна операция")
-		}
-		if *backup != "" {
-			if *homeData == "" || *restoreTo != "" {
-				return errors.New("Для копии нужен home-data")
-			}
-			return home.CreateBackup(*homeRuntime, *homeData, *backup)
-		}
-		if *restore == "" || *restoreTo == "" || *homeData != "" {
-			return errors.New("Для восстановления нужны home-restore и home-restore-to без home-data")
-		}
-		return home.RestoreBackup(*homeRuntime, *restore, *restoreTo)
+	homeMode := options.homeData != ""
+	certificate, publicOrigin, stopDatabase, err := prepareHomeRuntime(options)
+	if err != nil {
+		return err
 	}
-	if *runtimeInfo && *checkDatabase {
-		return errors.New("Выберите одну проверку совместимости")
-	}
-	if *runtimeInfo {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
-			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
-		})
-	}
-	if *checkDatabase {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		result, err := postgres.CheckCompatibility(ctx, os.Getenv("SPACE_DATABASE_URL"))
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(os.Stdout).Encode(result)
-	}
-	homeMode := *homeData != ""
-	var certificate tls.Certificate
-	var publicOrigin string
-	if homeMode {
-		ip := net.ParseIP(*publicIP)
-		if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || *homeRuntime == "" || *demo || *originFlag != "" || *setupCode || *firstOwner {
-			return fmt.Errorf("Домашнему серверу нужны публичный IP, runtime и постоянные данные")
-		}
-		_, httpsPort, err := net.SplitHostPort(*httpsAddress)
-		if err != nil || httpsPort == "0" {
-			return fmt.Errorf("Некорректный HTTPS порт")
-		}
-		publicOrigin = "https://" + net.JoinHostPort(ip.String(), httpsPort)
-		databaseURL, stopDatabase, err := home.StartDatabase(*homeRuntime, *homeData)
-		if err != nil {
-			return err
-		}
-		defer func() { result = errors.Join(result, stopDatabase()) }()
-		if err := os.Setenv("SPACE_DATABASE_URL", databaseURL); err != nil {
-			return err
-		}
-		certificate, err = home.Certificate(*homeData, ip)
-		if err != nil {
-			return err
-		}
-	} else if *publicIP != "" || *homeRuntime != "" {
-		return fmt.Errorf("Нужен home-data")
-	}
+	defer func() { result = errors.Join(result, stopDatabase()) }()
 
-	origin := "http://" + *port
-	if *originFlag != "" {
-		origin = *originFlag
+	origin, err := localOrigin(options.port, options.originFlag)
+	if err != nil {
+		return err
 	}
-	parsed, parseErr := url.Parse(origin)
-	if parseErr != nil || parsed.Scheme != "http" || net.ParseIP(parsed.Hostname()) == nil || !net.ParseIP(parsed.Hostname()).IsLoopback() || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
-		return fmt.Errorf("origin должен быть локальным HTTP origin без пути")
-	}
-	parsed.Path = ""
-	if parsed.Port() == "80" {
-		parsed.Host = parsed.Hostname()
-		if strings.Contains(parsed.Host, ":") {
-			parsed.Host = "[" + parsed.Host + "]"
-		}
-	}
-	origin = parsed.String()
-	host, _, err := net.SplitHostPort(*port)
-	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
-		return fmt.Errorf("прототип без авторизации разрешает только IP loopback, например 127.0.0.1:8080")
-	}
-	grpcHost, _, err := net.SplitHostPort(*grpcAddress)
-	if err != nil || net.ParseIP(grpcHost) == nil || !net.ParseIP(grpcHost).IsLoopback() {
-		return fmt.Errorf("gRPC адрес должен быть loopback IP")
+	if err := validateLocalAddresses(options); err != nil {
+		return err
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if *managed {
+	if options.managed {
 		go func() { _, _ = io.Copy(io.Discard, os.Stdin); cancel() }()
 	}
-	service, identity, store, err := openService(ctx, *demo)
+	service, identity, store, err := openService(ctx, options.demo)
 	if err != nil {
 		return err
 	}
 	if store != nil {
 		defer store.Close()
 	}
-	if *firstOwner {
-		if *setupCode || store == nil {
-			return fmt.Errorf("first-owner требует PostgreSQL и не совмещается с setup-code")
-		}
-		if err := store.EnableFirstOwner(ctx); err != nil {
-			return err
-		}
-		fmt.Println("Первый успешный вход назначит владельца")
-		return nil
+	if handled, err := configureOwner(ctx, options, store); handled {
+		return err
 	}
-	if *setupCode {
-		if store == nil {
-			return fmt.Errorf("код настройки требует PostgreSQL")
-		}
-		limited, cancelCode := context.WithTimeout(ctx, 15*time.Second)
-		defer cancelCode()
-		code, err := store.CreateSetupCode(limited)
-		if err != nil {
-			return err
-		}
-		fmt.Println(code)
-		return nil
-	}
-	setup := ""
-	pendingSetup := filepath.Join(*homeData, "bootstrap-pending")
-	if homeMode {
-		status, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
-		if err != nil {
-			return err
-		}
-		if !status.Initialized {
-			setup, err = store.CreateSetupCode(ctx)
-			if err != nil {
-				return err
-			}
-			if err := os.WriteFile(pendingSetup, []byte("private setup pending"), 0600); err != nil {
-				return err
-			}
-		}
-	}
-	listener, err := net.Listen("tcp", *grpcAddress)
+	pendingSetup := filepath.Join(options.homeData, "bootstrap-pending")
+	setup, err := prepareHomeSetup(ctx, store, homeMode, pendingSetup)
 	if err != nil {
 		return err
 	}
-	options := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
+	listener, err := net.Listen("tcp", options.grpcAddress)
+	if err != nil {
+		return err
+	}
+	server := newRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin))
 	var verifier authn.Verifier
 	if store != nil {
 		verifier = store
-		options = append(options, grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
-	}
-	server := grpc.NewServer(options...)
-	pb.RegisterChannelServiceServer(server, service)
-	pb.RegisterContentServiceServer(server, service)
-	if store != nil {
-		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, identity.ServerID, authOrigin(origin, publicOrigin)))
-		pb.RegisterSyncServiceServer(server, store)
-		pb.RegisterAdminServiceServer(server, store)
-		pb.RegisterMembershipServiceServer(server, store)
 	}
 	go func() {
 		if err := server.Serve(listener); err != nil {
@@ -250,7 +107,7 @@ func run() (result error) {
 
 	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 2)
-	localListener, err := net.Listen("tcp", *port)
+	localListener, err := net.Listen("tcp", options.port)
 	if err != nil {
 		return err
 	}
@@ -258,63 +115,17 @@ func run() (result error) {
 	go func() { failures <- httpServer.Serve(localListener) }()
 	defer httpServer.Close()
 	if homeMode {
-		// Внешние запросы запрещены до назначения владельца через локальный вход.
-		var initialized atomic.Bool
-		go func() {
-			ticker := time.NewTicker(500 * time.Millisecond)
-			defer ticker.Stop()
-			for {
-				status, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
-				if err == nil && status.Initialized && finishHomeSetup(ctx, store, pendingSetup) == nil {
-					initialized.Store(true)
-					return
-				}
-				select {
-				case <-ticker.C:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-		endpoint, _ := url.Parse(publicOrigin)
-		publicHandler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host, true)
+		publicServer, err := startPublicServer(ctx, homeHTTPConfig{
+			address: options.httpsAddress, certificate: certificate,
+			localOrigin: origin, publicOrigin: publicOrigin, setupCode: setup,
+			pendingSetupPath: pendingSetup, statePath: filepath.Join(options.homeData, "state.json"),
+		}, connection, store, identity, failures)
 		if err != nil {
 			return err
 		}
-		publicHandler = transport.WithConnect(publicHandler, connection, verifier)
-		publicHandler = transport.RestrictOriginWithConnect(publicHandler, publicOrigin)
-
-		combined := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !initialized.Load() {
-				http.Error(w, "Сначала настройте владельца локально", http.StatusServiceUnavailable)
-				return
-			}
-
-			publicHandler.ServeHTTP(w, r)
-		})
-		secureServer := &http.Server{Addr: *httpsAddress, Handler: combined, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{certificate}}}
-		secureListener, err := net.Listen("tcp", *httpsAddress)
-		if err != nil {
-			return err
-		}
-		defer secureListener.Close()
-		defer secureServer.Close()
-		go func() { failures <- secureServer.ServeTLS(secureListener, "", "") }()
-		state, err := json.Marshal(map[string]string{"local_origin": origin, "public_origin": publicOrigin, "setup_code": setup})
-		if err != nil {
-			return err
-		}
-		statePath := filepath.Join(*homeData, "state.json")
-		if err := os.WriteFile(statePath+".tmp", state, 0600); err != nil {
-			return err
-		}
-		_ = os.Remove(statePath)
-		if err := os.Rename(statePath+".tmp", statePath); err != nil {
-			return err
-		}
-		defer os.Remove(statePath)
+		defer publicServer.close()
 	}
-	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", *port, identity.ServerID, *demo)
+	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", options.port, identity.ServerID, options.demo)
 	select {
 	case err := <-failures:
 		return err
@@ -323,6 +134,53 @@ func run() (result error) {
 		defer done()
 		return httpServer.Shutdown(shutdown)
 	}
+}
+
+// При ошибке подготовки база закрывается здесь; после успеха её закрывает run.
+func prepareHomeRuntime(options serverOptions) (tls.Certificate, string, func() error, error) {
+	var certificate tls.Certificate
+	noop := func() error { return nil }
+	if options.homeData == "" {
+		if options.publicIP != "" || options.homeRuntime != "" {
+			return certificate, "", noop, fmt.Errorf("Нужен home-data")
+		}
+		return certificate, "", noop, nil
+	}
+	ip, origin, err := homeEndpoint(options)
+	if err != nil {
+		return certificate, "", noop, err
+	}
+	databaseURL, stopDatabase, err := home.StartDatabase(options.homeRuntime, options.homeData)
+	if err != nil {
+		return certificate, "", noop, err
+	}
+	if err := os.Setenv("SPACE_DATABASE_URL", databaseURL); err != nil {
+		return certificate, "", noop, errors.Join(err, stopDatabase())
+	}
+	certificate, err = home.Certificate(options.homeData, ip)
+	if err != nil {
+		return certificate, "", noop, errors.Join(err, stopDatabase())
+	}
+	return certificate, origin, stopDatabase, nil
+}
+
+func isLoopbackAddress(address string) bool {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+func validateLocalAddresses(options serverOptions) error {
+	if !isLoopbackAddress(options.port) {
+		return fmt.Errorf("прототип без авторизации разрешает только IP loopback, например 127.0.0.1:8080")
+	}
+	if !isLoopbackAddress(options.grpcAddress) {
+		return fmt.Errorf("gRPC адрес должен быть loopback IP")
+	}
+	return nil
 }
 
 func openService(ctx context.Context, demo bool) (*chat.Service, postgres.Identity, *postgres.Store, error) {
@@ -359,4 +217,319 @@ func finishHomeSetup(ctx context.Context, store *postgres.Store, path string) er
 		return err
 	}
 	return os.Remove(path)
+}
+
+type serverOptions struct {
+	port          string
+	grpcAddress   string
+	demo          bool
+	firstOwner    bool
+	setupCode     bool
+	originFlag    string
+	homeData      string
+	homeRuntime   string
+	publicIP      string
+	httpsAddress  string
+	managed       bool
+	runtimeInfo   bool
+	checkDatabase bool
+	homeCheck     bool
+	homeMigrate   bool
+	homeStopped   bool
+	backup        string
+	restore       string
+	restoreTo     string
+}
+
+func parseOptions() serverOptions {
+	port := flag.String("http", "127.0.0.1:8080", "Локальный HTTP адрес")
+	grpcAddress := flag.String("grpc", "127.0.0.1:9090", "Локальный gRPC адрес")
+	demo := flag.Bool("demo", false, "Явно использовать временное хранилище в памяти")
+	firstOwner := flag.Bool("first-owner", false, "Включить назначение владельца первым входом для ненастроенного сервера и завершиться")
+	setupCode := flag.Bool("setup-code", false, "Выдать/заменить одноразовый код первого владельца и завершиться")
+	originFlag := flag.String("origin", "", "Origin браузера, в том числе локальная сторона SSH-туннеля")
+	homeData := flag.String("home-data", "", "Каталог постоянных данных домашнего сервера")
+	homeRuntime := flag.String("home-runtime", "", "Каталог проверенного выпуска с PostgreSQL")
+	publicIP := flag.String("public-ip", "", "Статический публичный IP домашнего сервера")
+	httpsAddress := flag.String("https", "0.0.0.0:8443", "HTTPS/gRPC адрес домашнего сервера")
+	managed := flag.Bool("managed", false, "Завершаться при закрытии stdin управляющего приложения")
+	runtimeInfo := flag.Bool("runtime-info", false, "Показать совместимость runtime без запуска сервера")
+	checkDatabase := flag.Bool("check-database", false, "Проверить существующую домашнюю базу только чтением, без миграций")
+	homeCheck := flag.Bool("home-check", false, "Проверить остановленную домашнюю базу без публичного входа")
+	homeMigrate := flag.Bool("home-migrate", false, "Применить миграции остановленной домашней базы без публичного входа")
+	homeStopped := flag.Bool("home-stopped", false, "Подтвердить чистую остановку PostgreSQL без проверки схемы")
+	backup := flag.String("home-backup", "", "Создать копию остановленного домашнего сервера в новом каталоге")
+	restore := flag.String("home-restore", "", "Путь проверенной резервной копии для восстановления")
+	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
+	flag.Parse()
+	return serverOptions{
+		port:          *port,
+		grpcAddress:   *grpcAddress,
+		demo:          *demo,
+		firstOwner:    *firstOwner,
+		setupCode:     *setupCode,
+		originFlag:    *originFlag,
+		homeData:      *homeData,
+		homeRuntime:   *homeRuntime,
+		publicIP:      *publicIP,
+		httpsAddress:  *httpsAddress,
+		managed:       *managed,
+		runtimeInfo:   *runtimeInfo,
+		checkDatabase: *checkDatabase,
+		homeCheck:     *homeCheck,
+		homeMigrate:   *homeMigrate,
+		homeStopped:   *homeStopped,
+		backup:        *backup,
+		restore:       *restore,
+		restoreTo:     *restoreTo,
+	}
+}
+
+func performMaintenance(options serverOptions) (bool, error) {
+	if options.homeCheck || options.homeMigrate || options.homeStopped {
+		return true, performHomeCheck(options)
+	}
+	if options.backup != "" || options.restore != "" || options.restoreTo != "" {
+		return true, performHomeBackup(options)
+	}
+	if options.runtimeInfo && options.checkDatabase {
+		return true, errors.New("Выберите одну проверку совместимости")
+	}
+	if options.runtimeInfo {
+		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
+		})
+	}
+	if options.checkDatabase {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		result, err := postgres.CheckCompatibility(ctx, os.Getenv("SPACE_DATABASE_URL"))
+		if err != nil {
+			return true, err
+		}
+		return true, json.NewEncoder(os.Stdout).Encode(result)
+	}
+	return false, nil
+}
+
+func localOrigin(address, override string) (string, error) {
+	origin := "http://" + address
+	if override != "" {
+		origin = override
+	}
+	parsed, parseErr := url.Parse(origin)
+	if parseErr != nil || parsed.Scheme != "http" || net.ParseIP(parsed.Hostname()) == nil || !net.ParseIP(parsed.Hostname()).IsLoopback() || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return "", fmt.Errorf("origin должен быть локальным HTTP origin без пути")
+	}
+	parsed.Path = ""
+	if parsed.Port() == "80" {
+		parsed.Host = parsed.Hostname()
+		if strings.Contains(parsed.Host, ":") {
+			parsed.Host = "[" + parsed.Host + "]"
+		}
+	}
+	origin = parsed.String()
+	return origin, nil
+}
+
+func prepareHomeSetup(ctx context.Context, store *postgres.Store, enabled bool, pendingPath string) (string, error) {
+	if !enabled {
+		return "", nil
+	}
+	setup, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
+	if err != nil || setup.Initialized {
+		return "", err
+	}
+	code, err := store.CreateSetupCode(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(pendingPath, []byte("private setup pending"), 0600); err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
+// Публичный вход открывается после назначения владельца и закрытия настройки.
+func watchHomeSetup(ctx context.Context, store *postgres.Store, pendingPath string) *atomic.Bool {
+	initialized := &atomic.Bool{}
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			setup, err := store.GetSetupStatus(ctx, &pb.GetSetupStatusRequest{})
+			if err == nil && setup.Initialized && finishHomeSetup(ctx, store, pendingPath) == nil {
+				initialized.Store(true)
+				return
+			}
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return initialized
+}
+
+func writeHomeState(path, localOrigin, publicOrigin, setupCode string) error {
+	state, err := json.Marshal(map[string]string{
+		"local_origin": localOrigin, "public_origin": publicOrigin, "setup_code": setupCode,
+	})
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path+".tmp", state, 0600); err != nil {
+		return err
+	}
+	_ = os.Remove(path)
+	return os.Rename(path+".tmp", path)
+}
+
+func performHomeCheck(options serverOptions) error {
+	if options.homeCheck && options.homeMigrate || options.homeStopped && (options.homeCheck || options.homeMigrate) || options.homeData == "" || options.homeRuntime == "" || options.backup != "" || options.restore != "" || options.restoreTo != "" || options.runtimeInfo || options.checkDatabase {
+		return errors.New("Для закрытой проверки или миграции нужны home-data, home-runtime и одна операция")
+	}
+	if options.homeStopped {
+		return home.CheckStoppedDatabase(options.homeRuntime, options.homeData)
+	}
+	result, err := home.CheckOrMigrate(options.homeRuntime, options.homeData, options.homeMigrate)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+func performHomeBackup(options serverOptions) error {
+	if options.backup != "" && options.restore != "" || options.runtimeInfo || options.checkDatabase || options.homeRuntime == "" {
+		return errors.New("Для копии или восстановления нужен home-runtime и одна операция")
+	}
+	if options.backup != "" {
+		if options.homeData == "" || options.restoreTo != "" {
+			return errors.New("Для копии нужен home-data")
+		}
+		return home.CreateBackup(options.homeRuntime, options.homeData, options.backup)
+	}
+	if options.restore == "" || options.restoreTo == "" || options.homeData != "" {
+		return errors.New("Для восстановления нужны home-restore и home-restore-to без home-data")
+	}
+	return home.RestoreBackup(options.homeRuntime, options.restore, options.restoreTo)
+}
+
+func configureOwner(ctx context.Context, options serverOptions, store *postgres.Store) (bool, error) {
+	if options.firstOwner {
+		if options.setupCode || store == nil {
+			return true, fmt.Errorf("first-owner требует PostgreSQL и не совмещается с setup-code")
+		}
+		if err := store.EnableFirstOwner(ctx); err != nil {
+			return true, err
+		}
+		fmt.Println("Первый успешный вход назначит владельца")
+		return true, nil
+	}
+	if options.setupCode {
+		if store == nil {
+			return true, fmt.Errorf("код настройки требует PostgreSQL")
+		}
+		limited, cancelCode := context.WithTimeout(ctx, 15*time.Second)
+		defer cancelCode()
+		code, err := store.CreateSetupCode(limited)
+		if err != nil {
+			return true, err
+		}
+		fmt.Println(code)
+		return true, nil
+	}
+	return false, nil
+}
+
+func homeEndpoint(options serverOptions) (net.IP, string, error) {
+	ip := net.ParseIP(options.publicIP)
+	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || options.homeRuntime == "" || options.demo || options.originFlag != "" || options.setupCode || options.firstOwner {
+		return nil, "", fmt.Errorf("Домашнему серверу нужны публичный IP, runtime и постоянные данные")
+	}
+	_, httpsPort, err := net.SplitHostPort(options.httpsAddress)
+	if err != nil || httpsPort == "0" {
+		return nil, "", fmt.Errorf("Некорректный HTTPS порт")
+	}
+	publicOrigin := "https://" + net.JoinHostPort(ip.String(), httpsPort)
+	return ip, publicOrigin, nil
+}
+
+func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string) *grpc.Server {
+	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
+	if store != nil {
+		grpcOptions = append(grpcOptions, grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
+	}
+	server := grpc.NewServer(grpcOptions...)
+	pb.RegisterChannelServiceServer(server, service)
+	pb.RegisterContentServiceServer(server, service)
+	if store != nil {
+		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
+		pb.RegisterSyncServiceServer(server, store)
+		pb.RegisterAdminServiceServer(server, store)
+		pb.RegisterMembershipServiceServer(server, store)
+	}
+	return server
+}
+
+type homeHTTPConfig struct {
+	address, localOrigin, publicOrigin, setupCode string
+	pendingSetupPath, statePath                   string
+	certificate                                   tls.Certificate
+}
+
+type publicHTTPServer struct {
+	server    *http.Server
+	listener  net.Listener
+	statePath string
+}
+
+func (server *publicHTTPServer) close() {
+	if server.statePath != "" {
+		_ = os.Remove(server.statePath)
+	}
+	_ = server.server.Close()
+	_ = server.listener.Close()
+}
+
+func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *grpc.ClientConn, store *postgres.Store, identity postgres.Identity, failures chan<- error) (*publicHTTPServer, error) {
+	initialized := watchHomeSetup(ctx, store, config.pendingSetupPath)
+	endpoint, _ := url.Parse(config.publicOrigin)
+	handler, err := transport.HandlerWithEndpoint(ctx, connection, identity.ServerID, identity.PublicKey, endpoint.Host, true)
+	if err != nil {
+		return nil, err
+	}
+	handler = transport.WithConnect(handler, connection, store)
+	handler = transport.RestrictOriginWithConnect(handler, config.publicOrigin)
+	handler = requireHomeOwner(handler, initialized)
+
+	server := &http.Server{
+		Addr: config.address, Handler: handler,
+		ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second,
+		TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{config.certificate}},
+	}
+	listener, err := net.Listen("tcp", config.address)
+	if err != nil {
+		return nil, err
+	}
+	resource := &publicHTTPServer{server: server, listener: listener}
+	go func() { failures <- server.ServeTLS(listener, "", "") }()
+	if err := writeHomeState(config.statePath, config.localOrigin, config.publicOrigin, config.setupCode); err != nil {
+		resource.close()
+		return nil, err
+	}
+	resource.statePath = config.statePath
+	return resource, nil
+}
+
+func requireHomeOwner(handler http.Handler, initialized *atomic.Bool) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if !initialized.Load() {
+			http.Error(response, "Сначала настройте владельца локально", http.StatusServiceUnavailable)
+			return
+		}
+		handler.ServeHTTP(response, request)
+	})
 }

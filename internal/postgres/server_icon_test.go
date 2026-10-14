@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"strings"
 	"testing"
 )
 
@@ -87,5 +88,32 @@ func TestServerIconSharedAndPreserved(t *testing.T) {
 	manifest, err := reopened.GetManifest(f.ctx, &pb.GetManifestRequest{})
 	if err != nil || !proto.Equal(manifest.Icon, req.Icon) {
 		t.Fatalf("Иконка потерялась после перезапуска: %v %v", manifest, err)
+	}
+}
+
+func TestSVGStructureAndLimits(t *testing.T) {
+	cases := []struct {
+		name, svg string
+		valid     bool
+	}{
+		{"simple", "<svg/>", true},
+		{"comments", "<!--before--><svg/><!--after-->", true},
+		{"open_element", "<svg><g/>", false},
+		{"two_roots", "<svg/><svg/>", false},
+		{"text", "<svg>text</svg>", false},
+		{"directive", "<!DOCTYPE svg><svg/>", false},
+		{"wrong_namespace", `<svg xmlns="https://example.org"/>`, false},
+		{"remote_fill", `<svg fill="U R L (https://example.org)"/>`, false},
+		{"max_depth", "<svg>" + strings.Repeat("<g>", 15) + strings.Repeat("</g>", 15) + "</svg>", true},
+		{"too_deep", "<svg>" + strings.Repeat("<g>", 16) + strings.Repeat("</g>", 16) + "</svg>", false},
+		{"max_tokens", "<svg>" + strings.Repeat("<!--x-->", 510) + "</svg>", true},
+		{"too_many_tokens", "<svg>" + strings.Repeat("<!--x-->", 511) + "</svg>", false},
+	}
+	for _, item := range cases {
+		t.Run(item.name, func(t *testing.T) {
+			if valid := safeSVG([]byte(item.svg)); valid != item.valid {
+				t.Fatalf("valid=%t want=%t", valid, item.valid)
+			}
+		})
 	}
 }

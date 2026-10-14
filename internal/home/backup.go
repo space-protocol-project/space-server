@@ -208,35 +208,13 @@ func CreateBackup(runtime, data, destination string) error {
 		if err := copyTree(data, filepath.Join(staging, "data")); err != nil {
 			return err
 		}
-		for _, name := range []string{"config.json", "active-runtime.json"} {
-			source := filepath.Join(filepath.Dir(data), name)
-			info, err := os.Lstat(source)
-			if os.IsNotExist(err) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			if !info.Mode().IsRegular() {
-				return errors.New("Конфигурация не является обычным файлом")
-			}
-			if err := copyFile(source, filepath.Join(staging, name)); err != nil {
-				return err
-			}
+		if err := copyBackupConfiguration(filepath.Dir(data), staging); err != nil {
+			return err
 		}
 		if err := CheckStoppedDatabase(runtime, data); err != nil {
 			return err
 		}
-		manifest, err := inventory(staging)
-		if err != nil {
-			return err
-		}
-		manifest.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-		bytes, err := json.Marshal(manifest)
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(staging, "backup.json"), bytes, 0600); err != nil {
+		if err := writeBackupManifest(staging); err != nil {
 			return err
 		}
 		if err := VerifyBackup(staging); err != nil {
@@ -244,6 +222,39 @@ func CreateBackup(runtime, data, destination string) error {
 		}
 		return CheckStoppedDatabase(runtime, filepath.Join(staging, "data"))
 	})
+}
+
+func copyBackupConfiguration(root, staging string) error {
+	for _, name := range []string{"config.json", "active-runtime.json"} {
+		source := filepath.Join(root, name)
+		info, err := os.Lstat(source)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return errors.New("Конфигурация не является обычным файлом")
+		}
+		if err := copyFile(source, filepath.Join(staging, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeBackupManifest(staging string) error {
+	manifest, err := inventory(staging)
+	if err != nil {
+		return err
+	}
+	manifest.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+	bytes, err := json.Marshal(manifest)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(staging, "backup.json"), bytes, 0600)
 }
 
 // Восстанавливаем только в новый каталог; действующие данные не заменяем.

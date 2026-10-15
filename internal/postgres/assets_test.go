@@ -270,14 +270,22 @@ func TestPrivateAssetAccessIsCheckedForEveryDownload(t *testing.T) {
 	}
 	_, err = client.DownloadChunk(member, &pb.DownloadChunkRequest{AssetId: id})
 	requireCode(t, err, codes.PermissionDenied)
+	_, err = client.ListChannelAssets(member, &pb.ListChannelAssetsRequest{ChannelId: channel.Id})
+	requireCode(t, err, codes.PermissionDenied)
 	f.acl(t, channel, roleRule("member", permissions(true, true, true, false)))
 	if _, err = client.DownloadChunk(member, &pb.DownloadChunkRequest{AssetId: id}); err != nil {
 		t.Fatal(err)
+	}
+	listed, err := client.ListChannelAssets(member, &pb.ListChannelAssetsRequest{ChannelId: channel.Id})
+	if err != nil || len(listed.Assets) != 1 {
+		t.Fatal("Разрешённое чтение списка", err)
 	}
 	_, err = f.contents.CreateContent(member, &pb.CreateContentRequest{ChannelId: channel.Id, IdempotencyKey: "stolen", AttachmentIds: []string{id}})
 	requireCode(t, err, codes.PermissionDenied)
 	f.acl(t, channel, roleRule("member", permissions(true, false, false, false)))
 	_, err = client.DownloadChunk(member, &pb.DownloadChunkRequest{AssetId: id})
+	requireCode(t, err, codes.PermissionDenied)
+	_, err = client.ListChannelAssets(member, &pb.ListChannelAssetsRequest{ChannelId: channel.Id})
 	requireCode(t, err, codes.PermissionDenied)
 }
 

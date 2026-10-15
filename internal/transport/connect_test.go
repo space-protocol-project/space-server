@@ -40,6 +40,13 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.SyncServiceSubscribeProcedure,
 		rpc.AdminServiceUpdateSettingsProcedure,
 		rpc.MembershipServiceGetMembershipProcedure,
+		rpc.MembershipServiceUpdateProfileProcedure,
+		rpc.AssetServiceBeginUploadProcedure,
+		rpc.AssetServiceUploadChunkProcedure,
+		rpc.AssetServiceCompleteUploadProcedure,
+		rpc.AssetServiceCancelUploadProcedure,
+		rpc.AssetServiceDownloadChunkProcedure,
+		rpc.AssetServiceListMyAssetsProcedure,
 	} {
 		t.Run(path, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader("не JSON"))
@@ -56,7 +63,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 }
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
-	if len(connectProcedures) != 39 {
+	if len(connectProcedures) != 46 {
 		t.Fatalf("Неполный набор Connect RPC: %d", len(connectProcedures))
 	}
 	if isConnectProcedure("/space.v1.AdminService/Unknown") {

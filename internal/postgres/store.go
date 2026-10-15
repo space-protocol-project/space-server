@@ -1,13 +1,13 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/space-protocol-project/space-server/internal/authn"
@@ -24,7 +24,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql"}
 
 func SchemaVersion() int { return len(migrationFiles) }
 
@@ -34,6 +34,7 @@ type Identity struct {
 }
 
 type Store struct {
+	pb.UnimplementedAssetServiceServer
 	pb.UnimplementedSyncServiceServer
 	pb.UnimplementedAdminServiceServer
 	pb.UnimplementedMembershipServiceServer
@@ -196,15 +197,12 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 		return nil, databaseError(ctx, err)
 	}
 	previous := new(pb.Content)
-	var previousTextHash []byte
-	textHash := sha256.Sum256([]byte(req.Text))
+	var previousTextHash, previousAttachments []byte
+	textHash := contentRequestHash(req)
 	actor := authn.Actor(ctx)
-	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence, created_at_unix_ms, revision, updated_at_unix_ms, deleted, request_text_hash FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence, &previous.CreatedAtUnixMs, &previous.Revision, &previous.UpdatedAtUnixMs, &previous.Deleted, &previousTextHash)
+	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence, created_at_unix_ms, revision, updated_at_unix_ms, deleted, request_text_hash, attachments FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence, &previous.CreatedAtUnixMs, &previous.Revision, &previous.UpdatedAtUnixMs, &previous.Deleted, &previousTextHash, &previousAttachments)
 	if err == nil {
-		if !bytes.Equal(previousTextHash, textHash[:]) {
-			return nil, status.Error(codes.AlreadyExists, "Ключ уже использован с другим текстом")
-		}
-		return &pb.CreateContentResponse{Content: previous}, nil
+		return replayContent(ctx, previous, previousTextHash, textHash, previousAttachments)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, databaseError(ctx, err)
@@ -213,9 +211,8 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 1000 сообщений")
 	}
 	content := &pb.Content{Id: fmt.Sprintf("message-%d", sequence), ChannelId: req.ChannelId, Text: req.Text, AuthorId: actor, Sequence: sequence, Revision: 1}
-	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,request_text_hash) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING created_at_unix_ms", req.ChannelId, sequence, content.Id, req.Text, req.IdempotencyKey, actor, textHash[:]).Scan(&content.CreatedAtUnixMs)
-	if err != nil {
-		return nil, databaseError(ctx, err)
+	if err = insertContentWithAssets(ctx, tx, req, content, textHash); err != nil {
+		return nil, err
 	}
 	if _, err = tx.Exec(ctx, "UPDATE channels SET next_sequence=next_sequence+1 WHERE id=$1", req.ChannelId); err != nil {
 		return nil, databaseError(ctx, err)
@@ -254,7 +251,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
+	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -262,7 +259,11 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 	result := &pb.ListContentResponse{NextCursor: req.After}
 	for rows.Next() {
 		content := new(pb.Content)
-		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence, &content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted); err != nil {
+		var metadata []byte
+		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence, &content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata); err != nil {
+			return nil, databaseError(ctx, err)
+		}
+		if err = json.Unmarshal(metadata, &content.Attachments); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Contents = append(result.Contents, content)

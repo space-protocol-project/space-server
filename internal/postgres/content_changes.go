@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -24,14 +26,18 @@ func (s *Store) Delete(ctx context.Context, req *pb.DeleteContentRequest) (*pb.D
 
 func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Content, error) {
 	content := new(pb.Content)
-	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted
+	var metadata []byte
+	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments
  FROM contents WHERE channel_id=$1 AND id=$2 FOR UPDATE`, channel, id).Scan(
 		&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence,
-		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted)
+		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Сообщение не найдено")
 	}
 	if err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if err = json.Unmarshal(metadata, &content.Attachments); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return content, nil
@@ -70,6 +76,15 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 	if err = validateContentAuthor(ctx, content, revision); err != nil {
 		return nil, err
 	}
+	if !deleted && strings.TrimSpace(text) == "" && len(content.Attachments) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Сообщение должно содержать текст или файл")
+	}
+	if deleted {
+		if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE channel_id=$1 AND content_id=$2", channel, id); err != nil {
+			return nil, databaseError(ctx, err)
+		}
+		content.Attachments = nil
+	}
 	content.Text, content.Deleted = text, deleted
 	content.Revision++
 	content.UpdatedAtUnixMs = time.Now().UnixMilli()
@@ -83,7 +98,7 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 }
 
 func saveContentChange(ctx context.Context, tx pgx.Tx, content *pb.Content) error {
-	_, err := tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6
+	_, err := tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6,attachments=CASE WHEN $6 THEN '[]'::jsonb ELSE attachments END
  WHERE channel_id=$1 AND id=$2`, content.ChannelId, content.Id, content.Text, content.Revision, content.UpdatedAtUnixMs, content.Deleted)
 	if err != nil {
 		return databaseError(ctx, err)

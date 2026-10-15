@@ -611,6 +611,302 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	AssetService_BeginUpload_FullMethodName    = "/space.v1.AssetService/BeginUpload"
+	AssetService_UploadChunk_FullMethodName    = "/space.v1.AssetService/UploadChunk"
+	AssetService_CompleteUpload_FullMethodName = "/space.v1.AssetService/CompleteUpload"
+	AssetService_CancelUpload_FullMethodName   = "/space.v1.AssetService/CancelUpload"
+	AssetService_DownloadChunk_FullMethodName  = "/space.v1.AssetService/DownloadChunk"
+	AssetService_ListMyAssets_FullMethodName   = "/space.v1.AssetService/ListMyAssets"
+)
+
+// AssetServiceClient is the client API for AssetService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Файлы передаются ограниченными частями; права проверяются на каждой операции.
+type AssetServiceClient interface {
+	BeginUpload(ctx context.Context, in *BeginUploadRequest, opts ...grpc.CallOption) (*BeginUploadResponse, error)
+	UploadChunk(ctx context.Context, in *UploadChunkRequest, opts ...grpc.CallOption) (*UploadChunkResponse, error)
+	CompleteUpload(ctx context.Context, in *CompleteUploadRequest, opts ...grpc.CallOption) (*CompleteUploadResponse, error)
+	CancelUpload(ctx context.Context, in *CancelUploadRequest, opts ...grpc.CallOption) (*CancelUploadResponse, error)
+	DownloadChunk(ctx context.Context, in *DownloadChunkRequest, opts ...grpc.CallOption) (*DownloadChunkResponse, error)
+	ListMyAssets(ctx context.Context, in *ListMyAssetsRequest, opts ...grpc.CallOption) (*ListMyAssetsResponse, error)
+}
+
+type assetServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewAssetServiceClient(cc grpc.ClientConnInterface) AssetServiceClient {
+	return &assetServiceClient{cc}
+}
+
+func (c *assetServiceClient) BeginUpload(ctx context.Context, in *BeginUploadRequest, opts ...grpc.CallOption) (*BeginUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BeginUploadResponse)
+	err := c.cc.Invoke(ctx, AssetService_BeginUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *assetServiceClient) UploadChunk(ctx context.Context, in *UploadChunkRequest, opts ...grpc.CallOption) (*UploadChunkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadChunkResponse)
+	err := c.cc.Invoke(ctx, AssetService_UploadChunk_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *assetServiceClient) CompleteUpload(ctx context.Context, in *CompleteUploadRequest, opts ...grpc.CallOption) (*CompleteUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteUploadResponse)
+	err := c.cc.Invoke(ctx, AssetService_CompleteUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *assetServiceClient) CancelUpload(ctx context.Context, in *CancelUploadRequest, opts ...grpc.CallOption) (*CancelUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelUploadResponse)
+	err := c.cc.Invoke(ctx, AssetService_CancelUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *assetServiceClient) DownloadChunk(ctx context.Context, in *DownloadChunkRequest, opts ...grpc.CallOption) (*DownloadChunkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DownloadChunkResponse)
+	err := c.cc.Invoke(ctx, AssetService_DownloadChunk_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *assetServiceClient) ListMyAssets(ctx context.Context, in *ListMyAssetsRequest, opts ...grpc.CallOption) (*ListMyAssetsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMyAssetsResponse)
+	err := c.cc.Invoke(ctx, AssetService_ListMyAssets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AssetServiceServer is the server API for AssetService service.
+// All implementations must embed UnimplementedAssetServiceServer
+// for forward compatibility.
+//
+// Файлы передаются ограниченными частями; права проверяются на каждой операции.
+type AssetServiceServer interface {
+	BeginUpload(context.Context, *BeginUploadRequest) (*BeginUploadResponse, error)
+	UploadChunk(context.Context, *UploadChunkRequest) (*UploadChunkResponse, error)
+	CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error)
+	CancelUpload(context.Context, *CancelUploadRequest) (*CancelUploadResponse, error)
+	DownloadChunk(context.Context, *DownloadChunkRequest) (*DownloadChunkResponse, error)
+	ListMyAssets(context.Context, *ListMyAssetsRequest) (*ListMyAssetsResponse, error)
+	mustEmbedUnimplementedAssetServiceServer()
+}
+
+// UnimplementedAssetServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedAssetServiceServer struct{}
+
+func (UnimplementedAssetServiceServer) BeginUpload(context.Context, *BeginUploadRequest) (*BeginUploadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BeginUpload not implemented")
+}
+func (UnimplementedAssetServiceServer) UploadChunk(context.Context, *UploadChunkRequest) (*UploadChunkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadChunk not implemented")
+}
+func (UnimplementedAssetServiceServer) CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteUpload not implemented")
+}
+func (UnimplementedAssetServiceServer) CancelUpload(context.Context, *CancelUploadRequest) (*CancelUploadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CancelUpload not implemented")
+}
+func (UnimplementedAssetServiceServer) DownloadChunk(context.Context, *DownloadChunkRequest) (*DownloadChunkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadChunk not implemented")
+}
+func (UnimplementedAssetServiceServer) ListMyAssets(context.Context, *ListMyAssetsRequest) (*ListMyAssetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMyAssets not implemented")
+}
+func (UnimplementedAssetServiceServer) mustEmbedUnimplementedAssetServiceServer() {}
+func (UnimplementedAssetServiceServer) testEmbeddedByValue()                      {}
+
+// UnsafeAssetServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AssetServiceServer will
+// result in compilation errors.
+type UnsafeAssetServiceServer interface {
+	mustEmbedUnimplementedAssetServiceServer()
+}
+
+func RegisterAssetServiceServer(s grpc.ServiceRegistrar, srv AssetServiceServer) {
+	// If the following call pancis, it indicates UnimplementedAssetServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&AssetService_ServiceDesc, srv)
+}
+
+func _AssetService_BeginUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeginUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).BeginUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_BeginUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).BeginUpload(ctx, req.(*BeginUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AssetService_UploadChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadChunkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).UploadChunk(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_UploadChunk_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).UploadChunk(ctx, req.(*UploadChunkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AssetService_CompleteUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).CompleteUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_CompleteUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).CompleteUpload(ctx, req.(*CompleteUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AssetService_CancelUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).CancelUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_CancelUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).CancelUpload(ctx, req.(*CancelUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AssetService_DownloadChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadChunkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).DownloadChunk(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_DownloadChunk_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).DownloadChunk(ctx, req.(*DownloadChunkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AssetService_ListMyAssets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMyAssetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).ListMyAssets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_ListMyAssets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).ListMyAssets(ctx, req.(*ListMyAssetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// AssetService_ServiceDesc is the grpc.ServiceDesc for AssetService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var AssetService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "space.v1.AssetService",
+	HandlerType: (*AssetServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "BeginUpload",
+			Handler:    _AssetService_BeginUpload_Handler,
+		},
+		{
+			MethodName: "UploadChunk",
+			Handler:    _AssetService_UploadChunk_Handler,
+		},
+		{
+			MethodName: "CompleteUpload",
+			Handler:    _AssetService_CompleteUpload_Handler,
+		},
+		{
+			MethodName: "CancelUpload",
+			Handler:    _AssetService_CancelUpload_Handler,
+		},
+		{
+			MethodName: "DownloadChunk",
+			Handler:    _AssetService_DownloadChunk_Handler,
+		},
+		{
+			MethodName: "ListMyAssets",
+			Handler:    _AssetService_ListMyAssets_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "space/v1/space.proto",
+}
+
+const (
 	AuthService_CreateRootRotation_FullMethodName   = "/space.v1.AuthService/CreateRootRotation"
 	AuthService_CompleteRootRotation_FullMethodName = "/space.v1.AuthService/CompleteRootRotation"
 	AuthService_ProposePairing_FullMethodName       = "/space.v1.AuthService/ProposePairing"
@@ -1721,6 +2017,7 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	MembershipService_UpdateProfile_FullMethodName = "/space.v1.MembershipService/UpdateProfile"
 	MembershipService_PreviewInvite_FullMethodName = "/space.v1.MembershipService/PreviewInvite"
 	MembershipService_AcceptInvite_FullMethodName  = "/space.v1.MembershipService/AcceptInvite"
 	MembershipService_GetMembership_FullMethodName = "/space.v1.MembershipService/GetMembership"
@@ -1730,6 +2027,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MembershipServiceClient interface {
+	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
 	PreviewInvite(ctx context.Context, in *PreviewInviteRequest, opts ...grpc.CallOption) (*PreviewInviteResponse, error)
 	AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*AcceptInviteResponse, error)
 	GetMembership(ctx context.Context, in *GetMembershipRequest, opts ...grpc.CallOption) (*GetMembershipResponse, error)
@@ -1741,6 +2039,16 @@ type membershipServiceClient struct {
 
 func NewMembershipServiceClient(cc grpc.ClientConnInterface) MembershipServiceClient {
 	return &membershipServiceClient{cc}
+}
+
+func (c *membershipServiceClient) UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateProfileResponse)
+	err := c.cc.Invoke(ctx, MembershipService_UpdateProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *membershipServiceClient) PreviewInvite(ctx context.Context, in *PreviewInviteRequest, opts ...grpc.CallOption) (*PreviewInviteResponse, error) {
@@ -1777,6 +2085,7 @@ func (c *membershipServiceClient) GetMembership(ctx context.Context, in *GetMemb
 // All implementations must embed UnimplementedMembershipServiceServer
 // for forward compatibility.
 type MembershipServiceServer interface {
+	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
 	PreviewInvite(context.Context, *PreviewInviteRequest) (*PreviewInviteResponse, error)
 	AcceptInvite(context.Context, *AcceptInviteRequest) (*AcceptInviteResponse, error)
 	GetMembership(context.Context, *GetMembershipRequest) (*GetMembershipResponse, error)
@@ -1790,6 +2099,9 @@ type MembershipServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMembershipServiceServer struct{}
 
+func (UnimplementedMembershipServiceServer) UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateProfile not implemented")
+}
 func (UnimplementedMembershipServiceServer) PreviewInvite(context.Context, *PreviewInviteRequest) (*PreviewInviteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PreviewInvite not implemented")
 }
@@ -1818,6 +2130,24 @@ func RegisterMembershipServiceServer(s grpc.ServiceRegistrar, srv MembershipServ
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&MembershipService_ServiceDesc, srv)
+}
+
+func _MembershipService_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MembershipServiceServer).UpdateProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MembershipService_UpdateProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MembershipServiceServer).UpdateProfile(ctx, req.(*UpdateProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _MembershipService_PreviewInvite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1881,6 +2211,10 @@ var MembershipService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.MembershipService",
 	HandlerType: (*MembershipServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "UpdateProfile",
+			Handler:    _MembershipService_UpdateProfile_Handler,
+		},
 		{
 			MethodName: "PreviewInvite",
 			Handler:    _MembershipService_PreviewInvite_Handler,

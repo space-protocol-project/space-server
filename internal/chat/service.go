@@ -60,11 +60,14 @@ func (s *Service) CreateContent(ctx context.Context, req *pb.CreateContentReques
 	if err := ctx.Err(); err != nil {
 		return nil, status.FromContextError(err).Err()
 	}
-	if strings.TrimSpace(req.Text) == "" || len(req.Text) > 4096 || len(req.IdempotencyKey) == 0 || len(req.IdempotencyKey) > 128 {
+	if (strings.TrimSpace(req.Text) == "" && len(req.AttachmentIds) == 0) || len(req.AttachmentIds) > 5 || len(req.Text) > 4096 || len(req.IdempotencyKey) == 0 || len(req.IdempotencyKey) > 128 {
 		return nil, status.Error(codes.InvalidArgument, "Нужны текст до 4096 байт и ключ идемпотентности до 128 байт")
 	}
 	if s.store != nil {
 		return s.store.Create(ctx, req)
+	}
+	if len(req.AttachmentIds) > 0 {
+		return nil, status.Error(codes.Unimplemented, "Вложения требуют постоянного хранилища")
 	}
 	if err := validateChannel(req.ChannelId); err != nil {
 		return nil, err

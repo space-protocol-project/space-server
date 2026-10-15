@@ -5,7 +5,7 @@ on:
       app_ref:
         description: Коммит приложения для проверки совместимой пары
         type: string
-        default: main
+        default: ''
   push:
     branches: ['**']
   pull_request:
@@ -15,7 +15,7 @@ on:
         description: Коммит или тег проверяемого приложения
         type: string
         required: false
-        default: main
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -43,10 +43,19 @@ jobs:
         with:
           repository: space-protocol-project/space-server
           ref: ${{ github.repository == 'space-protocol-project/space-server' && github.sha || 'main' }}
+      - name: Проверяемая версия приложения
+        id: app-ref
+        shell: bash
+        env:
+          REQUESTED_APP_REF: ${{ inputs.app_ref }}
+        run: |
+          app_ref="$REQUESTED_APP_REF"
+          if [ -z "$app_ref" ]; then app_ref=$(cat .github/space-app.ref); fi
+          echo "ref=$app_ref" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-app
-          ref: ${{ inputs.app_ref || 'main' }}
+          ref: ${{ steps.app-ref.outputs.ref }}
           path: app-source
       - name: Проверка конфигурации локальной базы
         env:
@@ -137,6 +146,21 @@ jobs:
           done
           cd app-source/client
           dart run tool/manual_owner_interoperability.dart http://127.0.0.1:18082
+      - name: Вложения и профили — два настоящих клиента
+        env:
+          SPACE_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_attachments?sslmode=disable
+          SPACE_ATTACHMENTS_TEST_ORIGIN: http://127.0.0.1:18083
+        run: |
+          PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U space -d space_test -v ON_ERROR_STOP=1 -c 'CREATE DATABASE space_attachments'
+          "$RUNNER_TEMP/space-server" -http 127.0.0.1:18083 -grpc 127.0.0.1:19093 &
+          attachments_pid=$!
+          trap 'kill "$attachments_pid"; wait "$attachments_pid" || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18083/healthz; then break; fi
+            sleep 1
+          done
+          cd app-source/client
+          flutter test test/live/attachments_server_test.dart --reporter expanded
   native-vault:
     name: Нативное хранилище Windows
     runs-on: windows-latest
@@ -145,10 +169,19 @@ jobs:
         with:
           repository: space-protocol-project/space-server
           ref: ${{ github.repository == 'space-protocol-project/space-server' && github.sha || 'main' }}
+      - name: Проверяемая версия приложения
+        id: app-ref
+        shell: bash
+        env:
+          REQUESTED_APP_REF: ${{ inputs.app_ref }}
+        run: |
+          app_ref="$REQUESTED_APP_REF"
+          if [ -z "$app_ref" ]; then app_ref=$(cat .github/space-app.ref); fi
+          echo "ref=$app_ref" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-app
-          ref: ${{ inputs.app_ref || 'main' }}
+          ref: ${{ steps.app-ref.outputs.ref }}
           path: app-source
       - uses: subosito/flutter-action@v2
         with:

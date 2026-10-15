@@ -115,11 +115,11 @@ func authorizeManagement(ctx context.Context, tx pgx.Tx) (string, error) {
 	return principal, nil
 }
 func settings(ctx context.Context, tx pgx.Tx, lock string) (*pb.SpaceSettings, string, []byte, *time.Time, error) {
-	result := &pb.SpaceSettings{Icon: new(pb.ServerIcon)}
+	result := &pb.SpaceSettings{Icon: new(pb.ServerIcon), StorageLimitBytes: new(int64), MemberStorageLimitBytes: new(int64)}
 	var owner *string
 	var hash []byte
 	var expires *time.Time
-	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at,icon_preset,icon_media_type,icon_data FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires, &result.Icon.Preset, &result.Icon.MediaType, &result.Icon.Data)
+	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at,icon_preset,icon_media_type,icon_data,storage_limit_bytes,member_storage_limit_bytes FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires, &result.Icon.Preset, &result.Icon.MediaType, &result.Icon.Data, result.StorageLimitBytes, result.MemberStorageLimitBytes)
 	id := ""
 	if owner != nil {
 		id = *owner
@@ -209,8 +209,14 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if req.Icon != nil {
 		icon = req.Icon
 	}
+	if req.StorageLimitBytes == nil {
+		req.StorageLimitBytes = current.StorageLimitBytes
+	}
+	if req.MemberStorageLimitBytes == nil {
+		req.MemberStorageLimitBytes = current.MemberStorageLimitBytes
+	}
 	revision := current.Revision + 1
-	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision); err != nil {
+	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5,storage_limit_bytes=$6,member_storage_limit_bytes=$7 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision, req.GetStorageLimitBytes(), req.GetMemberStorageLimitBytes()); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err := updateSettingsIcon(ctx, tx, icon); err != nil {
@@ -226,7 +232,7 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision, Icon: icon}}, nil
+	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision, Icon: icon, StorageLimitBytes: req.StorageLimitBytes, MemberStorageLimitBytes: req.MemberStorageLimitBytes}}, nil
 }
 
 // Включение bootstrap не изменяет уже назначенного владельца.
@@ -250,6 +256,9 @@ func (s *Store) EnableFirstOwner(ctx context.Context) error {
 }
 
 func validateSettingsRequest(req *pb.UpdateSettingsRequest) error {
+	if req.GetStorageLimitBytes() < 0 || req.GetStorageLimitBytes() > 1<<40 || req.GetMemberStorageLimitBytes() < 0 || req.GetMemberStorageLimitBytes() > 1<<40 {
+		return status.Error(codes.InvalidArgument, "Лимиты хранилища должны быть от 0 до 1 ТиБ")
+	}
 	if strings.TrimSpace(req.Title) == "" || len(req.Title) > 320 || strings.TrimSpace(req.ChatTitle) == "" || len(req.ChatTitle) > 320 || (req.RegistrationPolicy != "open" && req.RegistrationPolicy != "closed") {
 		return status.Error(codes.InvalidArgument, "Нужны названия до 320 байт и политика open/closed")
 	}

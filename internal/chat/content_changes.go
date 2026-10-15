@@ -5,11 +5,10 @@ import (
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
 func (s *Service) UpdateContent(ctx context.Context, req *pb.UpdateContentRequest) (*pb.UpdateContentResponse, error) {
-	if req.Id == "" || req.ExpectedRevision < 1 || strings.TrimSpace(req.Text) == "" || len(req.Text) > 4096 {
+	if req.Id == "" || req.ExpectedRevision < 1 || len(req.Text) > 4096 {
 		return nil, status.Error(codes.InvalidArgument, "Нужны сообщение, его версия и текст до 4096 байт")
 	}
 	store, ok := s.store.(interface {

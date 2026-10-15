@@ -247,6 +247,10 @@ func (s connectMembership) AcceptInvite(ctx context.Context, req *connect.Reques
 	return bridgeUnary(ctx, req, s.client.AcceptInvite)
 }
 
+func (s connectMembership) UpdateProfile(ctx context.Context, req *connect.Request[pb.UpdateProfileRequest]) (*connect.Response[pb.UpdateProfileResponse], error) {
+	return bridgeUnary(ctx, req, s.client.UpdateProfile)
+}
+
 func (s connectMembership) GetMembership(ctx context.Context, req *connect.Request[pb.GetMembershipRequest]) (*connect.Response[pb.GetMembershipResponse], error) {
 	return bridgeUnary(ctx, req, s.client.GetMembership)
 }
@@ -267,8 +271,10 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(pathAdminService, handlerAdminService)
 	pathMembershipService, handlerMembershipService := rpc.NewMembershipServiceHandler(connectMembership{client: pb.NewMembershipServiceClient(connection)}, options...)
 	mux.Handle(pathMembershipService, handlerMembershipService)
+	assetPath, assetHandler := rpc.NewAssetServiceHandler(connectAsset{client: pb.NewAssetServiceClient(connection)}, connect.WithReadMaxBytes(384*1024), connect.WithSendMaxBytes(1024*1024))
+	mux.Handle(assetPath, assetHandler)
 	mux.Handle("/", base)
-	return http.MaxBytesHandler(connectAuthorization(mux, verifier), 16*1024)
+	return connectBodyLimit(connectAuthorization(mux, verifier))
 }
 
 func connectAuthorization(next http.Handler, verifier authn.Verifier) http.Handler {
@@ -292,6 +298,14 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.MembershipServiceUpdateProfileProcedure: true,
+	rpc.AssetServiceBeginUploadProcedure:        true,
+	rpc.AssetServiceUploadChunkProcedure:        true,
+	rpc.AssetServiceCompleteUploadProcedure:     true,
+	rpc.AssetServiceCancelUploadProcedure:       true,
+	rpc.AssetServiceDownloadChunkProcedure:      true,
+	rpc.AssetServiceListMyAssetsProcedure:       true,
+
 	rpc.ChannelServiceListChannelsProcedure:        true,
 	rpc.ChannelServiceCreateChannelProcedure:       true,
 	rpc.ChannelServiceUpdateChannelProcedure:       true,

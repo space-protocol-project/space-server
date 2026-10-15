@@ -107,6 +107,8 @@ func newChannelFixture(t *testing.T) *channelFixture {
 	service := chat.NewPersistent(identity.ServerID, store)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
+	pb.RegisterMembershipServiceServer(server, store)
+	pb.RegisterAssetServiceServer(server, store)
 	pb.RegisterSyncServiceServer(server, store)
 	pb.RegisterAdminServiceServer(server, store)
 	pb.RegisterAuthServiceServer(server, NewAuth(store, identity.ServerID, "http://127.0.0.1:8080"))

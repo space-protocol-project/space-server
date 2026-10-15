@@ -442,15 +442,20 @@ func homeEndpoint(options serverOptions) (net.IP, string, error) {
 }
 
 func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string) *grpc.Server {
-	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(16 * 1024)}
+	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(transport.MaxRPCRequestBytes)}
+	unary := []grpc.UnaryServerInterceptor{transport.MessageSizeLimit}
+	streams := []grpc.StreamServerInterceptor{transport.StreamMessageSizeLimit}
 	if store != nil {
-		grpcOptions = append(grpcOptions, grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
+		unary = append(unary, authn.Interceptor(store))
+		streams = append(streams, authn.StreamInterceptor(store))
 	}
+	grpcOptions = append(grpcOptions, grpc.ChainUnaryInterceptor(unary...), grpc.ChainStreamInterceptor(streams...))
 	server := grpc.NewServer(grpcOptions...)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	if store != nil {
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
+		pb.RegisterAssetServiceServer(server, store)
 		pb.RegisterSyncServiceServer(server, store)
 		pb.RegisterAdminServiceServer(server, store)
 		pb.RegisterMembershipServiceServer(server, store)

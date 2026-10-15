@@ -26,12 +26,12 @@ func membership(ctx context.Context, q rowQuery, principal string, lock bool) (*
 	if owner != nil && *owner == principal {
 		return &pb.Member{PrincipalId: principal, Role: "owner", Revision: 1}, nil
 	}
-	sql := "SELECT principal_id,role,blocked,revision FROM memberships WHERE principal_id=$1"
+	sql := "SELECT principal_id,role,blocked,revision,storage_limit_bytes,nickname FROM memberships WHERE principal_id=$1"
 	if lock {
 		sql += " FOR SHARE"
 	}
 	m := new(pb.Member)
-	err := q.QueryRow(ctx, sql, principal).Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision)
+	err := q.QueryRow(ctx, sql, principal).Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision, &m.StorageLimitBytes, &m.Nickname)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, forbidden()
 	}
@@ -93,7 +93,7 @@ func (s *Store) ListMembers(ctx context.Context, req *pb.ListMembersRequest) (*p
 		return nil, err
 	}
 	rows, err := tx.Query(ctx, `SELECT p.id,CASE WHEN s.owner_id=p.id THEN 'owner' ELSE m.role END,
- CASE WHEN s.owner_id=p.id THEN false ELSE m.blocked END,m.revision
+ CASE WHEN s.owner_id=p.id THEN false ELSE m.blocked END,m.revision,m.storage_limit_bytes,m.nickname
  FROM memberships m JOIN principals p ON p.id=m.principal_id CROSS JOIN space_settings s
  WHERE p.id>$1 ORDER BY p.id LIMIT 101`, req.After)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Store) ListMembers(ctx context.Context, req *pb.ListMembersRequest) (*p
 	result := new(pb.ListMembersResponse)
 	for rows.Next() {
 		m := new(pb.Member)
-		if err = rows.Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision); err != nil {
+		if err = rows.Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision, &m.StorageLimitBytes, &m.Nickname); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Members = append(result.Members, m)
@@ -119,8 +119,8 @@ func (s *Store) ListMembers(ctx context.Context, req *pb.ListMembersRequest) (*p
 }
 
 func (s *Store) UpdateMember(ctx context.Context, req *pb.UpdateMemberRequest) (*pb.UpdateMemberResponse, error) {
-	if req.Role != "reader" && req.Role != "member" && req.Role != "admin" {
-		return nil, status.Error(codes.InvalidArgument, "Роль: reader, member или admin")
+	if err := validateMemberUpdate(req); err != nil {
+		return nil, err
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *Store) UpdateMember(ctx context.Context, req *pb.UpdateMemberRequest) (
 		return nil, forbidden()
 	}
 	m := &pb.Member{PrincipalId: req.PrincipalId}
-	err = tx.QueryRow(ctx, "SELECT role,blocked,revision FROM memberships WHERE principal_id=$1 FOR UPDATE", req.PrincipalId).Scan(&m.Role, &m.Blocked, &m.Revision)
+	err = tx.QueryRow(ctx, "SELECT role,blocked,revision,storage_limit_bytes,nickname FROM memberships WHERE principal_id=$1 FOR UPDATE", req.PrincipalId).Scan(&m.Role, &m.Blocked, &m.Revision, &m.StorageLimitBytes, &m.Nickname)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Участник не найден")
 	}
@@ -149,10 +149,16 @@ func (s *Store) UpdateMember(ctx context.Context, req *pb.UpdateMemberRequest) (
 	if m.Revision != req.ExpectedRevision {
 		return nil, status.Error(codes.Aborted, "Права уже изменились; загрузите список заново")
 	}
+	if req.StorageLimitBytes != nil {
+		m.StorageLimitBytes = req.StorageLimitBytes
+	}
+	if req.ResetStorageLimit {
+		m.StorageLimitBytes = nil
+	}
 	m.Role = req.Role
 	m.Blocked = req.Blocked
 	m.Revision++
-	if _, err = tx.Exec(ctx, "UPDATE memberships SET role=$2,blocked=$3,revision=$4 WHERE principal_id=$1", m.PrincipalId, m.Role, m.Blocked, m.Revision); err != nil {
+	if _, err = tx.Exec(ctx, "UPDATE memberships SET role=$2,blocked=$3,revision=$4,storage_limit_bytes=$5 WHERE principal_id=$1", m.PrincipalId, m.Role, m.Blocked, m.Revision, m.StorageLimitBytes); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err = audit(ctx, tx, principal, "member.update:"+m.PrincipalId+":"+m.Role+":blocked="+strconv.FormatBool(m.Blocked), m.Revision); err != nil {
@@ -383,4 +389,14 @@ func (s *Store) AcceptInvite(ctx context.Context, req *pb.AcceptInviteRequest) (
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.AcceptInviteResponse{Member: m}, nil
+}
+
+func validateMemberUpdate(req *pb.UpdateMemberRequest) error {
+	if req.GetStorageLimitBytes() < 0 || req.GetStorageLimitBytes() > 1<<40 {
+		return status.Error(codes.InvalidArgument, "Личный лимит должен быть от 0 до 1 ТиБ")
+	}
+	if req.Role != "reader" && req.Role != "member" && req.Role != "admin" {
+		return status.Error(codes.InvalidArgument, "Роль: reader, member или admin")
+	}
+	return nil
 }

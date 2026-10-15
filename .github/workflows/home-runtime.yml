@@ -5,7 +5,7 @@ on:
       app_ref:
         description: Коммит приложения для проверки обновления и восстановления
         type: string
-        default: main
+        default: ''
   push:
     tags: ['v*']
     branches: [main]
@@ -53,10 +53,19 @@ jobs:
           flutter-version: '3.47.7'
           channel: stable
           cache: true
+      - name: Проверяемая версия приложения
+        id: app-ref
+        shell: bash
+        env:
+          REQUESTED_APP_REF: ${{ inputs.app_ref }}
+        run: |
+          app_ref="$REQUESTED_APP_REF"
+          if [ -z "$app_ref" ]; then app_ref=$(cat .github/space-app.ref); fi
+          echo "ref=$app_ref" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-app
-          ref: ${{ inputs.app_ref || 'main' }}
+          ref: ${{ steps.app-ref.outputs.ref }}
           path: app-source
       - name: Сквозной запуск, владелец и приглашённый участник через TLS
         working-directory: app-source/client

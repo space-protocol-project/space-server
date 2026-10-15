@@ -25,6 +25,8 @@ const (
 	ChannelServiceName = "space.v1.ChannelService"
 	// ContentServiceName is the fully-qualified name of the ContentService service.
 	ContentServiceName = "space.v1.ContentService"
+	// AssetServiceName is the fully-qualified name of the AssetService service.
+	AssetServiceName = "space.v1.AssetService"
 	// AuthServiceName is the fully-qualified name of the AuthService service.
 	AuthServiceName = "space.v1.AuthService"
 	// SyncServiceName is the fully-qualified name of the SyncService service.
@@ -79,6 +81,24 @@ const (
 	// ContentServiceListContentProcedure is the fully-qualified name of the ContentService's
 	// ListContent RPC.
 	ContentServiceListContentProcedure = "/space.v1.ContentService/ListContent"
+	// AssetServiceBeginUploadProcedure is the fully-qualified name of the AssetService's BeginUpload
+	// RPC.
+	AssetServiceBeginUploadProcedure = "/space.v1.AssetService/BeginUpload"
+	// AssetServiceUploadChunkProcedure is the fully-qualified name of the AssetService's UploadChunk
+	// RPC.
+	AssetServiceUploadChunkProcedure = "/space.v1.AssetService/UploadChunk"
+	// AssetServiceCompleteUploadProcedure is the fully-qualified name of the AssetService's
+	// CompleteUpload RPC.
+	AssetServiceCompleteUploadProcedure = "/space.v1.AssetService/CompleteUpload"
+	// AssetServiceCancelUploadProcedure is the fully-qualified name of the AssetService's CancelUpload
+	// RPC.
+	AssetServiceCancelUploadProcedure = "/space.v1.AssetService/CancelUpload"
+	// AssetServiceDownloadChunkProcedure is the fully-qualified name of the AssetService's
+	// DownloadChunk RPC.
+	AssetServiceDownloadChunkProcedure = "/space.v1.AssetService/DownloadChunk"
+	// AssetServiceListMyAssetsProcedure is the fully-qualified name of the AssetService's ListMyAssets
+	// RPC.
+	AssetServiceListMyAssetsProcedure = "/space.v1.AssetService/ListMyAssets"
 	// AuthServiceCreateRootRotationProcedure is the fully-qualified name of the AuthService's
 	// CreateRootRotation RPC.
 	AuthServiceCreateRootRotationProcedure = "/space.v1.AuthService/CreateRootRotation"
@@ -145,6 +165,9 @@ const (
 	// AdminServiceUpdateSettingsProcedure is the fully-qualified name of the AdminService's
 	// UpdateSettings RPC.
 	AdminServiceUpdateSettingsProcedure = "/space.v1.AdminService/UpdateSettings"
+	// MembershipServiceUpdateProfileProcedure is the fully-qualified name of the MembershipService's
+	// UpdateProfile RPC.
+	MembershipServiceUpdateProfileProcedure = "/space.v1.MembershipService/UpdateProfile"
 	// MembershipServicePreviewInviteProcedure is the fully-qualified name of the MembershipService's
 	// PreviewInvite RPC.
 	MembershipServicePreviewInviteProcedure = "/space.v1.MembershipService/PreviewInvite"
@@ -554,6 +577,206 @@ func (UnimplementedContentServiceHandler) CreateContent(context.Context, *connec
 
 func (UnimplementedContentServiceHandler) ListContent(context.Context, *connect.Request[v1.ListContentRequest]) (*connect.Response[v1.ListContentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ContentService.ListContent is not implemented"))
+}
+
+// AssetServiceClient is a client for the space.v1.AssetService service.
+type AssetServiceClient interface {
+	BeginUpload(context.Context, *connect.Request[v1.BeginUploadRequest]) (*connect.Response[v1.BeginUploadResponse], error)
+	UploadChunk(context.Context, *connect.Request[v1.UploadChunkRequest]) (*connect.Response[v1.UploadChunkResponse], error)
+	CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error)
+	CancelUpload(context.Context, *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error)
+	DownloadChunk(context.Context, *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error)
+	ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error)
+}
+
+// NewAssetServiceClient constructs a client for the space.v1.AssetService service. By default, it
+// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAssetServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AssetServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	assetServiceMethods := v1.File_space_v1_space_proto.Services().ByName("AssetService").Methods()
+	return &assetServiceClient{
+		beginUpload: connect.NewClient[v1.BeginUploadRequest, v1.BeginUploadResponse](
+			httpClient,
+			baseURL+AssetServiceBeginUploadProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("BeginUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		uploadChunk: connect.NewClient[v1.UploadChunkRequest, v1.UploadChunkResponse](
+			httpClient,
+			baseURL+AssetServiceUploadChunkProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("UploadChunk")),
+			connect.WithClientOptions(opts...),
+		),
+		completeUpload: connect.NewClient[v1.CompleteUploadRequest, v1.CompleteUploadResponse](
+			httpClient,
+			baseURL+AssetServiceCompleteUploadProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("CompleteUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelUpload: connect.NewClient[v1.CancelUploadRequest, v1.CancelUploadResponse](
+			httpClient,
+			baseURL+AssetServiceCancelUploadProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("CancelUpload")),
+			connect.WithClientOptions(opts...),
+		),
+		downloadChunk: connect.NewClient[v1.DownloadChunkRequest, v1.DownloadChunkResponse](
+			httpClient,
+			baseURL+AssetServiceDownloadChunkProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("DownloadChunk")),
+			connect.WithClientOptions(opts...),
+		),
+		listMyAssets: connect.NewClient[v1.ListMyAssetsRequest, v1.ListMyAssetsResponse](
+			httpClient,
+			baseURL+AssetServiceListMyAssetsProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("ListMyAssets")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// assetServiceClient implements AssetServiceClient.
+type assetServiceClient struct {
+	beginUpload    *connect.Client[v1.BeginUploadRequest, v1.BeginUploadResponse]
+	uploadChunk    *connect.Client[v1.UploadChunkRequest, v1.UploadChunkResponse]
+	completeUpload *connect.Client[v1.CompleteUploadRequest, v1.CompleteUploadResponse]
+	cancelUpload   *connect.Client[v1.CancelUploadRequest, v1.CancelUploadResponse]
+	downloadChunk  *connect.Client[v1.DownloadChunkRequest, v1.DownloadChunkResponse]
+	listMyAssets   *connect.Client[v1.ListMyAssetsRequest, v1.ListMyAssetsResponse]
+}
+
+// BeginUpload calls space.v1.AssetService.BeginUpload.
+func (c *assetServiceClient) BeginUpload(ctx context.Context, req *connect.Request[v1.BeginUploadRequest]) (*connect.Response[v1.BeginUploadResponse], error) {
+	return c.beginUpload.CallUnary(ctx, req)
+}
+
+// UploadChunk calls space.v1.AssetService.UploadChunk.
+func (c *assetServiceClient) UploadChunk(ctx context.Context, req *connect.Request[v1.UploadChunkRequest]) (*connect.Response[v1.UploadChunkResponse], error) {
+	return c.uploadChunk.CallUnary(ctx, req)
+}
+
+// CompleteUpload calls space.v1.AssetService.CompleteUpload.
+func (c *assetServiceClient) CompleteUpload(ctx context.Context, req *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error) {
+	return c.completeUpload.CallUnary(ctx, req)
+}
+
+// CancelUpload calls space.v1.AssetService.CancelUpload.
+func (c *assetServiceClient) CancelUpload(ctx context.Context, req *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error) {
+	return c.cancelUpload.CallUnary(ctx, req)
+}
+
+// DownloadChunk calls space.v1.AssetService.DownloadChunk.
+func (c *assetServiceClient) DownloadChunk(ctx context.Context, req *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error) {
+	return c.downloadChunk.CallUnary(ctx, req)
+}
+
+// ListMyAssets calls space.v1.AssetService.ListMyAssets.
+func (c *assetServiceClient) ListMyAssets(ctx context.Context, req *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error) {
+	return c.listMyAssets.CallUnary(ctx, req)
+}
+
+// AssetServiceHandler is an implementation of the space.v1.AssetService service.
+type AssetServiceHandler interface {
+	BeginUpload(context.Context, *connect.Request[v1.BeginUploadRequest]) (*connect.Response[v1.BeginUploadResponse], error)
+	UploadChunk(context.Context, *connect.Request[v1.UploadChunkRequest]) (*connect.Response[v1.UploadChunkResponse], error)
+	CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error)
+	CancelUpload(context.Context, *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error)
+	DownloadChunk(context.Context, *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error)
+	ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error)
+}
+
+// NewAssetServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	assetServiceMethods := v1.File_space_v1_space_proto.Services().ByName("AssetService").Methods()
+	assetServiceBeginUploadHandler := connect.NewUnaryHandler(
+		AssetServiceBeginUploadProcedure,
+		svc.BeginUpload,
+		connect.WithSchema(assetServiceMethods.ByName("BeginUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceUploadChunkHandler := connect.NewUnaryHandler(
+		AssetServiceUploadChunkProcedure,
+		svc.UploadChunk,
+		connect.WithSchema(assetServiceMethods.ByName("UploadChunk")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceCompleteUploadHandler := connect.NewUnaryHandler(
+		AssetServiceCompleteUploadProcedure,
+		svc.CompleteUpload,
+		connect.WithSchema(assetServiceMethods.ByName("CompleteUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceCancelUploadHandler := connect.NewUnaryHandler(
+		AssetServiceCancelUploadProcedure,
+		svc.CancelUpload,
+		connect.WithSchema(assetServiceMethods.ByName("CancelUpload")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceDownloadChunkHandler := connect.NewUnaryHandler(
+		AssetServiceDownloadChunkProcedure,
+		svc.DownloadChunk,
+		connect.WithSchema(assetServiceMethods.ByName("DownloadChunk")),
+		connect.WithHandlerOptions(opts...),
+	)
+	assetServiceListMyAssetsHandler := connect.NewUnaryHandler(
+		AssetServiceListMyAssetsProcedure,
+		svc.ListMyAssets,
+		connect.WithSchema(assetServiceMethods.ByName("ListMyAssets")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/space.v1.AssetService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AssetServiceBeginUploadProcedure:
+			assetServiceBeginUploadHandler.ServeHTTP(w, r)
+		case AssetServiceUploadChunkProcedure:
+			assetServiceUploadChunkHandler.ServeHTTP(w, r)
+		case AssetServiceCompleteUploadProcedure:
+			assetServiceCompleteUploadHandler.ServeHTTP(w, r)
+		case AssetServiceCancelUploadProcedure:
+			assetServiceCancelUploadHandler.ServeHTTP(w, r)
+		case AssetServiceDownloadChunkProcedure:
+			assetServiceDownloadChunkHandler.ServeHTTP(w, r)
+		case AssetServiceListMyAssetsProcedure:
+			assetServiceListMyAssetsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAssetServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAssetServiceHandler struct{}
+
+func (UnimplementedAssetServiceHandler) BeginUpload(context.Context, *connect.Request[v1.BeginUploadRequest]) (*connect.Response[v1.BeginUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.BeginUpload is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) UploadChunk(context.Context, *connect.Request[v1.UploadChunkRequest]) (*connect.Response[v1.UploadChunkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.UploadChunk is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) CompleteUpload(context.Context, *connect.Request[v1.CompleteUploadRequest]) (*connect.Response[v1.CompleteUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.CompleteUpload is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) CancelUpload(context.Context, *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.CancelUpload is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) DownloadChunk(context.Context, *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.DownloadChunk is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.ListMyAssets is not implemented"))
 }
 
 // AuthServiceClient is a client for the space.v1.AuthService service.
@@ -1316,6 +1539,7 @@ func (UnimplementedAdminServiceHandler) UpdateSettings(context.Context, *connect
 
 // MembershipServiceClient is a client for the space.v1.MembershipService service.
 type MembershipServiceClient interface {
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 	PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	GetMembership(context.Context, *connect.Request[v1.GetMembershipRequest]) (*connect.Response[v1.GetMembershipResponse], error)
@@ -1332,6 +1556,12 @@ func NewMembershipServiceClient(httpClient connect.HTTPClient, baseURL string, o
 	baseURL = strings.TrimRight(baseURL, "/")
 	membershipServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MembershipService").Methods()
 	return &membershipServiceClient{
+		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
+			httpClient,
+			baseURL+MembershipServiceUpdateProfileProcedure,
+			connect.WithSchema(membershipServiceMethods.ByName("UpdateProfile")),
+			connect.WithClientOptions(opts...),
+		),
 		previewInvite: connect.NewClient[v1.PreviewInviteRequest, v1.PreviewInviteResponse](
 			httpClient,
 			baseURL+MembershipServicePreviewInviteProcedure,
@@ -1355,9 +1585,15 @@ func NewMembershipServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // membershipServiceClient implements MembershipServiceClient.
 type membershipServiceClient struct {
+	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 	previewInvite *connect.Client[v1.PreviewInviteRequest, v1.PreviewInviteResponse]
 	acceptInvite  *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
 	getMembership *connect.Client[v1.GetMembershipRequest, v1.GetMembershipResponse]
+}
+
+// UpdateProfile calls space.v1.MembershipService.UpdateProfile.
+func (c *membershipServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return c.updateProfile.CallUnary(ctx, req)
 }
 
 // PreviewInvite calls space.v1.MembershipService.PreviewInvite.
@@ -1377,6 +1613,7 @@ func (c *membershipServiceClient) GetMembership(ctx context.Context, req *connec
 
 // MembershipServiceHandler is an implementation of the space.v1.MembershipService service.
 type MembershipServiceHandler interface {
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 	PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	GetMembership(context.Context, *connect.Request[v1.GetMembershipRequest]) (*connect.Response[v1.GetMembershipResponse], error)
@@ -1389,6 +1626,12 @@ type MembershipServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	membershipServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MembershipService").Methods()
+	membershipServiceUpdateProfileHandler := connect.NewUnaryHandler(
+		MembershipServiceUpdateProfileProcedure,
+		svc.UpdateProfile,
+		connect.WithSchema(membershipServiceMethods.ByName("UpdateProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
 	membershipServicePreviewInviteHandler := connect.NewUnaryHandler(
 		MembershipServicePreviewInviteProcedure,
 		svc.PreviewInvite,
@@ -1409,6 +1652,8 @@ func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.H
 	)
 	return "/space.v1.MembershipService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case MembershipServiceUpdateProfileProcedure:
+			membershipServiceUpdateProfileHandler.ServeHTTP(w, r)
 		case MembershipServicePreviewInviteProcedure:
 			membershipServicePreviewInviteHandler.ServeHTTP(w, r)
 		case MembershipServiceAcceptInviteProcedure:
@@ -1423,6 +1668,10 @@ func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.H
 
 // UnimplementedMembershipServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMembershipServiceHandler struct{}
+
+func (UnimplementedMembershipServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.UpdateProfile is not implemented"))
+}
 
 func (UnimplementedMembershipServiceHandler) PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.PreviewInvite is not implemented"))

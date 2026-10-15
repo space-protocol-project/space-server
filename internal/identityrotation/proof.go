@@ -19,34 +19,36 @@ import (
 // Порядок полей лексикографический; строки ограничены ASCII.
 // Добавление полей требует новой версии контракта.
 type Transcript struct {
-	AuthEpoch          int64    `json:"auth_epoch"`
-	ChallengeID        string   `json:"challenge_id"`
-	ExpiresAt          int64    `json:"expires_at"`
-	IssuedAt           int64    `json:"issued_at"`
-	NewDevicePublicKey string   `json:"new_device_public_key"`
-	NewRootPublicKey   string   `json:"new_root_public_key"`
-	Nonce              string   `json:"nonce"`
-	OldRootPublicKey   string   `json:"old_root_public_key"`
-	OperationID        string   `json:"operation_id"`
-	Origin             string   `json:"origin"`
-	PrincipalID        string   `json:"principal_id"`
-	Purpose            string   `json:"purpose"`
-	Scopes             []string `json:"scopes"`
-	ServerID           string   `json:"server_id"`
-	V                  int      `json:"v"`
+	AuthEpoch           int64    `json:"auth_epoch"`
+	ChallengeID         string   `json:"challenge_id"`
+	ExpiresAt           int64    `json:"expires_at"`
+	IssuedAt            int64    `json:"issued_at"`
+	NewDevicePublicKey  string   `json:"new_device_public_key"`
+	NewRootPublicKey    string   `json:"new_root_public_key"`
+	Nonce               string   `json:"nonce"`
+	OldRootPublicKey    string   `json:"old_root_public_key"`
+	OperationID         string   `json:"operation_id"`
+	Origin              string   `json:"origin"`
+	PrincipalID         string   `json:"principal_id"`
+	Purpose             string   `json:"purpose"`
+	RetainedDevicesHash string   `json:"retained_devices_hash,omitempty"`
+	Scopes              []string `json:"scopes"`
+	ServerID            string   `json:"server_id"`
+	V                   int      `json:"v"`
 }
 
 type Expected struct {
-	PrincipalID        string
-	RootPublicKey      ed25519.PublicKey
-	AuthEpoch          int64
-	ServerID           string
-	Origin             string
-	ChallengeID        string
-	OperationID        string
-	NewRootPublicKey   ed25519.PublicKey
-	NewDevicePublicKey ed25519.PublicKey
-	Scopes             []string
+	PrincipalID         string
+	RootPublicKey       ed25519.PublicKey
+	AuthEpoch           int64
+	ServerID            string
+	Origin              string
+	ChallengeID         string
+	OperationID         string
+	NewRootPublicKey    ed25519.PublicKey
+	NewDevicePublicKey  ed25519.PublicKey
+	Scopes              []string
+	RetainedDevicesHash string
 }
 
 var (
@@ -75,7 +77,7 @@ func (t Transcript) Validate(expected Expected, now time.Time) error {
 	device, deviceOK := key(t.NewDevicePublicKey)
 	validScopes := slices.Equal(t.Scopes, []string{"chat.read", "chat.write"}) || slices.Equal(t.Scopes, []string{"chat.read", "chat.write", "space.manage"})
 	if !oldOK || !newOK || !deviceOK || bytes.Equal(oldRoot, newRoot) || bytes.Equal(device, newRoot) || bytes.Equal(device, oldRoot) ||
-		t.V != 1 || t.Purpose != "identity.root.rotate" ||
+		!t.validVersion() || t.RetainedDevicesHash != expected.RetainedDevicesHash || t.Purpose != "identity.root.rotate" ||
 		t.AuthEpoch < 1 || t.AuthEpoch >= 9007199254740991 || t.AuthEpoch != expected.AuthEpoch ||
 		!principalPattern.MatchString(t.PrincipalID) || t.PrincipalID != expected.PrincipalID ||
 		!serverPattern.MatchString(t.ServerID) || t.ServerID != expected.ServerID ||
@@ -115,10 +117,11 @@ func (t Transcript) SigningBytes(newRoot bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	prefix := "space/root.rotate/old/v1\x00"
+	role := "old"
 	if newRoot {
-		prefix = "space/root.rotate/new/v1\x00"
+		role = "new"
 	}
+	prefix := "space/root.rotate/" + role + "/v" + strconv.Itoa(t.V) + "\x00"
 	return append([]byte(prefix), canonical...), nil
 }
 
@@ -138,4 +141,12 @@ func (t Transcript) Verify(expected Expected, now time.Time, oldSignature, newSi
 		return ErrProof
 	}
 	return nil
+}
+
+func (t Transcript) validVersion() bool {
+	if t.V == 1 {
+		return t.RetainedDevicesHash == ""
+	}
+	_, valid := key(t.RetainedDevicesHash)
+	return t.V == 2 && valid
 }

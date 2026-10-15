@@ -25,22 +25,15 @@ func (s *Store) DownloadChunk(ctx context.Context, req *pb.DownloadChunkRequest)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id FROM assets WHERE id=$1 FOR SHARE`, req.AssetId))
+	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence FROM assets WHERE id=$1 FOR SHARE`, req.AssetId))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Файл не найден")
 	}
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if !a.ready || a.contentID == nil {
-		return nil, status.Error(codes.NotFound, "Файл не опубликован")
-	}
-	var deleted bool
-	if err = tx.QueryRow(ctx, "SELECT deleted FROM contents WHERE channel_id=$1 AND id=$2", channel, *a.contentID).Scan(&deleted); err != nil {
-		return nil, databaseError(ctx, err)
-	}
-	if deleted {
-		return nil, status.Error(codes.NotFound, "Сообщение удалено")
+	if err = checkPublishedAsset(ctx, tx, a); err != nil {
+		return nil, err
 	}
 	if req.Offset < 0 || req.Offset >= a.asset.ByteSize || req.Offset%assetChunkSize != 0 {
 		return nil, status.Error(codes.InvalidArgument, "Некорректное смещение файла")
@@ -62,6 +55,9 @@ func (s *Store) listAssets(ctx context.Context, channel, after, author string) (
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+	if err = requireOpenChannel(ctx, tx, channel); err != nil {
+		return nil, err
+	}
 	var beforeDate int64 = 1<<63 - 1
 	beforeID := ""
 	if after != "" {
@@ -73,7 +69,7 @@ func (s *Store) listAssets(ctx context.Context, channel, after, author string) (
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id FROM assets WHERE channel_id=$1 AND ($2='' OR author_id=$2) AND ready AND content_id IS NOT NULL AND (created_at_unix_ms,id)<($3,$4) AND EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=assets.channel_id AND c.id=assets.content_id AND NOT c.deleted) ORDER BY created_at_unix_ms DESC,id DESC LIMIT 51`, channel, author, beforeDate, beforeID)
+	rows, err := tx.Query(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence FROM assets WHERE channel_id=$1 AND ($2='' OR author_id=$2) AND ready AND content_id IS NOT NULL AND (created_at_unix_ms,id)<($3,$4) AND EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=assets.channel_id AND c.id=assets.content_id AND NOT c.deleted) ORDER BY created_at_unix_ms DESC,id DESC LIMIT 51`, channel, author, beforeDate, beforeID)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

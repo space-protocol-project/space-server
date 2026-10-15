@@ -191,22 +191,16 @@ func (s *AuthService) completeRecovery(ctx context.Context, tx pgx.Tx, t authn.T
 }
 
 func (s *AuthService) ListDevices(ctx context.Context, _ *pb.ListDevicesRequest) (*pb.ListDevicesResponse, error) {
-	rows, err := s.store.pool.Query(ctx, "SELECT id,device_public_key,scopes,expires_at,revoked_at IS NOT NULL,COALESCE(parent_grant_id,''),'identity.recover'=ANY(scopes) FROM device_grants WHERE principal_id=$1 ORDER BY expires_at DESC,id LIMIT 100", authn.Actor(ctx))
+	tx, err := s.store.pool.Begin(ctx)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	defer rows.Close()
-	result := new(pb.ListDevicesResponse)
-	for rows.Next() {
-		v := new(pb.DeviceGrant)
-		var expiry time.Time
-		if err = rows.Scan(&v.Id, &v.PublicKey, &v.Scopes, &expiry, &v.Revoked, &v.ParentGrantId, &v.Recovery); err != nil {
-			return nil, databaseError(ctx, err)
-		}
-		v.ExpiresAt = expiry.Unix()
-		result.Devices = append(result.Devices, v)
+	defer tx.Rollback(ctx)
+	result, err := listRetentionDevices(ctx, tx, authn.Actor(ctx))
+	if err != nil {
+		return nil, err
 	}
-	if err = rows.Err(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return result, nil

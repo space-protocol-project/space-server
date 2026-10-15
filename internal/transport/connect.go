@@ -271,6 +271,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(pathAdminService, handlerAdminService)
 	pathMembershipService, handlerMembershipService := rpc.NewMembershipServiceHandler(connectMembership{client: pb.NewMembershipServiceClient(connection)}, options...)
 	mux.Handle(pathMembershipService, handlerMembershipService)
+	mlsPath, mlsHandler := rpc.NewMlsServiceHandler(connectMls{client: pb.NewMlsServiceClient(connection)}, connect.WithReadMaxBytes(1024*1024), connect.WithSendMaxBytes(8*1024*1024))
+	mux.Handle(mlsPath, mlsHandler)
 	assetPath, assetHandler := rpc.NewAssetServiceHandler(connectAsset{client: pb.NewAssetServiceClient(connection)}, connect.WithReadMaxBytes(384*1024), connect.WithSendMaxBytes(1024*1024))
 	mux.Handle(assetPath, assetHandler)
 	mux.Handle("/", base)
@@ -298,6 +300,11 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.MlsServiceRegisterMlsDeviceProcedure:    true,
+	rpc.MlsServiceListMlsDevicesProcedure:       true,
+	rpc.MlsServiceGetMlsChannelProcedure:        true,
+	rpc.MlsServicePublishMlsProcedure:           true,
+	rpc.MlsServiceListMlsEnvelopesProcedure:     true,
 	rpc.MembershipServiceUpdateProfileProcedure: true,
 	rpc.AssetServiceBeginUploadProcedure:        true,
 	rpc.AssetServiceUploadChunkProcedure:        true,

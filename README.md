@@ -20,7 +20,7 @@
 
 ## Запуск для разработки
 
-Нужны Go 1.24+ и отдельная PostgreSQL. Из корня этого репозитория:
+Нужны Go 1.27.2+ и отдельная PostgreSQL. Из корня этого репозитория:
 
 ```powershell
 $env:SPACE_DATABASE_URL = 'postgres://space:YOUR_PASSWORD@127.0.0.1:5432/space?sslmode=disable'

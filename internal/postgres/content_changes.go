@@ -66,7 +66,7 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 	if err = s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
-	if _, err = channelAccess(ctx, tx, channel, "write", true); err != nil {
+	if err = requireOpenChannelAccess(ctx, tx, channel, "write"); err != nil {
 		return nil, err
 	}
 	content, err := loadContent(ctx, tx, channel, id)

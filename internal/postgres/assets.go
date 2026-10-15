@@ -16,16 +16,17 @@ import (
 const assetColumns = `id,channel_id,author_id,name,byte_size,sha256,media_type,created_at_unix_ms,storage_group`
 
 type storedAsset struct {
-	asset     *pb.Asset
-	received  int64
-	ready     bool
-	contentID *string
+	asset       *pb.Asset
+	received    int64
+	ready       bool
+	contentID   *string
+	mlsSequence *int64
 }
 
 func readStoredAsset(row pgx.Row) (*storedAsset, error) {
 	a := &storedAsset{asset: new(pb.Asset)}
 	p := a.asset
-	err := row.Scan(&p.Id, &p.ChannelId, &p.AuthorId, &p.Name, &p.ByteSize, &p.Sha256, &p.MediaType, &p.CreatedAtUnixMs, &p.StorageGroup, &a.received, &a.ready, &a.contentID)
+	err := row.Scan(&p.Id, &p.ChannelId, &p.AuthorId, &p.Name, &p.ByteSize, &p.Sha256, &p.MediaType, &p.CreatedAtUnixMs, &p.StorageGroup, &a.received, &a.ready, &a.contentID, &a.mlsSequence)
 	return a, err
 }
 
@@ -49,6 +50,10 @@ func (s *Store) assetTransaction(ctx context.Context, channel, permission string
 		tx.Rollback(ctx)
 		return nil, err
 	}
+	if err = checkMlsAssetAccess(ctx, tx, channel); err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
 	if err = requireAttachmentsEnabled(ctx, tx); err != nil {
 		tx.Rollback(ctx)
 		return nil, err
@@ -61,12 +66,12 @@ func reserveAssetSpace(ctx context.Context, tx pgx.Tx, size int64) error {
 		return databaseError(ctx, err)
 	}
 	// Неопубликованные загрузки хранятся не более суток.
-	_, err := tx.Exec(ctx, `DELETE FROM assets WHERE content_id IS NULL AND created_at_unix_ms < $1`, time.Now().Add(-24*time.Hour).UnixMilli())
+	_, err := tx.Exec(ctx, `DELETE FROM assets WHERE content_id IS NULL AND mls_sequence IS NULL AND created_at_unix_ms < $1`, time.Now().Add(-24*time.Hour).UnixMilli())
 	if err != nil {
 		return databaseError(ctx, err)
 	}
 	var used, count, pending, personal, totalLimit, personalLimit int64
-	err = tx.QueryRow(ctx, `SELECT COALESCE(sum(byte_size),0),COALESCE(sum(byte_size) FILTER (WHERE author_id=$1),0),count(*),count(*) FILTER (WHERE author_id=$1 AND content_id IS NULL) FROM assets`, authn.Actor(ctx)).Scan(&used, &personal, &count, &pending)
+	err = tx.QueryRow(ctx, `SELECT COALESCE(sum(byte_size),0),COALESCE(sum(byte_size) FILTER (WHERE author_id=$1),0),count(*),count(*) FILTER (WHERE author_id=$1 AND content_id IS NULL AND mls_sequence IS NULL) FROM assets`, authn.Actor(ctx)).Scan(&used, &personal, &count, &pending)
 	if err != nil {
 		return databaseError(ctx, err)
 	}
@@ -88,7 +93,10 @@ func (s *Store) BeginUpload(ctx context.Context, req *pb.BeginUploadRequest) (*p
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	previous, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id FROM assets WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3`, req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
+	if err = validateUploadMode(ctx, tx, req); err != nil {
+		return nil, err
+	}
+	previous, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence FROM assets WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3`, req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
 		return replayAssetUpload(previous, req)
 	}
@@ -134,7 +142,7 @@ func (s *Store) ownedAssetTransaction(ctx context.Context, id string) (pgx.Tx, *
 	if err != nil {
 		return nil, nil, err
 	}
-	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id FROM assets WHERE id=$1 FOR UPDATE`, id))
+	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence FROM assets WHERE id=$1 FOR UPDATE`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = status.Error(codes.NotFound, "Файл не найден")
 	}
@@ -160,7 +168,7 @@ func (s *Store) UploadChunk(ctx context.Context, req *pb.UploadChunkRequest) (*p
 	if req.Offset < a.received {
 		return replayAssetChunk(ctx, tx, a, req)
 	}
-	if a.ready || a.contentID != nil || req.Offset != a.received {
+	if a.ready || a.contentID != nil || a.mlsSequence != nil || req.Offset != a.received {
 		return nil, status.Error(codes.FailedPrecondition, "Обновите состояние загрузки")
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO asset_chunks(asset_id,byte_offset,data) VALUES($1,$2,$3)`, req.AssetId, req.Offset, req.Data)
@@ -195,7 +203,7 @@ func (s *Store) CancelUpload(ctx context.Context, req *pb.CancelUploadRequest) (
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	if a.contentID != nil {
+	if a.contentID != nil || a.mlsSequence != nil {
 		return nil, status.Error(codes.FailedPrecondition, "Файл уже прикреплён к сообщению")
 	}
 	if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE id=$1", a.asset.Id); err != nil {

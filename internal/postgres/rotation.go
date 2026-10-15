@@ -39,7 +39,7 @@ func rotationExpected(t rotation.Transcript) rotation.Expected {
 	decode := func(v string) []byte { b, _ := base64.RawURLEncoding.DecodeString(v); return b }
 	return rotation.Expected{PrincipalID: t.PrincipalID, RootPublicKey: decode(t.OldRootPublicKey), AuthEpoch: t.AuthEpoch,
 		ServerID: t.ServerID, Origin: t.Origin, ChallengeID: t.ChallengeID, OperationID: t.OperationID,
-		NewRootPublicKey: decode(t.NewRootPublicKey), NewDevicePublicKey: decode(t.NewDevicePublicKey), Scopes: t.Scopes}
+		NewRootPublicKey: decode(t.NewRootPublicKey), NewDevicePublicKey: decode(t.NewDevicePublicKey), Scopes: t.Scopes, RetainedDevicesHash: t.RetainedDevicesHash}
 }
 
 func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRootRotationRequest) (*pb.CreateRootRotationResponse, error) {
@@ -78,7 +78,7 @@ func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRoot
 	if epoch != req.ExpectedAuthEpoch || bytes.Equal(root, req.NewRootPublicKey) {
 		return nil, status.Error(codes.FailedPrecondition, "Эпоха или новый root недействительны")
 	}
-	if err := requireUnusedRotationKeys(ctx, tx, req); err != nil {
+	if err := requireUnusedRotationKeys(ctx, tx, req, source); err != nil {
 		return nil, err
 	}
 	if _, err = tx.Exec(ctx, "DELETE FROM root_rotations WHERE completed_at IS NULL AND expires_at<=now()"); err != nil {
@@ -127,7 +127,7 @@ func (s *AuthService) CompleteRootRotation(ctx context.Context, req *pb.Complete
 	if err != nil {
 		return nil, err
 	}
-	grant, err = applyRootRotation(ctx, tx, t, expected, root, epoch, raw, req)
+	grant, err = applyRootRotation(ctx, tx, t, expected, root, epoch, raw, req, source)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,12 @@ func lockRotationAuthority(ctx context.Context, tx pgx.Tx, t rotation.Transcript
 	return root, epoch, nil
 }
 
-func applyRootRotation(ctx context.Context, tx pgx.Tx, t rotation.Transcript, expected rotation.Expected, root []byte, epoch int64, raw []byte, req *pb.CompleteRootRotationRequest) (string, error) {
+func applyRootRotation(ctx context.Context, tx pgx.Tx, t rotation.Transcript, expected rotation.Expected, root []byte, epoch int64, raw []byte, req *pb.CompleteRootRotationRequest, source string) (string, error) {
+	retained, err := validateSavedRetention(ctx, tx, t, source)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err := tx.Exec(ctx, "UPDATE device_pairings SET state='cancelled',code_hash=NULL,poll_hash=NULL WHERE proposed_root_public_key=$1 AND state IN ('pending','approved')", root); err != nil {
 		return "", databaseError(ctx, err)
 	}
@@ -247,11 +252,17 @@ func applyRootRotation(ctx context.Context, tx pgx.Tx, t rotation.Transcript, ex
 	if _, err := tx.Exec(ctx, "DELETE FROM auth_sessions WHERE grant_id IN (SELECT id FROM device_grants WHERE principal_id=$1)", t.PrincipalID); err != nil {
 		return "", databaseError(ctx, err)
 	}
+	if err := restoreRetainedGrants(ctx, tx, t, retained); err != nil {
+		return "", err
+	}
 	grant, err := randomString("dg_")
 	if err != nil {
 		return "", err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO device_grants(id,principal_id,device_public_key,auth_epoch,expires_at,registration_transcript,root_signature,scopes,signature_kind) VALUES($1,$2,$3,$4,now()+interval '30 days',$5,$6,$7,'rotation')`, grant, t.PrincipalID, expected.NewDevicePublicKey, epoch+1, raw, req.NewSignature, t.Scopes); err != nil {
+		return "", databaseError(ctx, err)
+	}
+	if _, err := tx.Exec(ctx, "UPDATE mls_device_routes SET current_grant_id=$1 WHERE current_grant_id=$2", grant, source); err != nil {
 		return "", databaseError(ctx, err)
 	}
 	if _, err := tx.Exec(ctx, "UPDATE root_rotations SET completed_at=now(),old_signature=$1,new_signature=$2,grant_id=$3 WHERE id=$4", req.OldSignature, req.NewSignature, grant, t.ChallengeID); err != nil {
@@ -276,8 +287,16 @@ func (s *AuthService) prepareRotationChallenge(ctx context.Context, tx pgx.Tx, r
 	if err != nil {
 		return nil, err
 	}
+	retained, err := prepareRetention(ctx, tx, authn.Actor(ctx), source, req)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC().Truncate(time.Second)
 	t := rotation.Transcript{AuthEpoch: epoch, ChallengeID: id, ExpiresAt: now.Add(120 * time.Second).Unix(), IssuedAt: now.Unix(), NewDevicePublicKey: base64.RawURLEncoding.EncodeToString(req.NewDevicePublicKey), NewRootPublicKey: base64.RawURLEncoding.EncodeToString(req.NewRootPublicKey), OldRootPublicKey: base64.RawURLEncoding.EncodeToString(root), Nonce: nonce, OperationID: req.OperationId, Origin: s.origin, PrincipalID: authn.Actor(ctx), Purpose: "identity.root.rotate", Scopes: scopes, ServerID: s.serverID, V: 1}
+	if len(retained) > 0 {
+		t.V = 2
+		t.RetainedDevicesHash = base64.RawURLEncoding.EncodeToString(req.RetainedDevicesHash)
+	}
 	if t.Validate(rotationExpected(t), now) != nil {
 		return nil, status.Error(codes.InvalidArgument, "Неверный контракт ротации")
 	}
@@ -285,7 +304,8 @@ func (s *AuthService) prepareRotationChallenge(ctx context.Context, tx pgx.Tx, r
 	if err != nil {
 		return nil, err
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO root_rotations(id,principal_id,operation_id,transcript,source_grant_id,expires_at) VALUES($1,$2,$3,$4,$5,$6)", id, t.PrincipalID, t.OperationID, canonical, source, time.Unix(t.ExpiresAt, 0)); err != nil {
+	retainedRaw, _ := json.Marshal(retained)
+	if _, err = tx.Exec(ctx, "INSERT INTO root_rotations(id,principal_id,operation_id,transcript,source_grant_id,expires_at,retained_devices) VALUES($1,$2,$3,$4,$5,$6,$7)", id, t.PrincipalID, t.OperationID, canonical, source, time.Unix(t.ExpiresAt, 0), retainedRaw); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.CreateRootRotationResponse{ChallengeId: id, Transcript: canonical}, nil
@@ -300,7 +320,7 @@ func existingRotationChallenge(ctx context.Context, tx pgx.Tx, req *pb.CreateRoo
 		if json.Unmarshal(canonical, &saved) != nil {
 			return nil, denied()
 		}
-		if saved.NewRootPublicKey != base64.RawURLEncoding.EncodeToString(req.NewRootPublicKey) || saved.NewDevicePublicKey != base64.RawURLEncoding.EncodeToString(req.NewDevicePublicKey) || saved.AuthEpoch != epoch {
+		if saved.NewRootPublicKey != base64.RawURLEncoding.EncodeToString(req.NewRootPublicKey) || saved.NewDevicePublicKey != base64.RawURLEncoding.EncodeToString(req.NewDevicePublicKey) || saved.AuthEpoch != epoch || saved.RetainedDevicesHash != base64.RawURLEncoding.EncodeToString(req.RetainedDevicesHash) {
 			return nil, status.Error(codes.AlreadyExists, "operation_id относится к другому переходу")
 		}
 		return &pb.CreateRootRotationResponse{ChallengeId: id, Transcript: canonical}, nil
@@ -313,13 +333,16 @@ func existingRotationChallenge(ctx context.Context, tx pgx.Tx, req *pb.CreateRoo
 }
 
 func validateRootRotationRequest(req *pb.CreateRootRotationRequest) error {
-	if req.Profile != "root-rotation-v1" || len(req.NewRootPublicKey) != 32 || len(req.NewDevicePublicKey) != 32 || len(req.OperationId) > 64 {
+	if !validRetentionRequest(req) || len(req.NewRootPublicKey) != 32 || len(req.NewDevicePublicKey) != 32 || len(req.OperationId) > 64 {
 		return status.Error(codes.InvalidArgument, "Нужен профиль root-rotation-v1 и новые ключи")
 	}
 	return nil
 }
 
-func requireUnusedRotationKeys(ctx context.Context, tx pgx.Tx, req *pb.CreateRootRotationRequest) error {
+func requireUnusedRotationKeys(ctx context.Context, tx pgx.Tx, req *pb.CreateRootRotationRequest, source string) error {
+	if _, err := prepareRetention(ctx, tx, authn.Actor(ctx), source, req); err != nil {
+		return err
+	}
 	var used bool
 	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM principal_roots WHERE public_key=$1) OR EXISTS(SELECT 1 FROM device_grants WHERE principal_id=$3 AND device_public_key IN ($1,$2))", req.NewRootPublicKey, req.NewDevicePublicKey, authn.Actor(ctx)).Scan(&used); err != nil {
 		return databaseError(ctx, err)
@@ -328,4 +351,21 @@ func requireUnusedRotationKeys(ctx context.Context, tx pgx.Tx, req *pb.CreateRoo
 		return status.Error(codes.AlreadyExists, "Root уже использован")
 	}
 	return nil
+}
+
+func validRetentionRequest(req *pb.CreateRootRotationRequest) bool {
+	if req.Profile == "root-rotation-v1" {
+		return len(req.RetainedGrantIds) == 0 && len(req.RetainedDevicesHash) == 0
+	}
+	if req.Profile != "root-rotation-v2" || len(req.RetainedDevicesHash) != 32 || len(req.RetainedGrantIds) < 1 || len(req.RetainedGrantIds) > 256 {
+		return false
+	}
+	previous := ""
+	for _, id := range req.RetainedGrantIds {
+		if len(id) != 46 || id <= previous {
+			return false
+		}
+		previous = id
+	}
+	return true
 }

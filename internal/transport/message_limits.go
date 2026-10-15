@@ -10,11 +10,17 @@ import (
 )
 
 // MaxRPCRequestBytes ограничивает выделение памяти при декодировании внутренним мостом.
-const MaxRPCRequestBytes = 384 * 1024
+const MaxRPCRequestBytes = 1024 * 1024
 
 func requestMessageLimit(method string) int {
-	if method == rpc.AssetServiceUploadChunkProcedure {
+	if method == rpc.MlsServicePublishMlsProcedure {
 		return MaxRPCRequestBytes
+	}
+	if method == rpc.MlsServiceRegisterMlsDeviceProcedure {
+		return 96 * 1024
+	}
+	if method == rpc.AssetServiceUploadChunkProcedure {
+		return 384 * 1024
 	}
 	return 16 * 1024
 }

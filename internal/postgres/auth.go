@@ -88,10 +88,21 @@ func (s *AuthService) CreateChallenge(ctx context.Context, request *pb.CreateCha
 	if err != nil {
 		return nil, err
 	}
+	result := &pb.CreateChallengeResponse{ChallengeId: transcript.ChallengeID, Transcript: canonical}
+	if request.Purpose == "auth.login" {
+		result.RootHistory, err = loadRootHistory(ctx, transaction, transcript.PrincipalID)
+		if err != nil {
+			return nil, err
+		}
+		result.RetentionProof, err = loadRetentionProof(ctx, transaction, transcript.PrincipalID, transcript.GrantID, transcript.AuthEpoch)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err := transaction.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.CreateChallengeResponse{ChallengeId: transcript.ChallengeID, Transcript: canonical}, nil
+	return result, nil
 }
 
 func (s *AuthService) CompleteChallenge(ctx context.Context, req *pb.CompleteChallengeRequest) (*pb.CompleteChallengeResponse, error) {

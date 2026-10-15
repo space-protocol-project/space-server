@@ -50,7 +50,7 @@ func seedVersion12(t *testing.T, ctx context.Context, pool *pgxpool.Pool) Identi
 func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[string]string {
 	t.Helper()
 	tables := map[string]string{
-		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY[]::text[]",
+		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id']",
 		"contents": "ARRAY['attachments']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
 		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}

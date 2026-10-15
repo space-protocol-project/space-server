@@ -22,7 +22,11 @@ func validateUpload(req *pb.BeginUploadRequest) error {
 	if !validAssetName(req.Name) {
 		return status.Error(codes.InvalidArgument, "Некорректное имя файла")
 	}
-	if req.ByteSize < 1 || req.ByteSize > assetMaxSize {
+	maximum := int64(assetMaxSize)
+	if req.Encrypted {
+		maximum += 16
+	}
+	if req.ByteSize < 1 || req.ByteSize > maximum {
 		return status.Error(codes.InvalidArgument, "Размер файла должен быть от 1 байта до 20 МиБ")
 	}
 	if len(req.Sha256) != sha256.Size {

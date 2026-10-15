@@ -16,12 +16,12 @@ import (
 
 var channelIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
-const channelColumns = "id,title,view_type,position,archived,public_preview,revision"
+const channelColumns = "id,title,view_type,position,archived,public_preview,revision,mls_group_id"
 
 func scanChannel(row pgx.Row) (*pb.Channel, error) {
 	c := new(pb.Channel)
 	var kind string
-	err := row.Scan(&c.Id, &c.Title, &kind, &c.Position, &c.Archived, &c.PublicPreview, &c.Revision)
+	err := row.Scan(&c.Id, &c.Title, &kind, &c.Position, &c.Archived, &c.PublicPreview, &c.Revision, &c.MlsGroupId)
 	c.Views = []*pb.View{{Id: kind, Type: kind}}
 	return c, err
 }
@@ -177,8 +177,8 @@ func (s *Store) ListChannels(ctx context.Context, req *pb.ListChannelsRequest) (
 }
 
 func (s *Store) CreateChannel(ctx context.Context, req *pb.CreateChannelRequest) (*pb.CreateChannelResponse, error) {
-	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || req.ViewType != "chat" {
-		return nil, status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat")
+	if err := validateChannelCreation(req); err != nil {
+		return nil, err
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -204,8 +204,8 @@ func (s *Store) CreateChannel(ctx context.Context, req *pb.CreateChannelRequest)
 	if count >= 100 {
 		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 100 каналов, включая архив")
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO channels(id,title,view_type,position,public_preview) VALUES($1,$2,$3,$4,$5)", req.ChannelId, req.Title, req.ViewType, req.Position, req.PublicPreview); err != nil {
-		return nil, databaseError(ctx, err)
+	if err = insertChannelMetadata(ctx, tx, req); err != nil {
+		return nil, err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO channel_access(channel_id,subject,role,visible,can_read,can_write,can_manage) VALUES
  ($1,'role:member','member',true,true,true,false),($1,'role:reader','reader',true,true,false,false)`, req.ChannelId); err != nil {
@@ -620,6 +620,10 @@ func updateChannelReadState(ctx context.Context, q rowQuery, c *pb.Channel, disa
 }
 
 func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Member) error {
+	if len(c.MlsGroupId) > 0 && req.PublicPreview {
+		return status.Error(codes.InvalidArgument, "Закрытый канал не может иметь публичное превью")
+	}
+
 	if req.PublicPreview != c.PublicPreview && m.Role != "owner" && m.Role != "admin" {
 		return forbidden()
 	}
@@ -627,4 +631,23 @@ func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Me
 		return status.Error(codes.Aborted, "Канал уже изменился; загрузите его заново")
 	}
 	return nil
+}
+
+func validateChannelCreation(req *pb.CreateChannelRequest) error {
+	if err := validateMlsChannelRequest(req); err != nil {
+		return err
+	}
+	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || req.ViewType != "chat" {
+		return status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat")
+	}
+
+	return nil
+}
+
+func insertChannelMetadata(ctx context.Context, tx pgx.Tx, req *pb.CreateChannelRequest) error {
+	if _, err := tx.Exec(ctx, "INSERT INTO channels(id,title,view_type,position,public_preview,mls_group_id) VALUES($1,$2,$3,$4,$5,$6)", req.ChannelId, req.Title, req.ViewType, req.Position, req.PublicPreview, mlsGroupOrNull(req.MlsGroupId)); err != nil {
+		return databaseError(ctx, err)
+	}
+
+	return initializeMlsChannel(ctx, tx, req)
 }

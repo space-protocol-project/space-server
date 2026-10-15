@@ -18,6 +18,9 @@ func TestUnaryMessageLimit(t *testing.T) {
 		message      proto.Message
 		want         codes.Code
 	}{
+		{"MLS Commit", rpc.MlsServicePublishMlsProcedure, &pb.PublishMlsRequest{Ciphertext: make([]byte, 256*1024)}, codes.OK},
+		{"Слишком большой MLS", rpc.MlsServicePublishMlsProcedure, &pb.PublishMlsRequest{Ciphertext: make([]byte, MaxRPCRequestBytes)}, codes.ResourceExhausted},
+		{"MLS KeyPackage", rpc.MlsServiceRegisterMlsDeviceProcedure, &pb.RegisterMlsDeviceRequest{KeyPackage: make([]byte, 64*1024)}, codes.OK},
 		{"Обычное сообщение", rpc.ContentServiceCreateContentProcedure, &pb.CreateContentRequest{Text: "text"}, codes.OK},
 		{"Большая часть файла", rpc.AssetServiceUploadChunkProcedure, &pb.UploadChunkRequest{Data: make([]byte, 256*1024)}, codes.OK},
 		{"Слишком большая часть", rpc.AssetServiceUploadChunkProcedure, &pb.UploadChunkRequest{Data: make([]byte, MaxRPCRequestBytes)}, codes.ResourceExhausted},

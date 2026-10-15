@@ -48,6 +48,11 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.AssetServiceDownloadChunkProcedure,
 		rpc.AssetServiceListMyAssetsProcedure,
 		rpc.AssetServiceListChannelAssetsProcedure,
+		rpc.MlsServiceRegisterMlsDeviceProcedure,
+		rpc.MlsServiceListMlsDevicesProcedure,
+		rpc.MlsServiceGetMlsChannelProcedure,
+		rpc.MlsServicePublishMlsProcedure,
+		rpc.MlsServiceListMlsEnvelopesProcedure,
 	} {
 		t.Run(path, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, path, strings.NewReader("не JSON"))
@@ -64,7 +69,19 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 }
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
-	if len(connectProcedures) != 47 {
+	expected := 0
+	services := pb.File_space_v1_space_proto.Services()
+	for i := 0; i < services.Len(); i++ {
+		service := services.Get(i)
+		for j := 0; j < service.Methods().Len(); j++ {
+			path := "/" + string(service.FullName()) + "/" + string(service.Methods().Get(j).Name())
+			if !isConnectProcedure(path) {
+				t.Errorf("Не зарегистрирована процедура %s", path)
+			}
+			expected++
+		}
+	}
+	if len(connectProcedures) != expected {
 		t.Fatalf("Неполный набор Connect RPC: %d", len(connectProcedures))
 	}
 	if isConnectProcedure("/space.v1.AdminService/Unknown") {

@@ -456,6 +456,7 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 	if store != nil {
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
 		pb.RegisterAssetServiceServer(server, store)
+		pb.RegisterMlsServiceServer(server, store)
 		pb.RegisterSyncServiceServer(server, store)
 		pb.RegisterAdminServiceServer(server, store)
 		pb.RegisterMembershipServiceServer(server, store)

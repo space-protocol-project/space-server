@@ -35,6 +35,8 @@ const (
 	AdminServiceName = "space.v1.AdminService"
 	// MembershipServiceName is the fully-qualified name of the MembershipService service.
 	MembershipServiceName = "space.v1.MembershipService"
+	// MlsServiceName is the fully-qualified name of the MlsService service.
+	MlsServiceName = "space.v1.MlsService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -180,6 +182,20 @@ const (
 	// MembershipServiceGetMembershipProcedure is the fully-qualified name of the MembershipService's
 	// GetMembership RPC.
 	MembershipServiceGetMembershipProcedure = "/space.v1.MembershipService/GetMembership"
+	// MlsServiceRegisterMlsDeviceProcedure is the fully-qualified name of the MlsService's
+	// RegisterMlsDevice RPC.
+	MlsServiceRegisterMlsDeviceProcedure = "/space.v1.MlsService/RegisterMlsDevice"
+	// MlsServiceListMlsDevicesProcedure is the fully-qualified name of the MlsService's ListMlsDevices
+	// RPC.
+	MlsServiceListMlsDevicesProcedure = "/space.v1.MlsService/ListMlsDevices"
+	// MlsServiceGetMlsChannelProcedure is the fully-qualified name of the MlsService's GetMlsChannel
+	// RPC.
+	MlsServiceGetMlsChannelProcedure = "/space.v1.MlsService/GetMlsChannel"
+	// MlsServicePublishMlsProcedure is the fully-qualified name of the MlsService's PublishMls RPC.
+	MlsServicePublishMlsProcedure = "/space.v1.MlsService/PublishMls"
+	// MlsServiceListMlsEnvelopesProcedure is the fully-qualified name of the MlsService's
+	// ListMlsEnvelopes RPC.
+	MlsServiceListMlsEnvelopesProcedure = "/space.v1.MlsService/ListMlsEnvelopes"
 )
 
 // ChannelServiceClient is a client for the space.v1.ChannelService service.
@@ -1712,4 +1728,178 @@ func (UnimplementedMembershipServiceHandler) AcceptInvite(context.Context, *conn
 
 func (UnimplementedMembershipServiceHandler) GetMembership(context.Context, *connect.Request[v1.GetMembershipRequest]) (*connect.Response[v1.GetMembershipResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.GetMembership is not implemented"))
+}
+
+// MlsServiceClient is a client for the space.v1.MlsService service.
+type MlsServiceClient interface {
+	RegisterMlsDevice(context.Context, *connect.Request[v1.RegisterMlsDeviceRequest]) (*connect.Response[v1.RegisterMlsDeviceResponse], error)
+	ListMlsDevices(context.Context, *connect.Request[v1.ListMlsDevicesRequest]) (*connect.Response[v1.ListMlsDevicesResponse], error)
+	GetMlsChannel(context.Context, *connect.Request[v1.GetMlsChannelRequest]) (*connect.Response[v1.GetMlsChannelResponse], error)
+	PublishMls(context.Context, *connect.Request[v1.PublishMlsRequest]) (*connect.Response[v1.PublishMlsResponse], error)
+	ListMlsEnvelopes(context.Context, *connect.Request[v1.ListMlsEnvelopesRequest]) (*connect.Response[v1.ListMlsEnvelopesResponse], error)
+}
+
+// NewMlsServiceClient constructs a client for the space.v1.MlsService service. By default, it uses
+// the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewMlsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MlsServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	mlsServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MlsService").Methods()
+	return &mlsServiceClient{
+		registerMlsDevice: connect.NewClient[v1.RegisterMlsDeviceRequest, v1.RegisterMlsDeviceResponse](
+			httpClient,
+			baseURL+MlsServiceRegisterMlsDeviceProcedure,
+			connect.WithSchema(mlsServiceMethods.ByName("RegisterMlsDevice")),
+			connect.WithClientOptions(opts...),
+		),
+		listMlsDevices: connect.NewClient[v1.ListMlsDevicesRequest, v1.ListMlsDevicesResponse](
+			httpClient,
+			baseURL+MlsServiceListMlsDevicesProcedure,
+			connect.WithSchema(mlsServiceMethods.ByName("ListMlsDevices")),
+			connect.WithClientOptions(opts...),
+		),
+		getMlsChannel: connect.NewClient[v1.GetMlsChannelRequest, v1.GetMlsChannelResponse](
+			httpClient,
+			baseURL+MlsServiceGetMlsChannelProcedure,
+			connect.WithSchema(mlsServiceMethods.ByName("GetMlsChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		publishMls: connect.NewClient[v1.PublishMlsRequest, v1.PublishMlsResponse](
+			httpClient,
+			baseURL+MlsServicePublishMlsProcedure,
+			connect.WithSchema(mlsServiceMethods.ByName("PublishMls")),
+			connect.WithClientOptions(opts...),
+		),
+		listMlsEnvelopes: connect.NewClient[v1.ListMlsEnvelopesRequest, v1.ListMlsEnvelopesResponse](
+			httpClient,
+			baseURL+MlsServiceListMlsEnvelopesProcedure,
+			connect.WithSchema(mlsServiceMethods.ByName("ListMlsEnvelopes")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// mlsServiceClient implements MlsServiceClient.
+type mlsServiceClient struct {
+	registerMlsDevice *connect.Client[v1.RegisterMlsDeviceRequest, v1.RegisterMlsDeviceResponse]
+	listMlsDevices    *connect.Client[v1.ListMlsDevicesRequest, v1.ListMlsDevicesResponse]
+	getMlsChannel     *connect.Client[v1.GetMlsChannelRequest, v1.GetMlsChannelResponse]
+	publishMls        *connect.Client[v1.PublishMlsRequest, v1.PublishMlsResponse]
+	listMlsEnvelopes  *connect.Client[v1.ListMlsEnvelopesRequest, v1.ListMlsEnvelopesResponse]
+}
+
+// RegisterMlsDevice calls space.v1.MlsService.RegisterMlsDevice.
+func (c *mlsServiceClient) RegisterMlsDevice(ctx context.Context, req *connect.Request[v1.RegisterMlsDeviceRequest]) (*connect.Response[v1.RegisterMlsDeviceResponse], error) {
+	return c.registerMlsDevice.CallUnary(ctx, req)
+}
+
+// ListMlsDevices calls space.v1.MlsService.ListMlsDevices.
+func (c *mlsServiceClient) ListMlsDevices(ctx context.Context, req *connect.Request[v1.ListMlsDevicesRequest]) (*connect.Response[v1.ListMlsDevicesResponse], error) {
+	return c.listMlsDevices.CallUnary(ctx, req)
+}
+
+// GetMlsChannel calls space.v1.MlsService.GetMlsChannel.
+func (c *mlsServiceClient) GetMlsChannel(ctx context.Context, req *connect.Request[v1.GetMlsChannelRequest]) (*connect.Response[v1.GetMlsChannelResponse], error) {
+	return c.getMlsChannel.CallUnary(ctx, req)
+}
+
+// PublishMls calls space.v1.MlsService.PublishMls.
+func (c *mlsServiceClient) PublishMls(ctx context.Context, req *connect.Request[v1.PublishMlsRequest]) (*connect.Response[v1.PublishMlsResponse], error) {
+	return c.publishMls.CallUnary(ctx, req)
+}
+
+// ListMlsEnvelopes calls space.v1.MlsService.ListMlsEnvelopes.
+func (c *mlsServiceClient) ListMlsEnvelopes(ctx context.Context, req *connect.Request[v1.ListMlsEnvelopesRequest]) (*connect.Response[v1.ListMlsEnvelopesResponse], error) {
+	return c.listMlsEnvelopes.CallUnary(ctx, req)
+}
+
+// MlsServiceHandler is an implementation of the space.v1.MlsService service.
+type MlsServiceHandler interface {
+	RegisterMlsDevice(context.Context, *connect.Request[v1.RegisterMlsDeviceRequest]) (*connect.Response[v1.RegisterMlsDeviceResponse], error)
+	ListMlsDevices(context.Context, *connect.Request[v1.ListMlsDevicesRequest]) (*connect.Response[v1.ListMlsDevicesResponse], error)
+	GetMlsChannel(context.Context, *connect.Request[v1.GetMlsChannelRequest]) (*connect.Response[v1.GetMlsChannelResponse], error)
+	PublishMls(context.Context, *connect.Request[v1.PublishMlsRequest]) (*connect.Response[v1.PublishMlsResponse], error)
+	ListMlsEnvelopes(context.Context, *connect.Request[v1.ListMlsEnvelopesRequest]) (*connect.Response[v1.ListMlsEnvelopesResponse], error)
+}
+
+// NewMlsServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewMlsServiceHandler(svc MlsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	mlsServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MlsService").Methods()
+	mlsServiceRegisterMlsDeviceHandler := connect.NewUnaryHandler(
+		MlsServiceRegisterMlsDeviceProcedure,
+		svc.RegisterMlsDevice,
+		connect.WithSchema(mlsServiceMethods.ByName("RegisterMlsDevice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mlsServiceListMlsDevicesHandler := connect.NewUnaryHandler(
+		MlsServiceListMlsDevicesProcedure,
+		svc.ListMlsDevices,
+		connect.WithSchema(mlsServiceMethods.ByName("ListMlsDevices")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mlsServiceGetMlsChannelHandler := connect.NewUnaryHandler(
+		MlsServiceGetMlsChannelProcedure,
+		svc.GetMlsChannel,
+		connect.WithSchema(mlsServiceMethods.ByName("GetMlsChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mlsServicePublishMlsHandler := connect.NewUnaryHandler(
+		MlsServicePublishMlsProcedure,
+		svc.PublishMls,
+		connect.WithSchema(mlsServiceMethods.ByName("PublishMls")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mlsServiceListMlsEnvelopesHandler := connect.NewUnaryHandler(
+		MlsServiceListMlsEnvelopesProcedure,
+		svc.ListMlsEnvelopes,
+		connect.WithSchema(mlsServiceMethods.ByName("ListMlsEnvelopes")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/space.v1.MlsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case MlsServiceRegisterMlsDeviceProcedure:
+			mlsServiceRegisterMlsDeviceHandler.ServeHTTP(w, r)
+		case MlsServiceListMlsDevicesProcedure:
+			mlsServiceListMlsDevicesHandler.ServeHTTP(w, r)
+		case MlsServiceGetMlsChannelProcedure:
+			mlsServiceGetMlsChannelHandler.ServeHTTP(w, r)
+		case MlsServicePublishMlsProcedure:
+			mlsServicePublishMlsHandler.ServeHTTP(w, r)
+		case MlsServiceListMlsEnvelopesProcedure:
+			mlsServiceListMlsEnvelopesHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedMlsServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedMlsServiceHandler struct{}
+
+func (UnimplementedMlsServiceHandler) RegisterMlsDevice(context.Context, *connect.Request[v1.RegisterMlsDeviceRequest]) (*connect.Response[v1.RegisterMlsDeviceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MlsService.RegisterMlsDevice is not implemented"))
+}
+
+func (UnimplementedMlsServiceHandler) ListMlsDevices(context.Context, *connect.Request[v1.ListMlsDevicesRequest]) (*connect.Response[v1.ListMlsDevicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MlsService.ListMlsDevices is not implemented"))
+}
+
+func (UnimplementedMlsServiceHandler) GetMlsChannel(context.Context, *connect.Request[v1.GetMlsChannelRequest]) (*connect.Response[v1.GetMlsChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MlsService.GetMlsChannel is not implemented"))
+}
+
+func (UnimplementedMlsServiceHandler) PublishMls(context.Context, *connect.Request[v1.PublishMlsRequest]) (*connect.Response[v1.PublishMlsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MlsService.PublishMls is not implemented"))
+}
+
+func (UnimplementedMlsServiceHandler) ListMlsEnvelopes(context.Context, *connect.Request[v1.ListMlsEnvelopesRequest]) (*connect.Response[v1.ListMlsEnvelopesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MlsService.ListMlsEnvelopes is not implemented"))
 }

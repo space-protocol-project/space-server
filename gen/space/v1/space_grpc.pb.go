@@ -2269,3 +2269,261 @@ var MembershipService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "space/v1/space.proto",
 }
+
+const (
+	MlsService_RegisterMlsDevice_FullMethodName = "/space.v1.MlsService/RegisterMlsDevice"
+	MlsService_ListMlsDevices_FullMethodName    = "/space.v1.MlsService/ListMlsDevices"
+	MlsService_GetMlsChannel_FullMethodName     = "/space.v1.MlsService/GetMlsChannel"
+	MlsService_PublishMls_FullMethodName        = "/space.v1.MlsService/PublishMls"
+	MlsService_ListMlsEnvelopes_FullMethodName  = "/space.v1.MlsService/ListMlsEnvelopes"
+)
+
+// MlsServiceClient is the client API for MlsService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Сервер доставляет непрозрачные MLS-пакеты. Состав проверяется клиентами.
+type MlsServiceClient interface {
+	RegisterMlsDevice(ctx context.Context, in *RegisterMlsDeviceRequest, opts ...grpc.CallOption) (*RegisterMlsDeviceResponse, error)
+	ListMlsDevices(ctx context.Context, in *ListMlsDevicesRequest, opts ...grpc.CallOption) (*ListMlsDevicesResponse, error)
+	GetMlsChannel(ctx context.Context, in *GetMlsChannelRequest, opts ...grpc.CallOption) (*GetMlsChannelResponse, error)
+	PublishMls(ctx context.Context, in *PublishMlsRequest, opts ...grpc.CallOption) (*PublishMlsResponse, error)
+	ListMlsEnvelopes(ctx context.Context, in *ListMlsEnvelopesRequest, opts ...grpc.CallOption) (*ListMlsEnvelopesResponse, error)
+}
+
+type mlsServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewMlsServiceClient(cc grpc.ClientConnInterface) MlsServiceClient {
+	return &mlsServiceClient{cc}
+}
+
+func (c *mlsServiceClient) RegisterMlsDevice(ctx context.Context, in *RegisterMlsDeviceRequest, opts ...grpc.CallOption) (*RegisterMlsDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterMlsDeviceResponse)
+	err := c.cc.Invoke(ctx, MlsService_RegisterMlsDevice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mlsServiceClient) ListMlsDevices(ctx context.Context, in *ListMlsDevicesRequest, opts ...grpc.CallOption) (*ListMlsDevicesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMlsDevicesResponse)
+	err := c.cc.Invoke(ctx, MlsService_ListMlsDevices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mlsServiceClient) GetMlsChannel(ctx context.Context, in *GetMlsChannelRequest, opts ...grpc.CallOption) (*GetMlsChannelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMlsChannelResponse)
+	err := c.cc.Invoke(ctx, MlsService_GetMlsChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mlsServiceClient) PublishMls(ctx context.Context, in *PublishMlsRequest, opts ...grpc.CallOption) (*PublishMlsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishMlsResponse)
+	err := c.cc.Invoke(ctx, MlsService_PublishMls_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mlsServiceClient) ListMlsEnvelopes(ctx context.Context, in *ListMlsEnvelopesRequest, opts ...grpc.CallOption) (*ListMlsEnvelopesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMlsEnvelopesResponse)
+	err := c.cc.Invoke(ctx, MlsService_ListMlsEnvelopes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// MlsServiceServer is the server API for MlsService service.
+// All implementations must embed UnimplementedMlsServiceServer
+// for forward compatibility.
+//
+// Сервер доставляет непрозрачные MLS-пакеты. Состав проверяется клиентами.
+type MlsServiceServer interface {
+	RegisterMlsDevice(context.Context, *RegisterMlsDeviceRequest) (*RegisterMlsDeviceResponse, error)
+	ListMlsDevices(context.Context, *ListMlsDevicesRequest) (*ListMlsDevicesResponse, error)
+	GetMlsChannel(context.Context, *GetMlsChannelRequest) (*GetMlsChannelResponse, error)
+	PublishMls(context.Context, *PublishMlsRequest) (*PublishMlsResponse, error)
+	ListMlsEnvelopes(context.Context, *ListMlsEnvelopesRequest) (*ListMlsEnvelopesResponse, error)
+	mustEmbedUnimplementedMlsServiceServer()
+}
+
+// UnimplementedMlsServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedMlsServiceServer struct{}
+
+func (UnimplementedMlsServiceServer) RegisterMlsDevice(context.Context, *RegisterMlsDeviceRequest) (*RegisterMlsDeviceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterMlsDevice not implemented")
+}
+func (UnimplementedMlsServiceServer) ListMlsDevices(context.Context, *ListMlsDevicesRequest) (*ListMlsDevicesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMlsDevices not implemented")
+}
+func (UnimplementedMlsServiceServer) GetMlsChannel(context.Context, *GetMlsChannelRequest) (*GetMlsChannelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMlsChannel not implemented")
+}
+func (UnimplementedMlsServiceServer) PublishMls(context.Context, *PublishMlsRequest) (*PublishMlsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PublishMls not implemented")
+}
+func (UnimplementedMlsServiceServer) ListMlsEnvelopes(context.Context, *ListMlsEnvelopesRequest) (*ListMlsEnvelopesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMlsEnvelopes not implemented")
+}
+func (UnimplementedMlsServiceServer) mustEmbedUnimplementedMlsServiceServer() {}
+func (UnimplementedMlsServiceServer) testEmbeddedByValue()                    {}
+
+// UnsafeMlsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MlsServiceServer will
+// result in compilation errors.
+type UnsafeMlsServiceServer interface {
+	mustEmbedUnimplementedMlsServiceServer()
+}
+
+func RegisterMlsServiceServer(s grpc.ServiceRegistrar, srv MlsServiceServer) {
+	// If the following call pancis, it indicates UnimplementedMlsServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&MlsService_ServiceDesc, srv)
+}
+
+func _MlsService_RegisterMlsDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterMlsDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MlsServiceServer).RegisterMlsDevice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MlsService_RegisterMlsDevice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MlsServiceServer).RegisterMlsDevice(ctx, req.(*RegisterMlsDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MlsService_ListMlsDevices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMlsDevicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MlsServiceServer).ListMlsDevices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MlsService_ListMlsDevices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MlsServiceServer).ListMlsDevices(ctx, req.(*ListMlsDevicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MlsService_GetMlsChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMlsChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MlsServiceServer).GetMlsChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MlsService_GetMlsChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MlsServiceServer).GetMlsChannel(ctx, req.(*GetMlsChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MlsService_PublishMls_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishMlsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MlsServiceServer).PublishMls(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MlsService_PublishMls_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MlsServiceServer).PublishMls(ctx, req.(*PublishMlsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MlsService_ListMlsEnvelopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMlsEnvelopesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MlsServiceServer).ListMlsEnvelopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MlsService_ListMlsEnvelopes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MlsServiceServer).ListMlsEnvelopes(ctx, req.(*ListMlsEnvelopesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// MlsService_ServiceDesc is the grpc.ServiceDesc for MlsService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var MlsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "space.v1.MlsService",
+	HandlerType: (*MlsServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RegisterMlsDevice",
+			Handler:    _MlsService_RegisterMlsDevice_Handler,
+		},
+		{
+			MethodName: "ListMlsDevices",
+			Handler:    _MlsService_ListMlsDevices_Handler,
+		},
+		{
+			MethodName: "GetMlsChannel",
+			Handler:    _MlsService_GetMlsChannel_Handler,
+		},
+		{
+			MethodName: "PublishMls",
+			Handler:    _MlsService_PublishMls_Handler,
+		},
+		{
+			MethodName: "ListMlsEnvelopes",
+			Handler:    _MlsService_ListMlsEnvelopes_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "space/v1/space.proto",
+}

@@ -359,42 +359,61 @@ func setPortableAddress(staging, publicIP string) error {
 		return nil
 	}
 	config := filepath.Join(staging, "config.json")
-	bytes, err := os.ReadFile(config)
+	content, err := os.ReadFile(config)
 	if err != nil {
 		return err
 	}
-	var settings map[string]any
-	if err := json.Unmarshal(bytes, &settings); err != nil {
+	var network NetworkConfig
+	if err := json.Unmarshal(content, &network); err != nil {
 		return err
 	}
-	if settings["ip"] == publicIP {
+	if network.IP == publicIP {
 		return nil
 	}
-	if settings["identity_origin"] == nil {
-		oldIP, ok := settings["ip"].(string)
-		if !ok || net.ParseIP(oldIP).To4() == nil {
-			return errors.New("Повреждён прежний адрес пространства")
-		}
-		settings["identity_origin"] = "https://" + net.JoinHostPort(oldIP, "8443")
+	if err := changePortableNetwork(&network, publicIP); err != nil {
+		return err
 	}
-	settings["ip"] = publicIP
-	bytes, err = json.Marshal(settings)
+	content, err = json.Marshal(network)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(config, bytes, 0600); err != nil {
-		return err
+	return os.WriteFile(config, content, 0600)
+}
+
+func changePortableNetwork(network *NetworkConfig, host string) error {
+	if network.Port == 0 {
+		network.Port = 8443
 	}
-	return nil
+	if network.IdentityOrigin == "" {
+		previous := Endpoint{Host: network.IP, Port: network.Port, Type: "https"}
+		if err := ValidateEndpoints([]Endpoint{previous}); err != nil {
+			return err
+		}
+		network.IdentityOrigin = previous.Origin()
+	}
+	if len(network.Endpoints) == 0 {
+		network.Endpoints = []Endpoint{{Host: network.IP, Port: network.Port, Type: "https"}}
+		network.Revision = 1
+		network.ListenHost, network.ListenPort = "0.0.0.0", network.Port
+	}
+	network.Endpoints[0].Host, network.IP = host, host
+	network.Revision++
+	if network.Revision > MaxEndpointRevision {
+		return errors.New("Исчерпана версия адресов")
+	}
+	return ValidateEndpoints(network.Endpoints)
 }
 
 func validatePortableIP(publicIP string) error {
 	if publicIP == "" {
 		return nil
 	}
+	if !ValidEndpointHost(publicIP) {
+		return errors.New("Нужен IPv4, IPv6 или домен нового компьютера")
+	}
 	ip := net.ParseIP(publicIP)
-	if ip == nil || ip.To4() == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() {
-		return errors.New("Нужен публичный IPv4 нового компьютера")
+	if ip != nil && (!ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback()) {
+		return errors.New("Нужен публичный адрес нового компьютера")
 	}
 	return nil
 }

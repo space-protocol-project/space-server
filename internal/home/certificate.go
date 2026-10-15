@@ -35,7 +35,10 @@ func Certificate(data string, ip net.IP) (tls.Certificate, error) {
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	template := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: "Space home server"}, NotBefore: time.Now().Add(-5 * time.Minute), NotAfter: time.Now().AddDate(5, 0, 0), IPAddresses: []net.IP{ip}, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true}
+	template := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: "Space home server"}, NotBefore: time.Now().Add(-5 * time.Minute), NotAfter: time.Now().AddDate(5, 0, 0), DNSNames: []string{"space.invalid"}, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true}
+	if ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {
 		return tls.Certificate{}, err
@@ -64,9 +67,7 @@ func loadHomeCertificate(certPath, keyPath string, ip net.IP) (tls.Certificate, 
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	if err := leaf.VerifyHostname(ip.String()); err != nil {
-		return tls.Certificate{}, fmt.Errorf("IP изменился; нужна явная смена сертификата и ссылок: %w", err)
-	}
+	// Доверие Space закрепляет сертификат, а не адрес из SAN.
 	if time.Now().After(leaf.NotAfter) {
 		return tls.Certificate{}, fmt.Errorf("Сертификат истёк; нужна явная смена сертификата")
 	}

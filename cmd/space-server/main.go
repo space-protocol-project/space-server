@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -37,11 +38,18 @@ func main() {
 	}
 }
 
-func run() (result error) {
+func run() error {
 	options := parseOptions()
 	if handled, err := performMaintenance(options); handled {
 		return err
 	}
+	if err := applyHomeNetwork(&options); err != nil {
+		return err
+	}
+	return runServer(options)
+}
+
+func runServer(options serverOptions) (result error) {
 	homeMode := options.homeData != ""
 	certificate, publicOrigin, stopDatabase, err := prepareHomeRuntime(options)
 	if err != nil {
@@ -84,7 +92,7 @@ func run() (result error) {
 	defer bridge.close()
 	listener, connection := bridge.listener, bridge.connection
 	homeConfig := homeHTTPConfig{
-		address: options.httpsAddress, certificate: certificate,
+		address: options.httpsAddress, certificate: certificate, data: options.homeData,
 		localOrigin: origin, publicOrigin: publicOrigin, identityOrigin: identityOrigin, setupCode: setup,
 		pendingSetupPath: pendingSetup, statePath: filepath.Join(options.homeData, "state.json"),
 	}
@@ -208,6 +216,7 @@ type serverOptions struct {
 	homeRuntime                                string
 	publicIP                                   string
 	httpsAddress                               string
+	httpsSpecified                             bool
 	managed                                    bool
 	runtimeInfo                                bool
 	checkDatabase                              bool
@@ -243,26 +252,33 @@ func parseOptions() serverOptions {
 	restore := flag.String("home-restore", "", "Путь проверенной резервной копии для восстановления")
 	restoreTo := flag.String("home-restore-to", "", "Новый корневой каталог домашнего сервера для восстановления")
 	flag.Parse()
+	httpsSpecified := false
+	flag.Visit(func(value *flag.Flag) {
+		if value.Name == "https" {
+			httpsSpecified = true
+		}
+	})
 	return serverOptions{
 		portableExport: *portableExport, portableImport: *portableImport, portableTo: *portableTo, port: *port,
-		grpcAddress:   *grpcAddress,
-		demo:          *demo,
-		firstOwner:    *firstOwner,
-		setupCode:     *setupCode,
-		originFlag:    *originFlag,
-		homeData:      *homeData,
-		homeRuntime:   *homeRuntime,
-		publicIP:      *publicIP,
-		httpsAddress:  *httpsAddress,
-		managed:       *managed,
-		runtimeInfo:   *runtimeInfo,
-		checkDatabase: *checkDatabase,
-		homeCheck:     *homeCheck,
-		homeMigrate:   *homeMigrate,
-		homeStopped:   *homeStopped,
-		backup:        *backup,
-		restore:       *restore,
-		restoreTo:     *restoreTo,
+		grpcAddress:    *grpcAddress,
+		demo:           *demo,
+		firstOwner:     *firstOwner,
+		setupCode:      *setupCode,
+		originFlag:     *originFlag,
+		homeData:       *homeData,
+		homeRuntime:    *homeRuntime,
+		publicIP:       *publicIP,
+		httpsAddress:   *httpsAddress,
+		httpsSpecified: httpsSpecified,
+		managed:        *managed,
+		runtimeInfo:    *runtimeInfo,
+		checkDatabase:  *checkDatabase,
+		homeCheck:      *homeCheck,
+		homeMigrate:    *homeMigrate,
+		homeStopped:    *homeStopped,
+		backup:         *backup,
+		restore:        *restore,
+		restoreTo:      *restoreTo,
 	}
 }
 
@@ -281,7 +297,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
 	}
@@ -357,10 +373,14 @@ func watchHomeSetup(ctx context.Context, store *postgres.Store, pendingPath stri
 	return initialized
 }
 
-func writeHomeState(path, localOrigin, publicOrigin, setupCode string) error {
-	state, err := json.Marshal(map[string]string{
+func writeHomeState(path, localOrigin, publicOrigin, setupCode string, serverIDs ...string) error {
+	document := map[string]string{
 		"local_origin": localOrigin, "public_origin": publicOrigin, "setup_code": setupCode,
-	})
+	}
+	if len(serverIDs) > 0 {
+		document["server_id"] = serverIDs[0]
+	}
+	state, err := json.Marshal(document)
 	if err != nil {
 		return err
 	}
@@ -429,6 +449,16 @@ func configureOwner(ctx context.Context, options serverOptions, store *postgres.
 }
 
 func homeEndpoint(options serverOptions) (net.IP, string, error) {
+	config, err := home.ReadNetworkConfig(options.homeData)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(config.Endpoints) > 0 {
+		if options.homeRuntime == "" || options.demo || options.originFlag != "" || options.setupCode || options.firstOwner {
+			return nil, "", fmt.Errorf("Некорректный режим домашнего сервера")
+		}
+		return net.ParseIP(config.Endpoints[0].Host), config.Endpoints[0].Origin(), nil
+	}
 	ip := net.ParseIP(options.publicIP)
 	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || options.homeRuntime == "" || options.demo || options.originFlag != "" || options.setupCode || options.firstOwner {
 		return nil, "", fmt.Errorf("Домашнему серверу нужны публичный IP, runtime и постоянные данные")
@@ -466,7 +496,7 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 
 type homeHTTPConfig struct {
 	address, localOrigin, publicOrigin, identityOrigin, setupCode string
-	pendingSetupPath, statePath                                   string
+	pendingSetupPath, statePath, data                             string
 	certificate                                                   tls.Certificate
 }
 
@@ -492,11 +522,19 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 		return nil, err
 	}
 	handler = transport.WithConnect(handler, connection, store)
-	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate)
+	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate, config.data)
 	if err != nil {
 		return nil, err
 	}
-	handler = transport.RestrictOriginWithConnect(handler, config.publicOrigin)
+	endpoints, _, err := homeEndpointsForBinding(config.data, config.publicOrigin)
+	if err != nil {
+		return nil, err
+	}
+	origins := make([]string, len(endpoints))
+	for i, endpoint := range endpoints {
+		origins[i] = endpoint.Origin()
+	}
+	handler = transport.RestrictEndpointOrigins(handler, origins)
 	handler = requireHomeOwner(handler, initialized)
 
 	server := &http.Server{
@@ -510,7 +548,7 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 	}
 	resource := &publicHTTPServer{server: server, listener: listener}
 	go func() { failures <- server.ServeTLS(listener, "", "") }()
-	if err := writeHomeState(config.statePath, config.localOrigin, config.publicOrigin, config.setupCode); err != nil {
+	if err := writeHomeState(config.statePath, config.localOrigin, config.publicOrigin, config.setupCode, identity.ServerID); err != nil {
 		resource.close()
 		return nil, err
 	}
@@ -599,4 +637,18 @@ func performPortableTransfer(options serverOptions) error {
 		return errors.New("Для импорта нужны архив и новый каталог")
 	}
 	return home.ImportPortable(options.homeRuntime, options.portableImport, options.portableTo, options.publicIP)
+}
+
+func applyHomeNetwork(options *serverOptions) error {
+	if options.homeData == "" {
+		return nil
+	}
+	config, err := home.ReadNetworkConfig(options.homeData)
+	if err != nil {
+		return err
+	}
+	if len(config.Endpoints) > 0 && !options.httpsSpecified {
+		options.httpsAddress = net.JoinHostPort(config.ListenHost, strconv.Itoa(config.ListenPort))
+	}
+	return nil
 }

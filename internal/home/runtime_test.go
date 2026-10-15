@@ -13,7 +13,7 @@ import (
 	"github.com/space-protocol-project/space-server/internal/postgres"
 )
 
-func TestCertificateSurvivesRestartAndRejectsChangedIP(t *testing.T) {
+func TestCertificateSurvivesRestartAndChangedAddress(t *testing.T) {
 	directory := t.TempDir()
 	ip := net.ParseIP("203.0.113.10")
 	first, err := Certificate(directory, ip)
@@ -28,8 +28,9 @@ func TestCertificateSurvivesRestartAndRejectsChangedIP(t *testing.T) {
 	if err != nil || leaf.VerifyHostname(ip.String()) != nil {
 		t.Fatal("Нет IP в SAN", err)
 	}
-	if _, err := Certificate(directory, net.ParseIP("203.0.113.11")); err == nil {
-		t.Fatal("Незаметная смена IP")
+	third, err := Certificate(directory, net.ParseIP("203.0.113.11"))
+	if err != nil || !bytes.Equal(first.Certificate[0], third.Certificate[0]) {
+		t.Fatal("Смена адреса изменила доверенный сертификат", err)
 	}
 	if _, err := os.Stat(filepath.Join(directory, "server.key")); err != nil {
 		t.Fatal(err)

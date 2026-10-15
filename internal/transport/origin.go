@@ -14,6 +14,24 @@ func RestrictOrigin(next http.Handler, origin string) http.Handler {
 func RestrictOriginWithConnect(next http.Handler, origin string) http.Handler {
 	return restrictOrigin(next, origin, true)
 }
+
+func RestrictEndpointOrigins(next http.Handler, origins []string) http.Handler {
+	allowed := make(map[string]http.Handler, len(origins))
+	for _, origin := range origins {
+		parsed, err := url.Parse(origin)
+		if err == nil {
+			allowed[strings.ToLower(parsed.Host)] = RestrictOriginWithConnect(next, origin)
+		}
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := allowed[strings.ToLower(r.Host)]
+		if handler == nil {
+			http.Error(w, "Недопустимый Host", http.StatusForbidden)
+			return
+		}
+		handler.ServeHTTP(w, r)
+	})
+}
 func restrictOrigin(next http.Handler, origin string, connectEnabled bool) http.Handler {
 	expected, _ := url.Parse(origin)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

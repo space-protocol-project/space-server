@@ -3,7 +3,6 @@ package home
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -28,7 +27,7 @@ func IdentityOrigin(data, fallback string) (string, error) {
 		return fallback, nil
 	}
 	parsed, err := url.Parse(config.Origin)
-	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.Port() != "8443" || net.ParseIP(parsed.Hostname()).To4() == nil {
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return "", fmt.Errorf("Повреждён постоянный адрес пространства")
 	}
 	return config.Origin, nil

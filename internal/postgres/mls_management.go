@@ -19,7 +19,7 @@ func validateMlsTransfer(req *pb.PublishMlsRequest) error {
 }
 
 func requireMlsManager(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest, leaf string) error {
-	if req.Kind == "application" {
+	if req.Kind == "application" || req.Kind == "update" {
 		return nil
 	}
 	var manager string

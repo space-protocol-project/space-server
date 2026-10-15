@@ -19,6 +19,9 @@ func validateMlsPublish(req *pb.PublishMlsRequest) error {
 	if (req.Kind == "application" || req.Kind == "transfer") && req.AddGrantId == "" && req.RemoveGrantId == "" && len(req.Welcome) == 0 {
 		return validateMlsTransfer(req)
 	}
+	if req.Kind == "update" && req.AddGrantId == "" && req.RemoveGrantId == "" && req.NewManagerGrantId == "" && len(req.Welcome) == 0 && len(req.AttachmentIds) == 0 {
+		return nil
+	}
 	if req.Kind == "commit" && req.NewManagerGrantId == "" && len(req.AttachmentIds) == 0 && (req.AddGrantId != "") != (req.RemoveGrantId != "") && (req.AddGrantId != "") == (len(req.Welcome) > 0) {
 		return nil
 	}
@@ -54,8 +57,10 @@ func (s *Store) PublishMls(ctx context.Context, req *pb.PublishMlsRequest) (*pb.
 	if previous != nil {
 		return &pb.PublishMlsResponse{Envelope: previous}, nil
 	}
-	if _, err = channelAccess(ctx, tx, req.ChannelId, "write", false); err != nil {
-		return nil, err
+	if req.Kind != "update" {
+		if _, err = channelAccess(ctx, tx, req.ChannelId, "write", false); err != nil {
+			return nil, err
+		}
 	}
 	if err = requireMlsManager(ctx, tx, req, scope.GrantID); err != nil {
 		return nil, err
@@ -169,7 +174,7 @@ func bindMlsAssets(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest, au
 
 func insertMlsEnvelope(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest, scope mlsScope, epoch, sequence int64, hash []byte) (*pb.MlsEnvelope, error) {
 	var err error
-	if req.Kind == "application" {
+	if req.Kind == "application" || req.Kind == "update" {
 		if err := requireHealthyMlsRoster(ctx, tx, req.ChannelId); err != nil {
 			return nil, err
 		}
@@ -182,7 +187,7 @@ func insertMlsEnvelope(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest
 		return nil, err
 	}
 	envelope := &pb.MlsEnvelope{Sequence: sequence, RequestId: req.RequestId, Epoch: epoch, Kind: req.Kind, Ciphertext: req.Ciphertext, AuthorGrantId: scope.GrantID, AuthorId: scope.PrincipalID, CreatedAtUnixMs: time.Now().UnixMilli(), AddedGrantId: req.AddGrantId, RemovedGrantId: req.RemoveGrantId, Welcome: req.Welcome, NewManagerGrantId: req.NewManagerGrantId}
-	if req.Kind == "commit" {
+	if req.Kind == "commit" || req.Kind == "update" {
 		envelope.Roster, err = mlsRoster(ctx, tx, req.ChannelId)
 		epoch++
 		if err != nil {

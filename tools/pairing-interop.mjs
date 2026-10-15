@@ -211,9 +211,13 @@ export async function pairingInterop(
         : reject(new Error("Native approver test failed: " + sourceErrors)),
     );
   });
-  sourceFinished.catch(() => {});
+  let sourceFailure;
+  sourceFinished.catch((error) => { sourceFailure = error; });
   try {
-    const sourceInfo = await fileJSON(join(sourceDirectory, "source.json"));
+    const sourceInfo = await fileJSON(
+      join(sourceDirectory, "source.json"),
+      () => sourceFailure,
+    );
     const preflight = await request(origin, "/api/v1/auth/pairings/poll", {
       pollToken: nativeSourceTarget.request.pollToken,
     });

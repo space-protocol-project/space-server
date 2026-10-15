@@ -22,6 +22,9 @@ func contentRequestHash(req *pb.CreateContentRequest) [32]byte {
 }
 func contentAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateContentRequest) ([]*pb.Asset, error) {
 	result := make([]*pb.Asset, 0, len(req.AttachmentIds))
+	if err := requireContentAttachments(ctx, tx, req.AttachmentIds); err != nil {
+		return nil, err
+	}
 	if len(req.AttachmentIds) > 5 {
 		return nil, status.Error(codes.InvalidArgument, "Не более пяти файлов")
 	}
@@ -85,4 +88,11 @@ func replayContent(ctx context.Context, previous *pb.Content, previousHash []byt
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.CreateContentResponse{Content: previous}, nil
+}
+
+func requireContentAttachments(ctx context.Context, tx pgx.Tx, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return requireAttachmentsEnabled(ctx, tx)
 }

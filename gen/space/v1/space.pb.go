@@ -2456,6 +2456,7 @@ type SpaceSettings struct {
 	Icon                    *ServerIcon            `protobuf:"bytes,6,opt,name=icon,proto3" json:"icon,omitempty"`
 	StorageLimitBytes       *int64                 `protobuf:"varint,7,opt,name=storage_limit_bytes,json=storageLimitBytes,proto3,oneof" json:"storage_limit_bytes,omitempty"`
 	MemberStorageLimitBytes *int64                 `protobuf:"varint,8,opt,name=member_storage_limit_bytes,json=memberStorageLimitBytes,proto3,oneof" json:"member_storage_limit_bytes,omitempty"`
+	AttachmentsEnabled      *bool                  `protobuf:"varint,9,opt,name=attachments_enabled,json=attachmentsEnabled,proto3,oneof" json:"attachments_enabled,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -2546,6 +2547,13 @@ func (x *SpaceSettings) GetMemberStorageLimitBytes() int64 {
 	return 0
 }
 
+func (x *SpaceSettings) GetAttachmentsEnabled() bool {
+	if x != nil && x.AttachmentsEnabled != nil {
+		return *x.AttachmentsEnabled
+	}
+	return false
+}
+
 type UpdateSettingsRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Title                   string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
@@ -2556,6 +2564,7 @@ type UpdateSettingsRequest struct {
 	Icon                    *ServerIcon            `protobuf:"bytes,6,opt,name=icon,proto3" json:"icon,omitempty"`
 	StorageLimitBytes       *int64                 `protobuf:"varint,7,opt,name=storage_limit_bytes,json=storageLimitBytes,proto3,oneof" json:"storage_limit_bytes,omitempty"`
 	MemberStorageLimitBytes *int64                 `protobuf:"varint,8,opt,name=member_storage_limit_bytes,json=memberStorageLimitBytes,proto3,oneof" json:"member_storage_limit_bytes,omitempty"`
+	AttachmentsEnabled      *bool                  `protobuf:"varint,9,opt,name=attachments_enabled,json=attachmentsEnabled,proto3,oneof" json:"attachments_enabled,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -2644,6 +2653,13 @@ func (x *UpdateSettingsRequest) GetMemberStorageLimitBytes() int64 {
 		return *x.MemberStorageLimitBytes
 	}
 	return 0
+}
+
+func (x *UpdateSettingsRequest) GetAttachmentsEnabled() bool {
+	if x != nil && x.AttachmentsEnabled != nil {
+		return *x.AttachmentsEnabled
+	}
+	return false
 }
 
 type SubscribeRequest struct {
@@ -3246,14 +3262,15 @@ func (*GetManifestRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetManifestResponse struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	ProtocolVersion string                 `protobuf:"bytes,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	ServerId        string                 `protobuf:"bytes,2,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	Channels        []*Channel             `protobuf:"bytes,3,rep,name=channels,proto3" json:"channels,omitempty"`
-	Title           string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
-	Icon            *ServerIcon            `protobuf:"bytes,5,opt,name=icon,proto3" json:"icon,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	AttachmentsEnabled bool                   `protobuf:"varint,6,opt,name=attachments_enabled,json=attachmentsEnabled,proto3" json:"attachments_enabled,omitempty"`
+	ProtocolVersion    string                 `protobuf:"bytes,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	ServerId           string                 `protobuf:"bytes,2,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
+	Channels           []*Channel             `protobuf:"bytes,3,rep,name=channels,proto3" json:"channels,omitempty"`
+	Title              string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Icon               *ServerIcon            `protobuf:"bytes,5,opt,name=icon,proto3" json:"icon,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetManifestResponse) Reset() {
@@ -3284,6 +3301,13 @@ func (x *GetManifestResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetManifestResponse.ProtoReflect.Descriptor instead.
 func (*GetManifestResponse) Descriptor() ([]byte, []int) {
 	return file_space_v1_space_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *GetManifestResponse) GetAttachmentsEnabled() bool {
+	if x != nil {
+		return x.AttachmentsEnabled
+	}
+	return false
 }
 
 func (x *GetManifestResponse) GetProtocolVersion() string {
@@ -5188,15 +5212,16 @@ func (x *WatchChannelsRequest) GetIncludeArchived() bool {
 }
 
 type WatchChannelsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Channels      []*Channel             `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
-	SpaceTitle    string                 `protobuf:"bytes,2,opt,name=space_title,json=spaceTitle,proto3" json:"space_title,omitempty"`
-	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
-	Heartbeat     bool                   `protobuf:"varint,4,opt,name=heartbeat,proto3" json:"heartbeat,omitempty"`
-	ServerId      string                 `protobuf:"bytes,5,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	Icon          *ServerIcon            `protobuf:"bytes,6,opt,name=icon,proto3" json:"icon,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	AttachmentsEnabled bool                   `protobuf:"varint,7,opt,name=attachments_enabled,json=attachmentsEnabled,proto3" json:"attachments_enabled,omitempty"`
+	Channels           []*Channel             `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	SpaceTitle         string                 `protobuf:"bytes,2,opt,name=space_title,json=spaceTitle,proto3" json:"space_title,omitempty"`
+	Role               string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Heartbeat          bool                   `protobuf:"varint,4,opt,name=heartbeat,proto3" json:"heartbeat,omitempty"`
+	ServerId           string                 `protobuf:"bytes,5,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
+	Icon               *ServerIcon            `protobuf:"bytes,6,opt,name=icon,proto3" json:"icon,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *WatchChannelsResponse) Reset() {
@@ -5227,6 +5252,13 @@ func (x *WatchChannelsResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use WatchChannelsResponse.ProtoReflect.Descriptor instead.
 func (*WatchChannelsResponse) Descriptor() ([]byte, []int) {
 	return file_space_v1_space_proto_rawDescGZIP(), []int{92}
+}
+
+func (x *WatchChannelsResponse) GetAttachmentsEnabled() bool {
+	if x != nil {
+		return x.AttachmentsEnabled
+	}
+	return false
 }
 
 func (x *WatchChannelsResponse) GetChannels() []*Channel {
@@ -6288,7 +6320,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x06preset\x18\x01 \x01(\tR\x06preset\x12\x1d\n" +
 	"\n" +
 	"media_type\x18\x02 \x01(\tR\tmediaType\x12\x12\n" +
-	"\x04data\x18\x03 \x01(\fR\x04data\"\x8c\x03\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"\xda\x03\n" +
 	"\rSpaceSettings\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
@@ -6298,9 +6330,11 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\brevision\x18\x05 \x01(\x03R\brevision\x12(\n" +
 	"\x04icon\x18\x06 \x01(\v2\x14.space.v1.ServerIconR\x04icon\x123\n" +
 	"\x13storage_limit_bytes\x18\a \x01(\x03H\x00R\x11storageLimitBytes\x88\x01\x01\x12@\n" +
-	"\x1amember_storage_limit_bytes\x18\b \x01(\x03H\x01R\x17memberStorageLimitBytes\x88\x01\x01B\x16\n" +
+	"\x1amember_storage_limit_bytes\x18\b \x01(\x03H\x01R\x17memberStorageLimitBytes\x88\x01\x01\x124\n" +
+	"\x13attachments_enabled\x18\t \x01(\bH\x02R\x12attachmentsEnabled\x88\x01\x01B\x16\n" +
 	"\x14_storage_limit_bytesB\x1d\n" +
-	"\x1b_member_storage_limit_bytes\"\xa5\x03\n" +
+	"\x1b_member_storage_limit_bytesB\x16\n" +
+	"\x14_attachments_enabled\"\xf3\x03\n" +
 	"\x15UpdateSettingsRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
@@ -6310,9 +6344,11 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x11expected_revision\x18\x05 \x01(\x03R\x10expectedRevision\x12(\n" +
 	"\x04icon\x18\x06 \x01(\v2\x14.space.v1.ServerIconR\x04icon\x123\n" +
 	"\x13storage_limit_bytes\x18\a \x01(\x03H\x00R\x11storageLimitBytes\x88\x01\x01\x12@\n" +
-	"\x1amember_storage_limit_bytes\x18\b \x01(\x03H\x01R\x17memberStorageLimitBytes\x88\x01\x01B\x16\n" +
+	"\x1amember_storage_limit_bytes\x18\b \x01(\x03H\x01R\x17memberStorageLimitBytes\x88\x01\x01\x124\n" +
+	"\x13attachments_enabled\x18\t \x01(\bH\x02R\x12attachmentsEnabled\x88\x01\x01B\x16\n" +
 	"\x14_storage_limit_bytesB\x1d\n" +
-	"\x1b_member_storage_limit_bytes\"G\n" +
+	"\x1b_member_storage_limit_bytesB\x16\n" +
+	"\x14_attachments_enabled\"G\n" +
 	"\x10SubscribeRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
@@ -6358,8 +6394,9 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12+\n" +
 	"\acontent\x18\x03 \x01(\v2\x11.space.v1.ContentR\acontent\"\x14\n" +
-	"\x12GetManifestRequest\"\xcc\x01\n" +
-	"\x13GetManifestResponse\x12)\n" +
+	"\x12GetManifestRequest\"\xfd\x01\n" +
+	"\x13GetManifestResponse\x12/\n" +
+	"\x13attachments_enabled\x18\x06 \x01(\bR\x12attachmentsEnabled\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\tR\x0fprotocolVersion\x12\x1b\n" +
 	"\tserver_id\x18\x02 \x01(\tR\bserverId\x12-\n" +
 	"\bchannels\x18\x03 \x03(\v2\x11.space.v1.ChannelR\bchannels\x12\x14\n" +
@@ -6509,8 +6546,9 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\brevision\x18\x02 \x01(\x03R\brevision\x121\n" +
 	"\x05rules\x18\x03 \x03(\v2\x1b.space.v1.ChannelAccessRuleR\x05rules\"A\n" +
 	"\x14WatchChannelsRequest\x12)\n" +
-	"\x10include_archived\x18\x01 \x01(\bR\x0fincludeArchived\"\xe0\x01\n" +
-	"\x15WatchChannelsResponse\x12-\n" +
+	"\x10include_archived\x18\x01 \x01(\bR\x0fincludeArchived\"\x91\x02\n" +
+	"\x15WatchChannelsResponse\x12/\n" +
+	"\x13attachments_enabled\x18\a \x01(\bR\x12attachmentsEnabled\x12-\n" +
 	"\bchannels\x18\x01 \x03(\v2\x11.space.v1.ChannelR\bchannels\x12\x1f\n" +
 	"\vspace_title\x18\x02 \x01(\tR\n" +
 	"spaceTitle\x12\x12\n" +

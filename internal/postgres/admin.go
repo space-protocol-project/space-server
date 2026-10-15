@@ -52,12 +52,13 @@ func (s *Store) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.
 		}
 	}
 	var title, serverID string
+	var attachmentsEnabled bool
 	icon := new(pb.ServerIcon)
-	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id,s.icon_preset,s.icon_media_type,s.icon_data FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &serverID, &icon.Preset, &icon.MediaType, &icon.Data)
+	err = tx.QueryRow(ctx, "SELECT s.title,i.server_id,s.icon_preset,s.icon_media_type,s.icon_data,s.attachments_enabled FROM space_settings s CROSS JOIN server_state i WHERE s.singleton=true AND i.singleton=true").Scan(&title, &serverID, &icon.Preset, &icon.MediaType, &icon.Data, &attachmentsEnabled)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title, Icon: icon}
+	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title, Icon: icon, AttachmentsEnabled: attachmentsEnabled}
 	response.Channels, err = s.channelList(ctx, tx, false, publicOnly, false)
 	return response, err
 }
@@ -115,11 +116,11 @@ func authorizeManagement(ctx context.Context, tx pgx.Tx) (string, error) {
 	return principal, nil
 }
 func settings(ctx context.Context, tx pgx.Tx, lock string) (*pb.SpaceSettings, string, []byte, *time.Time, error) {
-	result := &pb.SpaceSettings{Icon: new(pb.ServerIcon), StorageLimitBytes: new(int64), MemberStorageLimitBytes: new(int64)}
+	result := &pb.SpaceSettings{Icon: new(pb.ServerIcon), StorageLimitBytes: new(int64), MemberStorageLimitBytes: new(int64), AttachmentsEnabled: new(bool)}
 	var owner *string
 	var hash []byte
 	var expires *time.Time
-	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at,icon_preset,icon_media_type,icon_data,storage_limit_bytes,member_storage_limit_bytes FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires, &result.Icon.Preset, &result.Icon.MediaType, &result.Icon.Data, result.StorageLimitBytes, result.MemberStorageLimitBytes)
+	err := tx.QueryRow(ctx, "SELECT title,chat_title,chat_enabled,registration_policy,revision,owner_id,setup_code_hash,setup_expires_at,icon_preset,icon_media_type,icon_data,storage_limit_bytes,member_storage_limit_bytes,attachments_enabled FROM space_settings WHERE singleton=true "+lock).Scan(&result.Title, &result.ChatTitle, &result.ChatEnabled, &result.RegistrationPolicy, &result.Revision, &owner, &hash, &expires, &result.Icon.Preset, &result.Icon.MediaType, &result.Icon.Data, result.StorageLimitBytes, result.MemberStorageLimitBytes, result.AttachmentsEnabled)
 	id := ""
 	if owner != nil {
 		id = *owner
@@ -209,14 +210,9 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if req.Icon != nil {
 		icon = req.Icon
 	}
-	if req.StorageLimitBytes == nil {
-		req.StorageLimitBytes = current.StorageLimitBytes
-	}
-	if req.MemberStorageLimitBytes == nil {
-		req.MemberStorageLimitBytes = current.MemberStorageLimitBytes
-	}
+	inheritSettings(req, current)
 	revision := current.Revision + 1
-	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5,storage_limit_bytes=$6,member_storage_limit_bytes=$7 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision, req.GetStorageLimitBytes(), req.GetMemberStorageLimitBytes()); err != nil {
+	if _, err = tx.Exec(ctx, "UPDATE space_settings SET title=$1,chat_title=$2,chat_enabled=$3,registration_policy=$4,revision=$5,storage_limit_bytes=$6,member_storage_limit_bytes=$7,attachments_enabled=$8 WHERE singleton=true", req.Title, req.ChatTitle, req.ChatEnabled, req.RegistrationPolicy, revision, req.GetStorageLimitBytes(), req.GetMemberStorageLimitBytes(), req.GetAttachmentsEnabled()); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err := updateSettingsIcon(ctx, tx, icon); err != nil {
@@ -232,7 +228,7 @@ func (s *Store) UpdateSettings(ctx context.Context, req *pb.UpdateSettingsReques
 	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision, Icon: icon, StorageLimitBytes: req.StorageLimitBytes, MemberStorageLimitBytes: req.MemberStorageLimitBytes}}, nil
+	return &pb.UpdateSettingsResponse{Settings: &pb.SpaceSettings{Title: req.Title, ChatTitle: req.ChatTitle, ChatEnabled: req.ChatEnabled, RegistrationPolicy: req.RegistrationPolicy, Revision: revision, Icon: icon, StorageLimitBytes: req.StorageLimitBytes, MemberStorageLimitBytes: req.MemberStorageLimitBytes, AttachmentsEnabled: req.AttachmentsEnabled}}, nil
 }
 
 // Включение bootstrap не изменяет уже назначенного владельца.
@@ -284,4 +280,16 @@ func requireSettingsOwner(ctx context.Context, tx pgx.Tx, owner, principal strin
 		}
 	}
 	return nil
+}
+
+func inheritSettings(req *pb.UpdateSettingsRequest, current *pb.SpaceSettings) {
+	if req.StorageLimitBytes == nil {
+		req.StorageLimitBytes = current.StorageLimitBytes
+	}
+	if req.MemberStorageLimitBytes == nil {
+		req.MemberStorageLimitBytes = current.MemberStorageLimitBytes
+	}
+	if req.AttachmentsEnabled == nil {
+		req.AttachmentsEnabled = current.AttachmentsEnabled
+	}
 }

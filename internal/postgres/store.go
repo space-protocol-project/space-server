@@ -24,7 +24,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql"}
 
 func SchemaVersion() int { return len(migrationFiles) }
 

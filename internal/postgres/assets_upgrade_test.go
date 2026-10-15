@@ -52,7 +52,7 @@ func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[s
 	tables := map[string]string{
 		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY[]::text[]",
 		"contents": "ARRAY['attachments']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
-		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes']",
+		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}
 	result := map[string]string{}
 	for table, excluded := range tables {
@@ -105,7 +105,7 @@ func TestAssetsUpgradeFromReleasedSchema12(t *testing.T) {
 	if err = pool.QueryRow(ctx, "SELECT storage_limit_bytes,member_storage_limit_bytes,(SELECT max(version) FROM schema_migrations) FROM space_settings").Scan(&total, &member, &version); err != nil {
 		t.Fatal(err)
 	}
-	if total != 1<<30 || member != 1<<30 || version != 13 {
+	if total != 1<<30 || member != 1<<30 || version != int64(SchemaVersion()) {
 		t.Fatal("Некорректная схема или начальные квоты", total, member, version)
 	}
 	next, err := store.Create(ctx, &pb.CreateContentRequest{ChannelId: "general", Text: "После обновления", IdempotencyKey: "new"})

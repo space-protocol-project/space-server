@@ -49,6 +49,10 @@ func (s *Store) assetTransaction(ctx context.Context, channel, permission string
 		tx.Rollback(ctx)
 		return nil, err
 	}
+	if err = requireAttachmentsEnabled(ctx, tx); err != nil {
+		tx.Rollback(ctx)
+		return nil, err
+	}
 	return tx, nil
 }
 
@@ -201,4 +205,15 @@ func (s *Store) CancelUpload(ctx context.Context, req *pb.CancelUploadRequest) (
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.CancelUploadResponse{}, nil
+}
+
+func requireAttachmentsEnabled(ctx context.Context, tx pgx.Tx) error {
+	var enabled bool
+	if err := tx.QueryRow(ctx, "SELECT attachments_enabled FROM space_settings WHERE singleton=true FOR SHARE").Scan(&enabled); err != nil {
+		return databaseError(ctx, err)
+	}
+	if !enabled {
+		return status.Error(codes.PermissionDenied, "Вложения отключены администратором")
+	}
+	return nil
 }

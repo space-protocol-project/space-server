@@ -39,3 +39,7 @@ func connectBodyLimit(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (s connectAsset) ListChannelAssets(ctx context.Context, req *connect.Request[pb.ListChannelAssetsRequest]) (*connect.Response[pb.ListChannelAssetsResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ListChannelAssets)
+}

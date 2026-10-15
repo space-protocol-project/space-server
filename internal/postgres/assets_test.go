@@ -127,6 +127,24 @@ func TestPublishedAttachmentLifecycle(t *testing.T) {
 	if err != nil || len(files.Assets) != 1 {
 		t.Fatalf("Мои файлы: %v %v", files, err)
 	}
+	reader, readerID := f.enroll(t, false)
+	channelFiles, err := client.ListChannelAssets(reader, &pb.ListChannelAssetsRequest{ChannelId: "general"})
+	if err != nil || len(channelFiles.Assets) != 1 || channelFiles.Assets[0].AuthorId != f.ownerID {
+		t.Fatalf("Файлы других участников: %v %v", channelFiles, err)
+	}
+	if _, ok := channelFiles.Authors[f.ownerID]; !ok {
+		t.Fatal("Нет автора в фильтре")
+	}
+	filtered, err := client.ListChannelAssets(reader, &pb.ListChannelAssetsRequest{ChannelId: "general", AuthorId: readerID})
+	if err != nil || len(filtered.Assets) != 0 {
+		t.Fatalf("Фильтр автора: %v %v", filtered, err)
+	}
+	_, err = client.ListChannelAssets(reader, &pb.ListChannelAssetsRequest{ChannelId: "missing"})
+	if err == nil {
+		t.Fatal("Доступен отсутствующий канал")
+	}
+	_, err = client.ListChannelAssets(reader, &pb.ListChannelAssetsRequest{ChannelId: "general", AuthorId: readerID, After: id})
+	requireCode(t, err, codes.InvalidArgument)
 	downloaded, err := client.DownloadChunk(f.owner, &pb.DownloadChunkRequest{AssetId: id})
 	if err != nil || !bytes.Equal(downloaded.Data, data) {
 		t.Fatalf("Скачивание: %v", err)
@@ -143,6 +161,10 @@ func TestPublishedAttachmentLifecycle(t *testing.T) {
 	}
 	_, err = client.DownloadChunk(f.owner, &pb.DownloadChunkRequest{AssetId: id})
 	requireCode(t, err, codes.NotFound)
+	channelFiles, err = client.ListChannelAssets(reader, &pb.ListChannelAssetsRequest{ChannelId: "general"})
+	if err != nil || len(channelFiles.Assets) != 0 || len(channelFiles.Authors) != 0 {
+		t.Fatal("Удалённый файл виден участнику", err)
+	}
 	files, err = client.ListMyAssets(f.owner, &pb.ListMyAssetsRequest{ChannelId: "general"})
 	if err != nil || len(files.Assets) != 0 {
 		t.Fatal("Удалённый файл остался в списке", err)

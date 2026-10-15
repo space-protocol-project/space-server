@@ -305,6 +305,7 @@ var connectProcedures = map[string]bool{
 	rpc.AssetServiceCancelUploadProcedure:       true,
 	rpc.AssetServiceDownloadChunkProcedure:      true,
 	rpc.AssetServiceListMyAssetsProcedure:       true,
+	rpc.AssetServiceListChannelAssetsProcedure:  true,
 
 	rpc.ChannelServiceListChannelsProcedure:        true,
 	rpc.ChannelServiceCreateChannelProcedure:       true,

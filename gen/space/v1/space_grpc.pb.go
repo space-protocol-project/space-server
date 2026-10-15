@@ -611,12 +611,13 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	AssetService_BeginUpload_FullMethodName    = "/space.v1.AssetService/BeginUpload"
-	AssetService_UploadChunk_FullMethodName    = "/space.v1.AssetService/UploadChunk"
-	AssetService_CompleteUpload_FullMethodName = "/space.v1.AssetService/CompleteUpload"
-	AssetService_CancelUpload_FullMethodName   = "/space.v1.AssetService/CancelUpload"
-	AssetService_DownloadChunk_FullMethodName  = "/space.v1.AssetService/DownloadChunk"
-	AssetService_ListMyAssets_FullMethodName   = "/space.v1.AssetService/ListMyAssets"
+	AssetService_BeginUpload_FullMethodName       = "/space.v1.AssetService/BeginUpload"
+	AssetService_UploadChunk_FullMethodName       = "/space.v1.AssetService/UploadChunk"
+	AssetService_CompleteUpload_FullMethodName    = "/space.v1.AssetService/CompleteUpload"
+	AssetService_CancelUpload_FullMethodName      = "/space.v1.AssetService/CancelUpload"
+	AssetService_DownloadChunk_FullMethodName     = "/space.v1.AssetService/DownloadChunk"
+	AssetService_ListMyAssets_FullMethodName      = "/space.v1.AssetService/ListMyAssets"
+	AssetService_ListChannelAssets_FullMethodName = "/space.v1.AssetService/ListChannelAssets"
 )
 
 // AssetServiceClient is the client API for AssetService service.
@@ -631,6 +632,7 @@ type AssetServiceClient interface {
 	CancelUpload(ctx context.Context, in *CancelUploadRequest, opts ...grpc.CallOption) (*CancelUploadResponse, error)
 	DownloadChunk(ctx context.Context, in *DownloadChunkRequest, opts ...grpc.CallOption) (*DownloadChunkResponse, error)
 	ListMyAssets(ctx context.Context, in *ListMyAssetsRequest, opts ...grpc.CallOption) (*ListMyAssetsResponse, error)
+	ListChannelAssets(ctx context.Context, in *ListChannelAssetsRequest, opts ...grpc.CallOption) (*ListChannelAssetsResponse, error)
 }
 
 type assetServiceClient struct {
@@ -701,6 +703,16 @@ func (c *assetServiceClient) ListMyAssets(ctx context.Context, in *ListMyAssetsR
 	return out, nil
 }
 
+func (c *assetServiceClient) ListChannelAssets(ctx context.Context, in *ListChannelAssetsRequest, opts ...grpc.CallOption) (*ListChannelAssetsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChannelAssetsResponse)
+	err := c.cc.Invoke(ctx, AssetService_ListChannelAssets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AssetServiceServer is the server API for AssetService service.
 // All implementations must embed UnimplementedAssetServiceServer
 // for forward compatibility.
@@ -713,6 +725,7 @@ type AssetServiceServer interface {
 	CancelUpload(context.Context, *CancelUploadRequest) (*CancelUploadResponse, error)
 	DownloadChunk(context.Context, *DownloadChunkRequest) (*DownloadChunkResponse, error)
 	ListMyAssets(context.Context, *ListMyAssetsRequest) (*ListMyAssetsResponse, error)
+	ListChannelAssets(context.Context, *ListChannelAssetsRequest) (*ListChannelAssetsResponse, error)
 	mustEmbedUnimplementedAssetServiceServer()
 }
 
@@ -740,6 +753,9 @@ func (UnimplementedAssetServiceServer) DownloadChunk(context.Context, *DownloadC
 }
 func (UnimplementedAssetServiceServer) ListMyAssets(context.Context, *ListMyAssetsRequest) (*ListMyAssetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMyAssets not implemented")
+}
+func (UnimplementedAssetServiceServer) ListChannelAssets(context.Context, *ListChannelAssetsRequest) (*ListChannelAssetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListChannelAssets not implemented")
 }
 func (UnimplementedAssetServiceServer) mustEmbedUnimplementedAssetServiceServer() {}
 func (UnimplementedAssetServiceServer) testEmbeddedByValue()                      {}
@@ -870,6 +886,24 @@ func _AssetService_ListMyAssets_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AssetService_ListChannelAssets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChannelAssetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AssetServiceServer).ListChannelAssets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AssetService_ListChannelAssets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AssetServiceServer).ListChannelAssets(ctx, req.(*ListChannelAssetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AssetService_ServiceDesc is the grpc.ServiceDesc for AssetService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -900,6 +934,10 @@ var AssetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMyAssets",
 			Handler:    _AssetService_ListMyAssets_Handler,
+		},
+		{
+			MethodName: "ListChannelAssets",
+			Handler:    _AssetService_ListChannelAssets_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

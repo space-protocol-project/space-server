@@ -99,6 +99,9 @@ const (
 	// AssetServiceListMyAssetsProcedure is the fully-qualified name of the AssetService's ListMyAssets
 	// RPC.
 	AssetServiceListMyAssetsProcedure = "/space.v1.AssetService/ListMyAssets"
+	// AssetServiceListChannelAssetsProcedure is the fully-qualified name of the AssetService's
+	// ListChannelAssets RPC.
+	AssetServiceListChannelAssetsProcedure = "/space.v1.AssetService/ListChannelAssets"
 	// AuthServiceCreateRootRotationProcedure is the fully-qualified name of the AuthService's
 	// CreateRootRotation RPC.
 	AuthServiceCreateRootRotationProcedure = "/space.v1.AuthService/CreateRootRotation"
@@ -587,6 +590,7 @@ type AssetServiceClient interface {
 	CancelUpload(context.Context, *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error)
 	DownloadChunk(context.Context, *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error)
 	ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error)
+	ListChannelAssets(context.Context, *connect.Request[v1.ListChannelAssetsRequest]) (*connect.Response[v1.ListChannelAssetsResponse], error)
 }
 
 // NewAssetServiceClient constructs a client for the space.v1.AssetService service. By default, it
@@ -636,17 +640,24 @@ func NewAssetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(assetServiceMethods.ByName("ListMyAssets")),
 			connect.WithClientOptions(opts...),
 		),
+		listChannelAssets: connect.NewClient[v1.ListChannelAssetsRequest, v1.ListChannelAssetsResponse](
+			httpClient,
+			baseURL+AssetServiceListChannelAssetsProcedure,
+			connect.WithSchema(assetServiceMethods.ByName("ListChannelAssets")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // assetServiceClient implements AssetServiceClient.
 type assetServiceClient struct {
-	beginUpload    *connect.Client[v1.BeginUploadRequest, v1.BeginUploadResponse]
-	uploadChunk    *connect.Client[v1.UploadChunkRequest, v1.UploadChunkResponse]
-	completeUpload *connect.Client[v1.CompleteUploadRequest, v1.CompleteUploadResponse]
-	cancelUpload   *connect.Client[v1.CancelUploadRequest, v1.CancelUploadResponse]
-	downloadChunk  *connect.Client[v1.DownloadChunkRequest, v1.DownloadChunkResponse]
-	listMyAssets   *connect.Client[v1.ListMyAssetsRequest, v1.ListMyAssetsResponse]
+	beginUpload       *connect.Client[v1.BeginUploadRequest, v1.BeginUploadResponse]
+	uploadChunk       *connect.Client[v1.UploadChunkRequest, v1.UploadChunkResponse]
+	completeUpload    *connect.Client[v1.CompleteUploadRequest, v1.CompleteUploadResponse]
+	cancelUpload      *connect.Client[v1.CancelUploadRequest, v1.CancelUploadResponse]
+	downloadChunk     *connect.Client[v1.DownloadChunkRequest, v1.DownloadChunkResponse]
+	listMyAssets      *connect.Client[v1.ListMyAssetsRequest, v1.ListMyAssetsResponse]
+	listChannelAssets *connect.Client[v1.ListChannelAssetsRequest, v1.ListChannelAssetsResponse]
 }
 
 // BeginUpload calls space.v1.AssetService.BeginUpload.
@@ -679,6 +690,11 @@ func (c *assetServiceClient) ListMyAssets(ctx context.Context, req *connect.Requ
 	return c.listMyAssets.CallUnary(ctx, req)
 }
 
+// ListChannelAssets calls space.v1.AssetService.ListChannelAssets.
+func (c *assetServiceClient) ListChannelAssets(ctx context.Context, req *connect.Request[v1.ListChannelAssetsRequest]) (*connect.Response[v1.ListChannelAssetsResponse], error) {
+	return c.listChannelAssets.CallUnary(ctx, req)
+}
+
 // AssetServiceHandler is an implementation of the space.v1.AssetService service.
 type AssetServiceHandler interface {
 	BeginUpload(context.Context, *connect.Request[v1.BeginUploadRequest]) (*connect.Response[v1.BeginUploadResponse], error)
@@ -687,6 +703,7 @@ type AssetServiceHandler interface {
 	CancelUpload(context.Context, *connect.Request[v1.CancelUploadRequest]) (*connect.Response[v1.CancelUploadResponse], error)
 	DownloadChunk(context.Context, *connect.Request[v1.DownloadChunkRequest]) (*connect.Response[v1.DownloadChunkResponse], error)
 	ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error)
+	ListChannelAssets(context.Context, *connect.Request[v1.ListChannelAssetsRequest]) (*connect.Response[v1.ListChannelAssetsResponse], error)
 }
 
 // NewAssetServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -732,6 +749,12 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(assetServiceMethods.ByName("ListMyAssets")),
 		connect.WithHandlerOptions(opts...),
 	)
+	assetServiceListChannelAssetsHandler := connect.NewUnaryHandler(
+		AssetServiceListChannelAssetsProcedure,
+		svc.ListChannelAssets,
+		connect.WithSchema(assetServiceMethods.ByName("ListChannelAssets")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/space.v1.AssetService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AssetServiceBeginUploadProcedure:
@@ -746,6 +769,8 @@ func NewAssetServiceHandler(svc AssetServiceHandler, opts ...connect.HandlerOpti
 			assetServiceDownloadChunkHandler.ServeHTTP(w, r)
 		case AssetServiceListMyAssetsProcedure:
 			assetServiceListMyAssetsHandler.ServeHTTP(w, r)
+		case AssetServiceListChannelAssetsProcedure:
+			assetServiceListChannelAssetsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -777,6 +802,10 @@ func (UnimplementedAssetServiceHandler) DownloadChunk(context.Context, *connect.
 
 func (UnimplementedAssetServiceHandler) ListMyAssets(context.Context, *connect.Request[v1.ListMyAssetsRequest]) (*connect.Response[v1.ListMyAssetsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.ListMyAssets is not implemented"))
+}
+
+func (UnimplementedAssetServiceHandler) ListChannelAssets(context.Context, *connect.Request[v1.ListChannelAssetsRequest]) (*connect.Response[v1.ListChannelAssetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.AssetService.ListChannelAssets is not implemented"))
 }
 
 // AuthServiceClient is a client for the space.v1.AuthService service.

@@ -21,7 +21,7 @@ func retentionSnapshot(ctx context.Context, tx pgx.Tx, principal string, ids []s
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	rows, err := tx.Query(ctx, `SELECT g.id,g.device_public_key,g.scopes,g.expires_at FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.principal_id=$1 AND g.id=ANY($2) AND `+retainableGrant+` ORDER BY g.id`, principal, ids)
+	rows, err := tx.Query(ctx, `SELECT g.id,g.device_public_key,g.scopes,g.expires_at FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.principal_id=$1 AND g.id=ANY($2) AND `+retainableGrant+` ORDER BY g.id COLLATE "C"`, principal, ids)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

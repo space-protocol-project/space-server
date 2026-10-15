@@ -116,7 +116,7 @@ func (s *Store) ListMlsDevices(ctx context.Context, req *pb.ListMlsDevicesReques
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx, `SELECT d.grant_id,g.principal_id,d.binding,CASE WHEN d.consumed THEN ''::bytea ELSE d.key_package END FROM mls_devices d JOIN mls_device_routes route ON route.leaf_grant_id=d.grant_id JOIN device_grants g ON g.id=route.current_grant_id JOIN principals p ON p.id=g.principal_id JOIN memberships m ON m.principal_id=p.id WHERE d.grant_id>$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND NOT m.blocked`+activeParentCondition+activePairCondition+` ORDER BY d.grant_id LIMIT 101`, req.After)
+	rows, err := tx.Query(ctx, `SELECT d.grant_id,g.principal_id,d.binding,CASE WHEN d.consumed THEN ''::bytea ELSE d.key_package END FROM mls_devices d JOIN mls_device_routes route ON route.leaf_grant_id=d.grant_id JOIN device_grants g ON g.id=route.current_grant_id JOIN principals p ON p.id=g.principal_id JOIN memberships m ON m.principal_id=p.id WHERE d.grant_id COLLATE "C">$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND NOT m.blocked`+activeParentCondition+activePairCondition+` ORDER BY d.grant_id COLLATE "C" LIMIT 101`, req.After)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

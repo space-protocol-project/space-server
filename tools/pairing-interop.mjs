@@ -12,8 +12,10 @@ import {
 } from "./crypto_reference/pairing.mjs";
 
 const raw = (value) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
-async function fileJSON(path) {
+async function fileJSON(path, failure) {
   for (let i = 0; i < 200; i++) {
+    const error = failure();
+    if (error) throw error;
     try {
       return JSON.parse(await readFile(path, "utf8"));
     } catch {
@@ -47,6 +49,7 @@ export async function pairingInterop(
   );
   let output = "",
     errors = "";
+  let failure;
   child.stdout.on("data", (chunk) => (output += chunk));
   child.stderr.on("data", (chunk) => (errors += chunk));
   const finished = new Promise((resolve, reject) => {
@@ -57,9 +60,9 @@ export async function pairingInterop(
         : reject(new Error("Dart pairing test failed: " + errors)),
     );
   });
-  finished.catch(() => {});
+  finished.catch((error) => { failure = error; });
   try {
-    const started = await fileJSON(join(directory, "request.json"));
+    const started = await fileJSON(join(directory, "request.json"), () => failure);
     const inspected = (
       await request(origin, "/api/v1/auth/pairings/inspect", {
         code: started.code,
@@ -78,7 +81,7 @@ export async function pairingInterop(
       raw(inspected.publicKey),
       !!inspected.administrative,
     );
-    const targetCheck = await fileJSON(join(directory, "check.json"));
+    const targetCheck = await fileJSON(join(directory, "check.json"), () => failure);
     assert.equal(targetCheck.verification, verification);
     const pub = await crypto.subtle.importKey(
       "raw",

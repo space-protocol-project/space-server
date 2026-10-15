@@ -91,6 +91,7 @@ jobs:
         working-directory: app-source/client
         run: |
           flutter pub get
+          dart run tool/core_import_check.dart
           flutter analyze
           flutter test
       - name: Сквозная проверка входа, событий и отзыва

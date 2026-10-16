@@ -1,0 +1,35 @@
+name: Автозапуск systemd
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'codex/**']
+    paths: ['packaging/install*', 'packaging/verify-systemd.py', '.github/workflows/systemd.yml']
+  pull_request:
+    paths: ['packaging/install*', 'packaging/verify-systemd.py', '.github/workflows/systemd.yml']
+permissions:
+  contents: read
+jobs:
+  systemd:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Проверки установщика и аргументов
+        run: |
+          sh -n packaging/install.sh
+          python3 -m unittest discover -s packaging -p 'install_test.py' -v
+      - name: Отдельный пользователь с автозапуском без сеанса
+        run: |
+          sudo useradd --create-home --shell /bin/bash space-systemd-ci
+          sudo loginctl enable-linger space-systemd-ci
+          sudo systemctl start "user@$(id -u space-systemd-ci).service"
+          sudo install -m 644 packaging/install.sh /tmp/space-systemd-install.sh
+      - name: Настоящие systemd и опубликованный runtime
+        run: sudo python3 packaging/verify-systemd.py
+      - name: Остановка тестовой службы
+        if: always()
+        run: |
+          if id space-systemd-ci >/dev/null 2>&1; then
+            sudo systemctl stop "user@$(id -u space-systemd-ci).service"
+            sudo loginctl disable-linger space-systemd-ci
+          fi

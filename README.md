@@ -8,6 +8,17 @@ curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server
 ```
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.
+
+Для постоянной работы на VPS с systemd используйте новый установщик:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/main/packaging/install.sh | sh -s -- --service
+```
+
+Он запускает сервер от текущего пользователя, включает запуск при загрузке и сохраняет данные после выхода из SSH. Если не хватает прав на linger, установщик покажет команду `sudo loginctl enable-linger "$USER"`; выполните её один раз и повторите установку. Root для самого сервера не используется. Этот режим совместим с runtime v0.3.3 и новее.
+
+Управление: `systemctl --user status space-server`, `systemctl --user restart space-server`, `systemctl --user stop space-server`. Журнал: `journalctl --user -u space-server -n 50`. Подробности, отключение автозапуска и путь к одноразовой ссылке — в [инструкции](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md#постоянная-работа-на-vps-systemd).
+
 Владелец может назначать несколько администраторов. Нужны обычный пользователь
 Linux x64, curl/unzip/sha256sum и открытый TCP 8443. Требуются приложение и runtime v0.3.3 или новее.
 

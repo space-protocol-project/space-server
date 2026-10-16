@@ -39,6 +39,9 @@ func main() {
 }
 
 func run() error {
+	if len(os.Args) > 1 && os.Args[1] == "start" {
+		return runStandalone(os.Args[2:], os.Stdout)
+	}
 	if len(os.Args) > 1 && os.Args[1] == "doctor" {
 		return runDoctor(os.Args[2:], os.Stdout)
 	}
@@ -98,6 +101,7 @@ func runServer(options serverOptions) (result error) {
 		address: options.httpsAddress, certificate: certificate, data: options.homeData,
 		localOrigin: origin, publicOrigin: publicOrigin, identityOrigin: identityOrigin, setupCode: setup,
 		pendingSetupPath: pendingSetup, statePath: filepath.Join(options.homeData, "state.json"),
+		remoteSetup: options.remoteSetup, output: options.output,
 	}
 	handler, err := localHTTPHandler(ctx, connection, store, identity, homeConfig, listener.Addr().String())
 	if err != nil {
@@ -195,7 +199,7 @@ func authOrigin(local, public string) string {
 	return local
 }
 
-func finishHomeSetup(ctx context.Context, store *postgres.Store, path string) error {
+func finishHomeSetup(ctx context.Context, store interface{ SealHomeSetup(context.Context) error }, path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
@@ -208,6 +212,8 @@ func finishHomeSetup(ctx context.Context, store *postgres.Store, path string) er
 }
 
 type serverOptions struct {
+	remoteSetup                                bool
+	output                                     io.Writer
 	portableExport, portableImport, portableTo string
 	port                                       string
 	grpcAddress                                string
@@ -300,6 +306,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
+			"remoteSetupVersion":   1,
 			"networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
@@ -498,6 +505,8 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 }
 
 type homeHTTPConfig struct {
+	remoteSetup                                                   bool
+	output                                                        io.Writer
 	address, localOrigin, publicOrigin, identityOrigin, setupCode string
 	pendingSetupPath, statePath, data                             string
 	certificate                                                   tls.Certificate
@@ -542,7 +551,11 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 		origins[i] = endpoint.Origin()
 	}
 	handler = transport.RestrictEndpointOrigins(handler, origins)
-	handler = requireHomeOwner(handler, initialized)
+	if config.remoteSetup {
+		handler = remoteSetupHandler(ctx, handler, initialized, store, config)
+	} else {
+		handler = requireHomeOwner(handler, initialized)
+	}
 	handler, witness, err := observeHomeNetwork(ctx, handler, config, identity.ServerID)
 	if err != nil {
 		return nil, err
@@ -565,6 +578,12 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 		return nil, err
 	}
 	resource.statePath = config.statePath
+	if config.remoteSetup && config.setupCode != "" {
+		if err := printSetupLink(config, identity.ServerID); err != nil {
+			resource.close()
+			return nil, err
+		}
+	}
 	return resource, nil
 }
 

@@ -72,6 +72,9 @@ jobs:
         run: |
           flutter pub get
           dart run tool/home_server_drill.dart ../../dist/home
+      - name: Запуск без компьютера владельца и несколько администраторов
+        working-directory: app-source/client
+        run: dart run tool/standalone_server_drill.dart ../../dist/home
       - name: Обновление Connect runtime и восстановление данных
         working-directory: app-source/client
         env:

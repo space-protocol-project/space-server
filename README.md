@@ -1,5 +1,17 @@
 # Space Server
 
+Запуск с нуля одной командой (приложение и runtime v0.3.3):
+[инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.3.3/packaging/install.sh | sh
+```
+
+Первый вошедший по одноразовой ссылке из терминала становится владельцем.
+Владелец может назначать несколько администраторов. Нужны обычный пользователь
+Linux x64, curl/unzip/sha256sum и открытый TCP 8443. До выпуска v0.3.3
+используйте сборку из исходников; старые runtime не поддерживают этот режим.
+
 Домашний runtime v0.2.4 поддерживает перенос пространства через приложение:
 [инструкция экспорта и импорта](https://github.com/space-protocol-project/space-app/blob/main/docs/SPACE-TRANSFER.md).
 Для остановленной домашней установки CLI предоставляет `-home-export`,

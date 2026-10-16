@@ -1,0 +1,24 @@
+name: Проверка внешнего подключения в изолированных сетях
+on:
+  push:
+    paths: ['internal/home/**', 'cmd/space-server/network_witness*', '.github/workflows/network-witness.yml']
+  pull_request:
+    paths: ['internal/home/**', 'cmd/space-server/network_witness*', '.github/workflows/network-witness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  witness:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Реальный TLS из другой сети, локальный адрес и поддельный Forwarded
+        shell: bash
+        run: |
+          go test -c -o "$RUNNER_TEMP/witness-tests" ./internal/home
+          sudo env SPACE_NETWORK_NETNS=1 "$RUNNER_TEMP/witness-tests" -test.run '^TestWitnessNetworkNamespaces$' -test.v

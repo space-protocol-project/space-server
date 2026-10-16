@@ -20,6 +20,8 @@
 
 ## Запуск для разработки
 
+В готовящемся выпуске доступна диагностика без запуска базы: `space-server doctor -home-data 'C:\Space\data'`. Для проверки из другой сети укажите `-endpoint`, `-fingerprint` и `-server-id` из команды, скопированной в «Эфире». Подробности и ограничения: [диагностика сети](https://github.com/space-protocol-project/space-app/blob/main/docs/NETWORK-DOCTOR.md). Локальный успех не подтверждает внешнюю доступность; опубликованный runtime v0.3.2 ещё не поддерживает doctor.
+
 Нужны Go 1.27.2+ и отдельная PostgreSQL. Из корня этого репозитория:
 
 ```powershell

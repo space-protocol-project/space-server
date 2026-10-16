@@ -39,6 +39,9 @@ func main() {
 }
 
 func run() error {
+	if len(os.Args) > 1 && os.Args[1] == "doctor" {
+		return runDoctor(os.Args[2:], os.Stdout)
+	}
 	options := parseOptions()
 	if handled, err := performMaintenance(options); handled {
 		return err
@@ -297,7 +300,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
 	}
@@ -504,9 +507,13 @@ type publicHTTPServer struct {
 	server    *http.Server
 	listener  net.Listener
 	statePath string
+	witness   *home.NetworkWitness
 }
 
 func (server *publicHTTPServer) close() {
+	if server.witness != nil {
+		server.witness.Close()
+	}
 	if server.statePath != "" {
 		_ = os.Remove(server.statePath)
 	}
@@ -536,6 +543,10 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 	}
 	handler = transport.RestrictEndpointOrigins(handler, origins)
 	handler = requireHomeOwner(handler, initialized)
+	handler, witness, err := observeHomeNetwork(ctx, handler, config, identity.ServerID)
+	if err != nil {
+		return nil, err
+	}
 
 	server := &http.Server{
 		Addr: config.address, Handler: handler,
@@ -544,9 +555,10 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 	}
 	listener, err := net.Listen("tcp", config.address)
 	if err != nil {
+		witness.Close()
 		return nil, err
 	}
-	resource := &publicHTTPServer{server: server, listener: listener}
+	resource := &publicHTTPServer{server: server, listener: listener, witness: witness}
 	go func() { failures <- server.ServeTLS(listener, "", "") }()
 	if err := writeHomeState(config.statePath, config.localOrigin, config.publicOrigin, config.setupCode, identity.ServerID); err != nil {
 		resource.close()

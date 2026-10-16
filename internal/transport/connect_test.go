@@ -34,6 +34,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ChannelServiceListChannelsProcedure,
 		rpc.ChannelServiceWatchChannelsProcedure,
 		rpc.ContentServiceCreateContentProcedure,
+		rpc.ContentServiceSetReactionProcedure,
 		rpc.ContentServiceUpdateContentProcedure,
 		rpc.ContentServiceDeleteContentProcedure,
 		rpc.AuthServiceListDevicesProcedure,

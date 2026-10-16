@@ -26,11 +26,11 @@ func (s *Store) Delete(ctx context.Context, req *pb.DeleteContentRequest) (*pb.D
 
 func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Content, error) {
 	content := new(pb.Content)
-	var metadata []byte
-	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments
+	var metadata, reactionData []byte
+	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions
  FROM contents WHERE channel_id=$1 AND id=$2 FOR UPDATE`, channel, id).Scan(
 		&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence,
-		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata)
+		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata, &reactionData)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Сообщение не найдено")
 	}
@@ -38,6 +38,9 @@ func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Conten
 		return nil, databaseError(ctx, err)
 	}
 	if err = json.Unmarshal(metadata, &content.Attachments); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if err = json.Unmarshal(reactionData, &content.Reactions); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return content, nil
@@ -84,6 +87,7 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 			return nil, databaseError(ctx, err)
 		}
 		content.Attachments = nil
+		content.Reactions = nil
 	}
 	content.Text, content.Deleted = text, deleted
 	content.Revision++
@@ -98,8 +102,15 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 }
 
 func saveContentChange(ctx context.Context, tx pgx.Tx, content *pb.Content) error {
-	_, err := tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6,attachments=CASE WHEN $6 THEN '[]'::jsonb ELSE attachments END
- WHERE channel_id=$1 AND id=$2`, content.ChannelId, content.Id, content.Text, content.Revision, content.UpdatedAtUnixMs, content.Deleted)
+	reactions, err := json.Marshal(content.Reactions)
+	if err != nil {
+		return databaseError(ctx, err)
+	}
+	if content.Reactions == nil {
+		reactions = []byte("[]")
+	}
+	_, err = tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6,attachments=CASE WHEN $6 THEN '[]'::jsonb ELSE attachments END,reactions=$7
+ WHERE channel_id=$1 AND id=$2`, content.ChannelId, content.Id, content.Text, content.Revision, content.UpdatedAtUnixMs, content.Deleted, reactions)
 	if err != nil {
 		return databaseError(ctx, err)
 	}

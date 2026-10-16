@@ -106,6 +106,9 @@ func (s connectContent) CreateContent(ctx context.Context, req *connect.Request[
 	return bridgeUnary(ctx, req, s.client.CreateContent)
 }
 
+func (s connectContent) SetReaction(ctx context.Context, req *connect.Request[pb.SetReactionRequest]) (*connect.Response[pb.SetReactionResponse], error) {
+	return bridgeUnary(ctx, req, s.client.SetReaction)
+}
 func (s connectContent) UpdateContent(ctx context.Context, req *connect.Request[pb.UpdateContentRequest]) (*connect.Response[pb.UpdateContentResponse], error) {
 	return bridgeUnary(ctx, req, s.client.UpdateContent)
 }
@@ -322,6 +325,7 @@ var connectProcedures = map[string]bool{
 	rpc.ChannelServiceUpdateChannelAccessProcedure: true,
 	rpc.ChannelServiceGetManifestProcedure:         true,
 	rpc.ChannelServiceWatchChannelsProcedure:       true,
+	rpc.ContentServiceSetReactionProcedure:         true,
 	rpc.ContentServiceUpdateContentProcedure:       true,
 	rpc.ContentServiceDeleteContentProcedure:       true,
 	rpc.ContentServiceCreateContentProcedure:       true,

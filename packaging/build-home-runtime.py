@@ -78,6 +78,7 @@ def build():
                         if dependency.startswith(str(STAGE / "postgres/lib")):
                             run("install_name_tool", "-change", dependency, "@loader_path/../lib/" + Path(dependency).name, str(path))
                     run("codesign", "--force", "--sign", "-", str(path))
+        shutil.copy(ROOT / "internal/reactions/UNICODE-LICENSE.txt", STAGE / "UNICODE-LICENSE.txt")
         executable = "space-server.exe" if system == "Windows" else "space-server"
         flags = ["-ldflags=-H=windowsgui"] if system == "Windows" else []
         run("go", "build", "-trimpath", *flags, "-o", str(STAGE / executable), "./cmd/space-server", cwd=ROOT)

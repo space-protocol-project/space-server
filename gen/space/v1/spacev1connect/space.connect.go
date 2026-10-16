@@ -71,6 +71,9 @@ const (
 	// ChannelServiceGetManifestProcedure is the fully-qualified name of the ChannelService's
 	// GetManifest RPC.
 	ChannelServiceGetManifestProcedure = "/space.v1.ChannelService/GetManifest"
+	// ContentServiceSetReactionProcedure is the fully-qualified name of the ContentService's
+	// SetReaction RPC.
+	ContentServiceSetReactionProcedure = "/space.v1.ContentService/SetReaction"
 	// ContentServiceUpdateContentProcedure is the fully-qualified name of the ContentService's
 	// UpdateContent RPC.
 	ContentServiceUpdateContentProcedure = "/space.v1.ContentService/UpdateContent"
@@ -452,6 +455,7 @@ func (UnimplementedChannelServiceHandler) GetManifest(context.Context, *connect.
 
 // ContentServiceClient is a client for the space.v1.ContentService service.
 type ContentServiceClient interface {
+	SetReaction(context.Context, *connect.Request[v1.SetReactionRequest]) (*connect.Response[v1.SetReactionResponse], error)
 	UpdateContent(context.Context, *connect.Request[v1.UpdateContentRequest]) (*connect.Response[v1.UpdateContentResponse], error)
 	DeleteContent(context.Context, *connect.Request[v1.DeleteContentRequest]) (*connect.Response[v1.DeleteContentResponse], error)
 	CreateContent(context.Context, *connect.Request[v1.CreateContentRequest]) (*connect.Response[v1.CreateContentResponse], error)
@@ -469,6 +473,12 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	contentServiceMethods := v1.File_space_v1_space_proto.Services().ByName("ContentService").Methods()
 	return &contentServiceClient{
+		setReaction: connect.NewClient[v1.SetReactionRequest, v1.SetReactionResponse](
+			httpClient,
+			baseURL+ContentServiceSetReactionProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("SetReaction")),
+			connect.WithClientOptions(opts...),
+		),
 		updateContent: connect.NewClient[v1.UpdateContentRequest, v1.UpdateContentResponse](
 			httpClient,
 			baseURL+ContentServiceUpdateContentProcedure,
@@ -498,10 +508,16 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
+	setReaction   *connect.Client[v1.SetReactionRequest, v1.SetReactionResponse]
 	updateContent *connect.Client[v1.UpdateContentRequest, v1.UpdateContentResponse]
 	deleteContent *connect.Client[v1.DeleteContentRequest, v1.DeleteContentResponse]
 	createContent *connect.Client[v1.CreateContentRequest, v1.CreateContentResponse]
 	listContent   *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
+}
+
+// SetReaction calls space.v1.ContentService.SetReaction.
+func (c *contentServiceClient) SetReaction(ctx context.Context, req *connect.Request[v1.SetReactionRequest]) (*connect.Response[v1.SetReactionResponse], error) {
+	return c.setReaction.CallUnary(ctx, req)
 }
 
 // UpdateContent calls space.v1.ContentService.UpdateContent.
@@ -526,6 +542,7 @@ func (c *contentServiceClient) ListContent(ctx context.Context, req *connect.Req
 
 // ContentServiceHandler is an implementation of the space.v1.ContentService service.
 type ContentServiceHandler interface {
+	SetReaction(context.Context, *connect.Request[v1.SetReactionRequest]) (*connect.Response[v1.SetReactionResponse], error)
 	UpdateContent(context.Context, *connect.Request[v1.UpdateContentRequest]) (*connect.Response[v1.UpdateContentResponse], error)
 	DeleteContent(context.Context, *connect.Request[v1.DeleteContentRequest]) (*connect.Response[v1.DeleteContentResponse], error)
 	CreateContent(context.Context, *connect.Request[v1.CreateContentRequest]) (*connect.Response[v1.CreateContentResponse], error)
@@ -539,6 +556,12 @@ type ContentServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	contentServiceMethods := v1.File_space_v1_space_proto.Services().ByName("ContentService").Methods()
+	contentServiceSetReactionHandler := connect.NewUnaryHandler(
+		ContentServiceSetReactionProcedure,
+		svc.SetReaction,
+		connect.WithSchema(contentServiceMethods.ByName("SetReaction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	contentServiceUpdateContentHandler := connect.NewUnaryHandler(
 		ContentServiceUpdateContentProcedure,
 		svc.UpdateContent,
@@ -565,6 +588,8 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 	)
 	return "/space.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ContentServiceSetReactionProcedure:
+			contentServiceSetReactionHandler.ServeHTTP(w, r)
 		case ContentServiceUpdateContentProcedure:
 			contentServiceUpdateContentHandler.ServeHTTP(w, r)
 		case ContentServiceDeleteContentProcedure:
@@ -581,6 +606,10 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 
 // UnimplementedContentServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedContentServiceHandler struct{}
+
+func (UnimplementedContentServiceHandler) SetReaction(context.Context, *connect.Request[v1.SetReactionRequest]) (*connect.Response[v1.SetReactionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ContentService.SetReaction is not implemented"))
+}
 
 func (UnimplementedContentServiceHandler) UpdateContent(context.Context, *connect.Request[v1.UpdateContentRequest]) (*connect.Response[v1.UpdateContentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ContentService.UpdateContent is not implemented"))

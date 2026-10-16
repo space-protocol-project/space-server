@@ -9,8 +9,7 @@ curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.
 Владелец может назначать несколько администраторов. Нужны обычный пользователь
-Linux x64, curl/unzip/sha256sum и открытый TCP 8443. До выпуска v0.3.3
-используйте сборку из исходников; старые runtime не поддерживают этот режим.
+Linux x64, curl/unzip/sha256sum и открытый TCP 8443. Требуются приложение и runtime v0.3.3 или новее.
 
 Домашний runtime v0.2.4 поддерживает перенос пространства через приложение:
 [инструкция экспорта и импорта](https://github.com/space-protocol-project/space-app/blob/main/docs/SPACE-TRANSFER.md).
@@ -32,7 +31,7 @@ Linux x64, curl/unzip/sha256sum и открытый TCP 8443. До выпуск�
 
 ## Запуск для разработки
 
-В готовящемся выпуске доступна диагностика без запуска базы: `space-server doctor -home-data 'C:\Space\data'`. Для проверки из другой сети укажите `-endpoint`, `-fingerprint` и `-server-id` из команды, скопированной в «Эфире». Подробности и ограничения: [диагностика сети](https://github.com/space-protocol-project/space-app/blob/main/docs/NETWORK-DOCTOR.md). Локальный успех не подтверждает внешнюю доступность; опубликованный runtime v0.3.2 ещё не поддерживает doctor.
+В готовящемся выпуске доступна диагностика без запуска базы: `space-server doctor -home-data 'C:\Space\data'`. Для проверки из другой сети укажите `-endpoint`, `-fingerprint` и `-server-id` из команды, скопированной в «Эфире». Подробности и ограничения: [диагностика сети](https://github.com/space-protocol-project/space-app/blob/main/docs/NETWORK-DOCTOR.md). Локальный успех не подтверждает внешнюю доступность; doctor доступен в runtime v0.3.3 и новее.
 
 Нужны Go 1.27.2+ и отдельная PostgreSQL. Из корня этого репозитория:
 

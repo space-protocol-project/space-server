@@ -26,6 +26,14 @@ jobs:
           sudo install -m 644 packaging/install.sh /tmp/space-systemd-install.sh
       - name: Настоящие systemd и опубликованный runtime
         run: sudo python3 packaging/verify-systemd.py
+      - name: Диагностика сбоя systemd
+        if: failure()
+        run: |
+          if id space-systemd-ci >/dev/null 2>&1; then
+            uid=$(id -u space-systemd-ci)
+            sudo journalctl -u "user@$uid.service" -n 70 --no-pager
+            sudo journalctl "_UID=$uid" -n 100 --no-pager | sed -E 's/setup_[A-Za-z0-9_-]+/[SECRET]/g'
+          fi
       - name: Остановка тестовой службы
         if: always()
         run: |

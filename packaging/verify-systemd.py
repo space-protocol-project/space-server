@@ -76,6 +76,7 @@ def verify():
     # Эти параметры относятся только к отдельному тестовому пользователю CI.
     user('sh', '/tmp/space-systemd-install.sh', '--service', '-address', 'https://127.0.0.1:18443', '-listen', '127.0.0.1:18443')
     first = ready()
+    print('Первый запуск и приватная ссылка: OK', flush=True)
     assert ctl('is-enabled', 'space-server') == 'enabled'
     assert (base / 'setup.txt').stat().st_mode & 0o777 == 0o600
     unit = home / '.config/systemd/user/space-server.service'
@@ -87,12 +88,14 @@ def verify():
     second = ready(first)
     assert identity(first) == identity(second)
     assert sql('SELECT value FROM systemd_smoke') == 'сохранено'
+    print('Повторная установка и сохранение БД: OK', flush=True)
 
     old_pid = int(ctl('show', 'space-server', '-p', 'MainPID', '--value'))
     os.kill(old_pid, signal.SIGKILL)
     recovered = ready(second)
     assert identity(first) == identity(recovered)
     assert sql('SELECT value FROM systemd_smoke') == 'сохранено'
+    print('Восстановление после SIGKILL: OK', flush=True)
 
     # Перезапуск user manager запускает enabled-службу без SSH-сессии.
     subprocess.run(['systemctl', 'restart', f'user@{account.pw_uid}.service'], check=True, timeout=100)

@@ -107,9 +107,10 @@ UNIT
   mv "$work/run" "$launcher"
   mv "$work/space-server.service" "$unit"
   systemctl --user daemon-reload
+  touch "$work/starting"
   systemctl --user enable --now space-server.service
   attempts=0
-  while [ ! -s "$base/home/data/state.json" ] || { [ -f "$base/home/data/bootstrap-pending" ] && [ ! -s "$setup" ]; }; do
+  while [ ! "$base/home/data/state.json" -nt "$work/starting" ] || { [ -f "$base/home/data/bootstrap-pending" ] && [ ! -s "$setup" ]; }; do
     attempts=$((attempts + 1))
     [ "$attempts" -lt 90 ] || fail 'Сервер не готов за 90 секунд. Проверьте: journalctl --user -u space-server.service -n 50'
     [ "$(systemctl --user show space-server.service -p ActiveState --value)" != failed ] || fail 'Служба завершилась с ошибкой. Проверьте: journalctl --user -u space-server.service -n 50'

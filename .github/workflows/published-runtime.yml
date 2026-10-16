@@ -1,0 +1,21 @@
+name: Проверка опубликованного Linux-установщика
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Опубликованный тег runtime
+        required: true
+        default: v0.3.3
+        type: string
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Настоящий установщик из опубликованного выпуска
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python3 packaging/verify-published-runtime.py "$RELEASE_VERSION"

@@ -135,7 +135,7 @@ func TestPMPLifecycle(t *testing.T) {
 }
 
 func TestPublicIPRejectsSharedAndReserved(t *testing.T) {
-	for _, ip := range []string{"100.64.0.1", "192.168.1.1", "127.0.0.1", "0.0.0.0", "203.0.113.4", "198.18.0.1", "255.255.255.255", "::1"} {
+	for _, ip := range []string{"100.64.0.1", "192.168.1.1", "127.0.0.1", "0.0.0.0", "0.1.2.3", "203.0.113.4", "198.18.0.1", "255.255.255.255", "::1"} {
 		if PublicIP(netip.MustParseAddr(ip)) {
 			t.Fatal(ip)
 		}

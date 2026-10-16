@@ -2,6 +2,7 @@ package home
 
 import (
 	"encoding/json"
+	"github.com/space-protocol-project/space-server/internal/portmap"
 	"net/netip"
 	"path/filepath"
 	"time"
@@ -23,7 +24,7 @@ func appendAutomaticChecks(report *DoctorReport, data string, now time.Time) {
 	switch status.Code {
 	case "mapped":
 		endpoint, err := netip.ParseAddrPort(status.External)
-		if err != nil || !endpoint.Addr().Is4() || endpoint.Port() == 0 || status.ExpiresAt <= now.UnixMilli() {
+		if err != nil || !endpoint.Addr().Is4() || !portmap.PublicIP(endpoint.Addr()) || endpoint.Port() == 0 || status.ExpiresAt <= now.UnixMilli() || status.ExpiresAt-status.At > portmap.Lifetime*1000 {
 			return
 		}
 		if status.Protocol != "PCP" && status.Protocol != "NAT-PMP" && status.Protocol != "UPnP" {

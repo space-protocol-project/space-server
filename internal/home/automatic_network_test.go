@@ -137,6 +137,21 @@ func TestMappingNeverProvesExternalReachability(t *testing.T) {
 		t.Fatal(report)
 	}
 	report.Checks = nil
+	status.ExpiresAt = now.Add(time.Hour).UnixMilli()
+	_ = writeNetworkJSON(filepath.Join(data, "automatic-network.json"), status)
+	appendAutomaticChecks(&report, data, now)
+	if len(report.Checks) != 0 {
+		t.Fatal("принят чрезмерный срок аренды")
+	}
+	status.ExpiresAt = now.Add(time.Minute).UnixMilli()
+	status.External = "100.64.0.1:9443"
+	_ = writeNetworkJSON(filepath.Join(data, "automatic-network.json"), status)
+	appendAutomaticChecks(&report, data, now)
+	if len(report.Checks) != 0 {
+		t.Fatal("принят CGNAT в статусе аренды")
+	}
+	status.External = "8.8.8.8:9443"
+	_ = writeNetworkJSON(filepath.Join(data, "automatic-network.json"), status)
 	appendAutomaticChecks(&report, data, now.Add(time.Minute))
 	if len(report.Checks) != 0 {
 		t.Fatal("принята устаревшая аренда")

@@ -117,3 +117,22 @@ func TestWitnessResetStopRateAndChangedEndpoints(t *testing.T) {
 		t.Fatal("Запись после остановки")
 	}
 }
+
+func TestWitnessLimitsFailedDiskWrites(t *testing.T) {
+	w, _ := newTestWitness(t)
+	directory := filepath.Join(filepath.Dir(w.path), "missing")
+	w.path = filepath.Join(directory, "network-witness.json")
+	now := time.Now()
+	w.Observe("8.8.8.8:8443", "1.1.1.1:123", "", now)
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	w.Observe("8.8.8.8:8443", "1.1.1.1:123", "", now.Add(time.Second))
+	if _, err := os.Stat(w.path); !os.IsNotExist(err) {
+		t.Fatal("Сбой диска привёл к частым повторным записям")
+	}
+	w.Observe("8.8.8.8:8443", "1.1.1.1:123", "", now.Add(11*time.Second))
+	if _, err := os.Stat(w.path); err != nil {
+		t.Fatal("Запись не восстановилась после интервала", err)
+	}
+}

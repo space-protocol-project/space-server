@@ -100,9 +100,9 @@ func (w *NetworkWitness) Observe(authority, remote, serverName string, now time.
 	if !w.record(origin, now.UnixMilli()) {
 		return
 	}
-	if w.save() == nil {
-		w.lastWrite = now
-	}
+	// Ошибка диска тоже ограничивает частоту следующих попыток.
+	w.lastWrite = now
+	_ = w.save()
 }
 
 func (w *NetworkWitness) record(origin string, at int64) bool {

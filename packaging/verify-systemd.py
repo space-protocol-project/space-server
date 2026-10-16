@@ -102,6 +102,7 @@ def verify():
     rebooted = ready(recovered)
     assert identity(first) == identity(rebooted)
     assert sql('SELECT value FROM systemd_smoke') == 'сохранено'
+    print('Запуск user manager без SSH, прежние TLS и БД: OK', flush=True)
     journal = user('journalctl', '--user', '-u', 'space-server', '--no-pager').stdout
     assert 'setup_' not in journal and '#setup=' not in journal
 
@@ -114,8 +115,13 @@ def verify():
         pass
     else:
         raise AssertionError('PostgreSQL осталась работать после stop')
+    print('Штатная остановка PostgreSQL: OK', flush=True)
     ctl('disable', 'space-server')
-    subprocess.run(['systemctl', 'restart', f'user@{account.pw_uid}.service'], check=True, timeout=100)
+    assert ctl('is-enabled', 'space-server', check=False) == 'disabled'
+    # Проверяем загрузочную цель без повторного пересоздания cgroup менеджера:
+    # в образе Actions его второй быстрый restart нестабилен (219/CGROUP).
+    ctl('stop', 'default.target')
+    ctl('start', 'default.target')
     assert ctl('is-active', 'space-server', check=False) != 'active'
     assert (base / 'home/data/postgres/PG_VERSION').exists()
     print('systemd: выход установщика, повторная установка, crash-restart, запуск без SSH, TLS/БД, приватная ссылка и stop/disable проверены')

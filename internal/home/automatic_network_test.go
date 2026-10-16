@@ -16,6 +16,18 @@ import (
 func automaticFixture(t *testing.T, host string) (string, NetworkConfig) {
 	t.Helper()
 	root := t.TempDir()
+	// Windows может завершать удаление переименованных файлов асинхронно.
+	// Повторяем очистку только собственного тестового каталога, не скрывая ошибку.
+	t.Cleanup(func() {
+		var err error
+		for attempt := 0; attempt < 20; attempt++ {
+			if err = os.RemoveAll(root); err == nil {
+				return
+			}
+			time.Sleep(25 * time.Millisecond)
+		}
+		t.Errorf("Не удалось очистить тестовый каталог: %v", err)
+	})
 	data := filepath.Join(root, "data")
 	if err := os.Mkdir(data, 0700); err != nil {
 		t.Fatal(err)

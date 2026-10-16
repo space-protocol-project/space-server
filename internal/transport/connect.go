@@ -102,6 +102,10 @@ type connectContent struct {
 	client pb.ContentServiceClient
 }
 
+func (s connectContent) ApplyContentMutation(ctx context.Context, req *connect.Request[pb.ApplyContentMutationRequest]) (*connect.Response[pb.ApplyContentMutationResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ApplyContentMutation)
+}
+
 func (s connectContent) CreateContent(ctx context.Context, req *connect.Request[pb.CreateContentRequest]) (*connect.Response[pb.CreateContentResponse], error) {
 	return bridgeUnary(ctx, req, s.client.CreateContent)
 }
@@ -303,19 +307,20 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.MlsServiceRegisterMlsDeviceProcedure:    true,
-	rpc.MlsServiceListMlsDevicesProcedure:       true,
-	rpc.MlsServiceGetMlsChannelProcedure:        true,
-	rpc.MlsServicePublishMlsProcedure:           true,
-	rpc.MlsServiceListMlsEnvelopesProcedure:     true,
-	rpc.MembershipServiceUpdateProfileProcedure: true,
-	rpc.AssetServiceBeginUploadProcedure:        true,
-	rpc.AssetServiceUploadChunkProcedure:        true,
-	rpc.AssetServiceCompleteUploadProcedure:     true,
-	rpc.AssetServiceCancelUploadProcedure:       true,
-	rpc.AssetServiceDownloadChunkProcedure:      true,
-	rpc.AssetServiceListMyAssetsProcedure:       true,
-	rpc.AssetServiceListChannelAssetsProcedure:  true,
+	rpc.ContentServiceApplyContentMutationProcedure: true,
+	rpc.MlsServiceRegisterMlsDeviceProcedure:        true,
+	rpc.MlsServiceListMlsDevicesProcedure:           true,
+	rpc.MlsServiceGetMlsChannelProcedure:            true,
+	rpc.MlsServicePublishMlsProcedure:               true,
+	rpc.MlsServiceListMlsEnvelopesProcedure:         true,
+	rpc.MembershipServiceUpdateProfileProcedure:     true,
+	rpc.AssetServiceBeginUploadProcedure:            true,
+	rpc.AssetServiceUploadChunkProcedure:            true,
+	rpc.AssetServiceCompleteUploadProcedure:         true,
+	rpc.AssetServiceCancelUploadProcedure:           true,
+	rpc.AssetServiceDownloadChunkProcedure:          true,
+	rpc.AssetServiceListMyAssetsProcedure:           true,
+	rpc.AssetServiceListChannelAssetsProcedure:      true,
 
 	rpc.ChannelServiceListChannelsProcedure:        true,
 	rpc.ChannelServiceCreateChannelProcedure:       true,

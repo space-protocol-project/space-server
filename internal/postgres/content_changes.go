@@ -15,13 +15,15 @@ import (
 )
 
 func (s *Store) Update(ctx context.Context, req *pb.UpdateContentRequest) (*pb.UpdateContentResponse, error) {
-	content, err := s.changeContent(ctx, req.ChannelId, req.Id, req.ExpectedRevision, req.Text, false)
-	return &pb.UpdateContentResponse{Content: content}, err
+	m := &contentMutation{kind: "update", channel: req.ChannelId, id: req.Id, revision: req.ExpectedRevision, text: req.Text, key: req.IdempotencyKey}
+	content, err := s.changeContent(ctx, m, false)
+	return &pb.UpdateContentResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, err
 }
 
 func (s *Store) Delete(ctx context.Context, req *pb.DeleteContentRequest) (*pb.DeleteContentResponse, error) {
-	content, err := s.changeContent(ctx, req.ChannelId, req.Id, req.ExpectedRevision, "", true)
-	return &pb.DeleteContentResponse{Content: content}, err
+	m := &contentMutation{kind: "delete", channel: req.ChannelId, id: req.Id, revision: req.ExpectedRevision, key: req.IdempotencyKey}
+	content, err := s.changeContent(ctx, m, true)
+	return &pb.DeleteContentResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, err
 }
 
 func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Content, error) {
@@ -60,7 +62,7 @@ func validateContentAuthor(ctx context.Context, content *pb.Content, revision in
 	return nil
 }
 
-func (s *Store) changeContent(ctx context.Context, channel, id string, revision int64, text string, deleted bool) (*pb.Content, error) {
+func (s *Store) changeContent(ctx context.Context, m *contentMutation, deleted bool) (*pb.Content, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, databaseError(ctx, err)
@@ -69,30 +71,36 @@ func (s *Store) changeContent(ctx context.Context, channel, id string, revision 
 	if err = s.lockSession(ctx, tx); err != nil {
 		return nil, err
 	}
-	if err = requireOpenChannelAccess(ctx, tx, channel, "write"); err != nil {
+	if err = requireOpenChannelAccess(ctx, tx, m.channel, "write"); err != nil {
 		return nil, err
 	}
-	content, err := loadContent(ctx, tx, channel, id)
+	content, err := loadContent(ctx, tx, m.channel, m.id)
 	if err != nil {
 		return nil, err
 	}
-	if err = validateContentAuthor(ctx, content, revision); err != nil {
+	if found, replayErr := m.replay(ctx, tx, content); replayErr != nil || found {
+		return content, replayErr
+	}
+	if err = validateContentAuthor(ctx, content, m.revision); err != nil {
 		return nil, err
 	}
-	if !deleted && strings.TrimSpace(text) == "" && len(content.Attachments) == 0 {
+	if !deleted && strings.TrimSpace(m.text) == "" && len(content.Attachments) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Сообщение должно содержать текст или файл")
 	}
 	if deleted {
-		if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE channel_id=$1 AND content_id=$2", channel, id); err != nil {
+		if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE channel_id=$1 AND content_id=$2", m.channel, m.id); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		content.Attachments = nil
 		content.Reactions = nil
 	}
-	content.Text, content.Deleted = text, deleted
+	content.Text, content.Deleted = m.text, deleted
 	content.Revision++
 	content.UpdatedAtUnixMs = time.Now().UnixMilli()
 	if err = saveContentChange(ctx, tx, content); err != nil {
+		return nil, err
+	}
+	if err = m.save(ctx, tx, content); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {

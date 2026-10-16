@@ -29,6 +29,14 @@ func (s *Store) SetReaction(ctx context.Context, req *pb.SetReactionRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	m := &contentMutation{kind: "reaction", channel: req.ChannelId, id: req.Id,
+		revision: req.ExpectedRevision, key: req.IdempotencyKey, emoji: req.Emoji, active: req.Active}
+	if found, replayErr := m.replay(ctx, tx, content); replayErr != nil || found {
+		return &pb.SetReactionResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, replayErr
+	}
+	if m.key != "" && content.Revision != m.revision {
+		return nil, status.Error(codes.Aborted, "Сообщение изменилось. Проверьте новое состояние")
+	}
 	if content.Deleted {
 		return nil, status.Error(codes.FailedPrecondition, "Сообщение удалено")
 	}
@@ -37,7 +45,13 @@ func (s *Store) SetReaction(ctx context.Context, req *pb.SetReactionRequest) (*p
 	present := selected != nil && slices.Contains(selected.PrincipalIds, actor)
 	// Повтор не создаёт событие; устаревшая операция не отменяет новое решение.
 	if present == req.Active {
-		return &pb.SetReactionResponse{Content: content}, nil
+		if err = m.save(ctx, tx, content); err != nil {
+			return nil, err
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return nil, databaseError(ctx, err)
+		}
+		return &pb.SetReactionResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, nil
 	}
 	if content.Revision != req.ExpectedRevision {
 		return nil, status.Error(codes.Aborted, "Реакции изменились. Повторите действие")
@@ -49,10 +63,13 @@ func (s *Store) SetReaction(ctx context.Context, req *pb.SetReactionRequest) (*p
 	if err = saveContentChange(ctx, tx, content); err != nil {
 		return nil, err
 	}
+	if err = m.save(ctx, tx, content); err != nil {
+		return nil, err
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	return &pb.SetReactionResponse{Content: content}, nil
+	return &pb.SetReactionResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, nil
 }
 
 func findReaction(content *pb.Content, emoji string) *pb.Reaction {

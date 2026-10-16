@@ -22,6 +22,11 @@ jobs:
         run: |
           sudo useradd --create-home --shell /bin/bash space-systemd-ci
           uid=$(id -u space-systemd-ci)
+          # В образе включён глобальный автозапуск rootless Podman.
+          # Тестовый менеджер должен запускать только проверяемую службу.
+          sudo -u space-systemd-ci mkdir -p /home/space-systemd-ci/.config/systemd/user
+          sudo -u space-systemd-ci ln -s /dev/null /home/space-systemd-ci/.config/systemd/user/podman.service
+          sudo -u space-systemd-ci ln -s /dev/null /home/space-systemd-ci/.config/systemd/user/podman.socket
           # Образ Actions задаёт XDG-пути runner в /etc/environment.
           # Они не должны наследоваться менеджером другого пользователя.
           sudo sed -i '/^XDG_/d; /^DBUS_SESSION_BUS_ADDRESS=/d' /etc/environment

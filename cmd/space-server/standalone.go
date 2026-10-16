@@ -32,6 +32,8 @@ func standaloneOptions(args []string, output io.Writer) (serverOptions, error) {
 	directory := flags.String("data", "./space-home", "Каталог пространства (данные сохраняются при перезапуске)")
 	address := flags.String("address", "", "Внешний HTTPS адрес, например https://space.example.org:8443; иначе IP определяется через ipify")
 	listen := flags.String("listen", "0.0.0.0:8443", "Адрес прослушивания HTTPS")
+	autoPorts := flags.Bool("auto-port-mapping", false, "Временный проброс TCP-порта через PCP/NAT-PMP/UPnP (при первом запуске)")
+	autoIP := flags.Bool("auto-public-ip", false, "Следить за сменой публичного IPv4 (при первом запуске)")
 	managed := flags.Bool("managed", false, "Завершаться при закрытии stdin управляющего процесса")
 	if err := flags.Parse(args); err != nil {
 		return serverOptions{}, err
@@ -49,13 +51,13 @@ func standaloneOptions(args []string, output io.Writer) (serverOptions, error) {
 	}
 	options := serverOptions{homeRuntime: filepath.Dir(executable), homeData: data, port: "127.0.0.1:0", grpcAddress: "127.0.0.1:0", httpsAddress: *listen, remoteSetup: true, output: output}
 	options.managed = *managed
-	if err := standaloneNetwork(data, *address, *listen); err != nil {
+	if err := standaloneNetwork(data, *address, *listen, *autoPorts, *autoIP); err != nil {
 		return serverOptions{}, err
 	}
 	return options, nil
 }
 
-func standaloneNetwork(data, address, listen string) error {
+func standaloneNetwork(data, address, listen string, automatic ...bool) error {
 	host, port, err := net.SplitHostPort(listen)
 	if err != nil || net.ParseIP(host) == nil || port == "0" {
 		return fmt.Errorf("Нужен IP и ненулевой порт прослушивания")
@@ -86,6 +88,15 @@ func standaloneNetwork(data, address, listen string) error {
 		return err
 	}
 	config = home.NetworkConfig{Endpoints: []home.Endpoint{endpoint}, Revision: 1, ListenHost: host, ListenPort: listenPort}
+	if len(automatic) > 0 {
+		config.AutoPortMapping = automatic[0]
+	}
+	if len(automatic) > 1 {
+		config.AutoPublicIP = automatic[1]
+	}
+	if config.AutoPublicIP && net.ParseIP(endpoint.Host).To4() == nil {
+		return fmt.Errorf("Автообновление IP требует IPv4; домен обновляется через DNS")
+	}
 	return writeStandaloneNetwork(data, config)
 }
 

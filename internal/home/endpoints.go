@@ -64,13 +64,16 @@ func ValidateEndpoints(endpoints []Endpoint) error {
 }
 
 type NetworkConfig struct {
-	IP             string     `json:"ip"`
-	Port           int        `json:"port"`
-	IdentityOrigin string     `json:"identity_origin"`
-	Endpoints      []Endpoint `json:"endpoints"`
-	Revision       int64      `json:"endpoint_revision"`
-	ListenHost     string     `json:"listen_host"`
-	ListenPort     int        `json:"listen_port"`
+	IP                string     `json:"ip"`
+	Port              int        `json:"port"`
+	IdentityOrigin    string     `json:"identity_origin"`
+	Endpoints         []Endpoint `json:"endpoints"`
+	Revision          int64      `json:"endpoint_revision"`
+	ListenHost        string     `json:"listen_host"`
+	ListenPort        int        `json:"listen_port"`
+	AutoPortMapping   bool       `json:"auto_port_mapping"`
+	AutoPublicIP      bool       `json:"auto_public_ip"`
+	PreviousAutomatic *Endpoint  `json:"previous_automatic,omitempty"`
 }
 
 func ReadNetworkConfig(data string) (NetworkConfig, error) {
@@ -92,7 +95,33 @@ func ReadNetworkConfig(data string) (NetworkConfig, error) {
 	if config.Revision < 1 || config.Revision > MaxEndpointRevision || config.ListenPort < 1 || config.ListenPort > 65535 || net.ParseIP(config.ListenHost) == nil {
 		return config, fmt.Errorf("Некорректная версия или адрес прослушивания")
 	}
+	if config.AutoPublicIP && net.ParseIP(config.Endpoints[0].Host).To4() == nil {
+		return config, fmt.Errorf("Автообновление IP требует IPv4 в первом адресе")
+	}
+	if (config.AutoPublicIP || config.AutoPortMapping || config.PreviousAutomatic != nil) && len(config.Endpoints) > 7 {
+		return config, fmt.Errorf("Для автоматического адреса нужно оставить место для прежнего маршрута")
+	}
+	if config.PreviousAutomatic != nil {
+		if err := ValidateEndpoints([]Endpoint{*config.PreviousAutomatic}); err != nil {
+			return config, err
+		}
+	}
 	return config, ValidateEndpoints(config.Endpoints)
+}
+
+func (config NetworkConfig) AdvertisedEndpoints() []Endpoint {
+	result := append([]Endpoint(nil), config.Endpoints...)
+	if config.PreviousAutomatic != nil {
+		for _, endpoint := range result {
+			if endpoint.Origin() == config.PreviousAutomatic.Origin() {
+				return result
+			}
+		}
+		previous := *config.PreviousAutomatic
+		previous.Priority = 255
+		result = append(result, previous)
+	}
+	return result
 }
 
 func EndpointFromOrigin(origin string) (Endpoint, error) {

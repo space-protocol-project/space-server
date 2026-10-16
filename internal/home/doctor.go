@@ -55,6 +55,7 @@ func Diagnose(ctx context.Context, options DoctorOptions) (DoctorReport, error) 
 		return report, fmt.Errorf("Нужны SHA-256 сертификата и server ID из карточки пространства")
 	}
 	appendWANCheck(&report, options.WANIP)
+	appendAutomaticChecks(&report, options.Data, time.Now())
 	for _, endpoint := range report.Endpoints {
 		if ctx.Err() != nil {
 			report.add("budget_exhausted", "unknown", "")
@@ -84,7 +85,7 @@ func prepareLocalDoctor(ctx context.Context, data string, report *DoctorReport) 
 	if err != nil {
 		return err
 	}
-	report.Endpoints = config.Endpoints
+	report.Endpoints = config.AdvertisedEndpoints()
 	if len(report.Endpoints) == 0 {
 		if config.IP == "" {
 			return fmt.Errorf("Адреса пространства ещё не настроены")

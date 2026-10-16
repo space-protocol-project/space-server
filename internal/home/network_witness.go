@@ -33,6 +33,7 @@ type NetworkWitness struct {
 	path      string
 	document  witnessDocument
 	policy    witnessPolicy
+	endpoints []Endpoint
 	closed    bool
 	lastWrite time.Time
 	cancel    context.CancelFunc
@@ -52,7 +53,7 @@ func NewNetworkWitness(ctx context.Context, data, id, pin string, endpoints []En
 		return nil, fmt.Errorf("Некорректная идентичность наблюдателя")
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	witness := &NetworkWitness{cancel: cancel, path: filepath.Join(data, "network-witness.json"), document: witnessDocument{
+	witness := &NetworkWitness{endpoints: append([]Endpoint(nil), endpoints...), cancel: cancel, path: filepath.Join(data, "network-witness.json"), document: witnessDocument{
 		Format: 1, ServerID: id, Fingerprint: pin, EndpointsHash: endpointWitnessHash(endpoints), Observations: []NetworkObservation{},
 	}}
 	// При каждом запуске прежнее свидетельство аннулируется до открытия слушателя.
@@ -60,7 +61,7 @@ func NewNetworkWitness(ctx context.Context, data, id, pin string, endpoints []En
 		cancel()
 		return nil, err
 	}
-	witness.refresh(ctx, endpoints)
+	witness.refreshCurrent(ctx)
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -70,18 +71,40 @@ func NewNetworkWitness(ctx context.Context, data, id, pin string, endpoints []En
 				witness.Close()
 				return
 			case <-ticker.C:
-				witness.refresh(ctx, endpoints)
+				witness.refreshCurrent(ctx)
 			}
 		}
 	}()
 	return witness, nil
 }
 
-func (w *NetworkWitness) refresh(ctx context.Context, endpoints []Endpoint) {
+func (w *NetworkWitness) Update(ctx context.Context, endpoints []Endpoint) {
+	if ValidateEndpoints(endpoints) != nil {
+		return
+	}
+	w.mu.Lock()
+	if w.closed {
+		w.mu.Unlock()
+		return
+	}
+	w.endpoints = append([]Endpoint(nil), endpoints...)
+	w.document.EndpointsHash = endpointWitnessHash(endpoints)
+	w.document.Observations = []NetworkObservation{}
+	w.policy = witnessPolicy{}
+	w.lastWrite = time.Time{}
+	_ = w.save()
+	w.mu.Unlock()
+	w.refreshCurrent(ctx)
+}
+
+func (w *NetworkWitness) refreshCurrent(ctx context.Context) {
+	w.mu.Lock()
+	endpoints := append([]Endpoint(nil), w.endpoints...)
+	w.mu.Unlock()
 	policy := resolveWitnessPolicy(ctx, endpoints)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if !w.closed {
+	if !w.closed && endpointWitnessHash(endpoints) == w.document.EndpointsHash {
 		w.policy = policy
 	}
 }

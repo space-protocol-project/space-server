@@ -306,8 +306,8 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"remoteSetupVersion":   1,
-			"networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"remoteSetupVersion":      1,
+			"automaticNetworkVersion": 1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
 	}
@@ -517,9 +517,13 @@ type publicHTTPServer struct {
 	listener  net.Listener
 	statePath string
 	witness   *home.NetworkWitness
+	autoStop  func()
 }
 
 func (server *publicHTTPServer) close() {
+	if server.autoStop != nil {
+		server.autoStop()
+	}
 	if server.witness != nil {
 		server.witness.Close()
 	}
@@ -538,19 +542,10 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 		return nil, err
 	}
 	handler = transport.WithConnect(handler, connection, store)
-	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate, config.data)
+	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate, config.data, true)
 	if err != nil {
 		return nil, err
 	}
-	endpoints, _, err := homeEndpointsForBinding(config.data, config.publicOrigin)
-	if err != nil {
-		return nil, err
-	}
-	origins := make([]string, len(endpoints))
-	for i, endpoint := range endpoints {
-		origins[i] = endpoint.Origin()
-	}
-	handler = transport.RestrictEndpointOrigins(handler, origins)
 	if config.remoteSetup {
 		handler = remoteSetupHandler(ctx, handler, initialized, store, config)
 	} else {
@@ -573,11 +568,27 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 	}
 	resource := &publicHTTPServer{server: server, listener: listener, witness: witness}
 	go func() { failures <- server.ServeTLS(listener, "", "") }()
+	var ready atomic.Bool
+	baseConfig := config
+	resource.autoStop = home.StartAutomaticNetwork(ctx, home.AutomaticNetworkOptions{Data: config.data, OnChanged: func() {
+		network, err := home.ReadNetworkConfig(baseConfig.data)
+		if err != nil || len(network.Endpoints) == 0 {
+			return
+		}
+		witness.Update(ctx, network.AdvertisedEndpoints())
+		if ready.Load() {
+			_ = writeHomeState(baseConfig.statePath, baseConfig.localOrigin, network.Endpoints[0].Origin(), baseConfig.setupCode, identity.ServerID)
+		}
+	}})
+	if network, err := home.ReadNetworkConfig(config.data); err == nil && len(network.Endpoints) > 0 {
+		config.publicOrigin = network.Endpoints[0].Origin()
+	}
 	if err := writeHomeState(config.statePath, config.localOrigin, config.publicOrigin, config.setupCode, identity.ServerID); err != nil {
 		resource.close()
 		return nil, err
 	}
 	resource.statePath = config.statePath
+	ready.Store(true)
 	if config.remoteSetup && config.setupCode != "" {
 		if err := printSetupLink(config, identity.ServerID); err != nil {
 			resource.close()

@@ -1,10 +1,10 @@
 # Space Server
 
-Запуск с нуля одной командой (приложение и runtime v0.3.3):
+Запуск с нуля одной командой (приложение и runtime v0.3.5):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.3.3/packaging/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.3.5/packaging/install.sh | sh
 ```
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.

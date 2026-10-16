@@ -21,8 +21,15 @@ jobs:
       - name: Отдельный пользователь с автозапуском без сеанса
         run: |
           sudo useradd --create-home --shell /bin/bash space-systemd-ci
+          uid=$(id -u space-systemd-ci)
+          # Образ Actions задаёт XDG-пути runner в /etc/environment.
+          # Они не должны наследоваться менеджером другого пользователя.
+          sudo sed -i '/^XDG_/d; /^DBUS_SESSION_BUS_ADDRESS=/d' /etc/environment
+          sudo mkdir -p "/etc/systemd/system/user@$uid.service.d"
+          printf '[Service]\nEnvironment=HOME=/home/space-systemd-ci\nEnvironment=XDG_RUNTIME_DIR=/run/user/%s\nEnvironment=XDG_CONFIG_HOME=/home/space-systemd-ci/.config\nEnvironment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%s/bus\n' "$uid" "$uid" | sudo tee "/etc/systemd/system/user@$uid.service.d/space-ci.conf" >/dev/null
+          sudo systemctl daemon-reload
           sudo loginctl enable-linger space-systemd-ci
-          sudo systemctl start "user@$(id -u space-systemd-ci).service"
+          sudo systemctl start "user@$uid.service"
           sudo install -m 644 packaging/install.sh /tmp/space-systemd-install.sh
       - name: Настоящие systemd и опубликованный runtime
         run: sudo python3 packaging/verify-systemd.py

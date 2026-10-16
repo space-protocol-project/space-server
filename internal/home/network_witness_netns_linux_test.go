@@ -184,8 +184,11 @@ func serveWitnessNamespace(t *testing.T, directory string) {
 	}
 	defer witness.Close()
 	handler.Lock()
-	handler.witness = witness
-	handler.document = namespaceDiscovery(t, endpoint, pin, id)
+	document := namespaceDiscovery(t, endpoint, pin, id)
+	handler.wrapped = witness.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(document)
+	}))
 	handler.Unlock()
 	if err := os.WriteFile(filepath.Join(data, "server.crt"), pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0600); err != nil {
 		t.Fatal(err)
@@ -198,18 +201,17 @@ func serveWitnessNamespace(t *testing.T, directory string) {
 
 type namespaceHandler struct {
 	sync.Mutex
-	witness  *NetworkWitness
-	document map[string]any
+	wrapped http.Handler
 }
 
 func (h *namespaceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Lock()
 	defer h.Unlock()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.document)
-	if h.witness != nil && r.Header.Get("X-Forwarded-For") == "" {
-		h.witness.Observe(r.Host, r.RemoteAddr, r.TLS.ServerName, time.Now())
+	if h.wrapped == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
 	}
+	h.wrapped.ServeHTTP(w, r)
 }
 
 func namespaceDiscovery(t *testing.T, endpoint Endpoint, pin, id string) map[string]any {

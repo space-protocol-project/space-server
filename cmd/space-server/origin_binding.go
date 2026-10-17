@@ -65,7 +65,7 @@ func localHTTPHandler(ctx context.Context, connection *grpc.ClientConn, store *p
 			return nil, err
 		}
 	}
-	handler = transport.WithConnect(handler, connection, storeVerifier(store))
+	handler = store.WithPush(transport.WithConnect(handler, connection, storeVerifier(store)))
 	return transport.RestrictOriginWithConnect(handler, config.localOrigin), nil
 }
 

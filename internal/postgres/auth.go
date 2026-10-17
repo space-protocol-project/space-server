@@ -273,7 +273,7 @@ func (s *Store) Authenticate(ctx context.Context, token string) (string, error) 
 	}
 	hash := sha256.Sum256([]byte(token))
 	var id string
-	err := s.pool.QueryRow(ctx, sessionQuery, hash[:]).Scan(&id)
+	err := s.pool.QueryRow(ctx, sessionQuery+" AND NOT s.push_only", hash[:]).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", denied()
 	}

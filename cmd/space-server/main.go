@@ -541,7 +541,7 @@ func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *g
 	if err != nil {
 		return nil, err
 	}
-	handler = transport.WithConnect(handler, connection, store)
+	handler = store.WithPush(transport.WithConnect(handler, connection, store))
 	handler, err = bindHomeOrigin(ctx, handler, store, identity, config.identityOrigin, config.publicOrigin, config.certificate, config.data, true)
 	if err != nil {
 		return nil, err

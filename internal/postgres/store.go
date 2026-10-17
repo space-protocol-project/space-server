@@ -14,6 +14,7 @@ import (
 	"log"
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,7 +26,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql", "020_content_replies.sql", "021_content_search_index.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql", "020_content_replies.sql", "021_content_search_index.sql", "022_private_push.sql"}
 
 func SchemaVersion() int { return len(migrationFiles) }
 
@@ -42,6 +43,8 @@ type Store struct {
 	pb.UnimplementedMembershipServiceServer
 	pool        *pgxpool.Pool
 	streamSlots chan struct{}
+	pushSlots   chan struct{}
+	pushActive  sync.Map
 }
 
 func Open(ctx context.Context, url string) (*Store, Identity, error) {
@@ -54,7 +57,7 @@ func Open(ctx context.Context, url string) (*Store, Identity, error) {
 	if err != nil {
 		return nil, Identity{}, errors.New("Не удалось создать пул PostgreSQL")
 	}
-	store := &Store{pool: pool, streamSlots: make(chan struct{}, 64)}
+	store := &Store{pool: pool, streamSlots: make(chan struct{}, 64), pushSlots: make(chan struct{}, 64)}
 	identity, err := store.initialize(ctx)
 	if err != nil {
 		pool.Close()

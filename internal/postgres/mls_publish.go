@@ -198,7 +198,7 @@ func insertMlsEnvelope(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Не удалось сохранить MLS-пакет")
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO mls_envelopes(channel_id,sequence,request_id,request_hash,envelope) VALUES($1,$2,$3,$4,$5)", req.ChannelId, sequence, req.RequestId, hash, encoded); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO mls_envelopes(channel_id,sequence,request_id,request_hash,envelope,push_application) VALUES($1,$2,$3,$4,$5,$6)", req.ChannelId, sequence, req.RequestId, hash, encoded, req.Kind == "application"); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err = bindMlsAssets(ctx, tx, req, scope.PrincipalID, sequence); err != nil {

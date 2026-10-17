@@ -24,7 +24,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql", "020_content_replies.sql"}
 
 func SchemaVersion() int { return len(migrationFiles) }
 
@@ -201,12 +201,12 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	var previousTextHash, previousAttachments, previousReactions []byte
 	textHash := contentRequestHash(req)
 	actor := authn.Actor(ctx)
-	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence, created_at_unix_ms, revision, updated_at_unix_ms, deleted, request_text_hash, attachments, reactions FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence, &previous.CreatedAtUnixMs, &previous.Revision, &previous.UpdatedAtUnixMs, &previous.Deleted, &previousTextHash, &previousAttachments, &previousReactions)
+	err = tx.QueryRow(ctx, "SELECT id, channel_id, text, author_id, sequence, created_at_unix_ms, revision, updated_at_unix_ms, deleted, request_text_hash, attachments, reactions, COALESCE(reply_to_id,'') FROM contents WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, actor, req.IdempotencyKey).Scan(&previous.Id, &previous.ChannelId, &previous.Text, &previous.AuthorId, &previous.Sequence, &previous.CreatedAtUnixMs, &previous.Revision, &previous.UpdatedAtUnixMs, &previous.Deleted, &previousTextHash, &previousAttachments, &previousReactions, &previous.ReplyToId)
 	if err == nil {
 		if err = json.Unmarshal(previousReactions, &previous.Reactions); err != nil {
 			return nil, databaseError(ctx, err)
 		}
-		return replayContent(ctx, previous, previousTextHash, textHash, previousAttachments)
+		return replayContent(ctx, tx, previous, previousTextHash, textHash, previousAttachments)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, databaseError(ctx, err)
@@ -226,6 +226,9 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	}
 	if _, err = tx.Exec(ctx, "UPDATE channels SET next_event_sequence=next_event_sequence+1 WHERE id=$1", req.ChannelId); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err = populateContentNames(ctx, tx, []*pb.Content{content}); err != nil {
+		return nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return nil, databaseError(ctx, err)
@@ -255,7 +258,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
+	rows, err := tx.Query(ctx, "SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions,COALESCE(reply_to_id,'') FROM contents WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT 100", req.ChannelId, after)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -264,7 +267,7 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 	for rows.Next() {
 		content := new(pb.Content)
 		var metadata, reactionData []byte
-		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence, &content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata, &reactionData); err != nil {
+		if err := rows.Scan(&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence, &content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata, &reactionData, &content.ReplyToId); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		if err = json.Unmarshal(metadata, &content.Attachments); err != nil {
@@ -278,6 +281,9 @@ func (s *Store) List(ctx context.Context, req *pb.ListContentRequest) (*pb.ListC
 	}
 	if err := rows.Err(); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err = populateContentNames(ctx, tx, result.Contents); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

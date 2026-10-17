@@ -32,7 +32,7 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id,c.sequence,c.created_at_unix_ms,c.revision,c.updated_at_unix_ms,c.deleted,c.attachments,c.reactions
+	rows, err := tx.Query(ctx, `SELECT e.cursor,e.type,c.id,c.channel_id,c.text,c.author_id,c.sequence,c.created_at_unix_ms,c.revision,c.updated_at_unix_ms,c.deleted,c.attachments,c.reactions,COALESCE(c.reply_to_id,'')
  FROM events e JOIN contents c ON c.channel_id=e.channel_id AND c.sequence=e.content_sequence
  WHERE e.channel_id=$1 AND e.sequence>$2 ORDER BY e.sequence LIMIT 100`, req.ChannelId, after)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 	for rows.Next() {
 		event := &pb.Event{Content: new(pb.Content)}
 		var metadata, reactionData []byte
-		if err := rows.Scan(&event.Cursor, &event.Type, &event.Content.Id, &event.Content.ChannelId, &event.Content.Text, &event.Content.AuthorId, &event.Content.Sequence, &event.Content.CreatedAtUnixMs, &event.Content.Revision, &event.Content.UpdatedAtUnixMs, &event.Content.Deleted, &metadata, &reactionData); err != nil {
+		if err := rows.Scan(&event.Cursor, &event.Type, &event.Content.Id, &event.Content.ChannelId, &event.Content.Text, &event.Content.AuthorId, &event.Content.Sequence, &event.Content.CreatedAtUnixMs, &event.Content.Revision, &event.Content.UpdatedAtUnixMs, &event.Content.Deleted, &metadata, &reactionData, &event.Content.ReplyToId); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		if err = json.Unmarshal(metadata, &event.Content.Attachments); err != nil {
@@ -57,6 +57,13 @@ func (s *Store) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.
 	}
 	if err := rows.Err(); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	contents := make([]*pb.Content, 0, len(result.Events))
+	for _, event := range result.Events {
+		contents = append(contents, event.Content)
+	}
+	if err = populateContentNames(ctx, tx, contents); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

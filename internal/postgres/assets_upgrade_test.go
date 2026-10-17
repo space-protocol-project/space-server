@@ -51,7 +51,7 @@ func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[s
 	t.Helper()
 	tables := map[string]string{
 		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id']",
-		"contents": "ARRAY['attachments','reactions']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
+		"contents": "ARRAY['attachments','reactions','reply_to_id']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
 		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}
 	result := map[string]string{}
@@ -97,6 +97,9 @@ func TestAssetsUpgradeFromReleasedSchema12(t *testing.T) {
 		t.Fatal("Утеряны правки или удаление", messages)
 	}
 	for _, message := range messages.Contents {
+		if message.ReplyToId != "" {
+			t.Fatal("Миграция добавила выдуманную ссылку ответа")
+		}
 		if len(message.Attachments) != 0 {
 			t.Fatal("Появились выдуманные вложения")
 		}

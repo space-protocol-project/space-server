@@ -14,10 +14,14 @@ import (
 )
 
 func contentRequestHash(req *pb.CreateContentRequest) [32]byte {
-	if len(req.AttachmentIds) == 0 {
+	if len(req.AttachmentIds) == 0 && req.ReplyToId == "" {
 		return sha256.Sum256([]byte(req.Text))
 	}
-	data, _ := json.Marshal([]any{req.Text, req.AttachmentIds})
+	if req.ReplyToId == "" {
+		data, _ := json.Marshal([]any{req.Text, req.AttachmentIds})
+		return sha256.Sum256(data)
+	}
+	data, _ := json.Marshal([]any{req.Text, req.AttachmentIds, req.ReplyToId})
 	return sha256.Sum256(data)
 }
 func contentAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateContentRequest) ([]*pb.Asset, error) {
@@ -61,6 +65,10 @@ func bindContentAssets(ctx context.Context, tx pgx.Tx, content *pb.Content) erro
 }
 
 func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateContentRequest, content *pb.Content, textHash [32]byte) error {
+	if err := validateReplyTarget(ctx, tx, req.ChannelId, req.ReplyToId); err != nil {
+		return err
+	}
+	content.ReplyToId = req.ReplyToId
 	attachments, err := contentAssets(ctx, tx, req)
 	if err != nil {
 		return err
@@ -70,7 +78,7 @@ func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateConte
 	if err != nil {
 		return databaseError(ctx, err)
 	}
-	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,request_text_hash,attachments) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING created_at_unix_ms", req.ChannelId, content.Sequence, content.Id, req.Text, req.IdempotencyKey, content.AuthorId, textHash[:], metadata).Scan(&content.CreatedAtUnixMs)
+	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,request_text_hash,attachments,reply_to_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,'')) RETURNING created_at_unix_ms", req.ChannelId, content.Sequence, content.Id, req.Text, req.IdempotencyKey, content.AuthorId, textHash[:], metadata, req.ReplyToId).Scan(&content.CreatedAtUnixMs)
 	if err != nil {
 		return databaseError(ctx, err)
 	}
@@ -80,12 +88,15 @@ func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateConte
 	return nil
 }
 
-func replayContent(ctx context.Context, previous *pb.Content, previousHash []byte, hash [32]byte, metadata []byte) (*pb.CreateContentResponse, error) {
+func replayContent(ctx context.Context, tx pgx.Tx, previous *pb.Content, previousHash []byte, hash [32]byte, metadata []byte) (*pb.CreateContentResponse, error) {
 	if !bytes.Equal(previousHash, hash[:]) {
 		return nil, status.Error(codes.AlreadyExists, "Ключ уже использован с другим содержимым")
 	}
 	if err := json.Unmarshal(metadata, &previous.Attachments); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err := populateContentNames(ctx, tx, []*pb.Content{previous}); err != nil {
+		return nil, err
 	}
 	return &pb.CreateContentResponse{Content: previous}, nil
 }

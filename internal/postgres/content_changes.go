@@ -29,10 +29,10 @@ func (s *Store) Delete(ctx context.Context, req *pb.DeleteContentRequest) (*pb.D
 func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Content, error) {
 	content := new(pb.Content)
 	var metadata, reactionData []byte
-	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions
+	err := tx.QueryRow(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions,COALESCE(reply_to_id,'')
  FROM contents WHERE channel_id=$1 AND id=$2 FOR UPDATE`, channel, id).Scan(
 		&content.Id, &content.ChannelId, &content.Text, &content.AuthorId, &content.Sequence,
-		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata, &reactionData)
+		&content.CreatedAtUnixMs, &content.Revision, &content.UpdatedAtUnixMs, &content.Deleted, &metadata, &reactionData, &content.ReplyToId)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Сообщение не найдено")
 	}
@@ -44,6 +44,9 @@ func loadContent(ctx context.Context, tx pgx.Tx, channel, id string) (*pb.Conten
 	}
 	if err = json.Unmarshal(reactionData, &content.Reactions); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err = populateContentNames(ctx, tx, []*pb.Content{content}); err != nil {
+		return nil, err
 	}
 	return content, nil
 }
@@ -135,5 +138,5 @@ func saveContentChange(ctx context.Context, tx pgx.Tx, content *pb.Content) erro
 	if err != nil {
 		return databaseError(ctx, err)
 	}
-	return nil
+	return populateContentNames(ctx, tx, []*pb.Content{content})
 }

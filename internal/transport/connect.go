@@ -120,6 +120,10 @@ func (s connectContent) DeleteContent(ctx context.Context, req *connect.Request[
 	return bridgeUnary(ctx, req, s.client.DeleteContent)
 }
 
+func (s connectContent) SearchContent(ctx context.Context, req *connect.Request[pb.SearchContentRequest]) (*connect.Response[pb.SearchContentResponse], error) {
+	return bridgeUnary(ctx, req, s.client.SearchContent)
+}
+
 func (s connectContent) ListContent(ctx context.Context, req *connect.Request[pb.ListContentRequest]) (*connect.Response[pb.ListContentResponse], error) {
 	return bridgeUnary(ctx, req, s.client.ListContent)
 }
@@ -334,6 +338,7 @@ var connectProcedures = map[string]bool{
 	rpc.ContentServiceUpdateContentProcedure:       true,
 	rpc.ContentServiceDeleteContentProcedure:       true,
 	rpc.ContentServiceCreateContentProcedure:       true,
+	rpc.ContentServiceSearchContentProcedure:       true,
 	rpc.ContentServiceListContentProcedure:         true,
 	rpc.AuthServiceCreateRootRotationProcedure:     true,
 	rpc.AuthServiceCompleteRootRotationProcedure:   true,

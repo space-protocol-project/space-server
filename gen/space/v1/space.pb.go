@@ -7599,6 +7599,120 @@ func (x *ApplyContentMutationResponse) GetAppliedRevision() int64 {
 	return 0
 }
 
+// Буквальный поиск подстроки без учёта регистра в одном обычном канале.
+// Запрос: 2–128 символов, максимум 512 байт. Страница: не более 50 записей.
+type SearchContentRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId      string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Query          string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	BeforeSequence int64                  `protobuf:"varint,3,opt,name=before_sequence,json=beforeSequence,proto3" json:"before_sequence,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SearchContentRequest) Reset() {
+	*x = SearchContentRequest{}
+	mi := &file_space_v1_space_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchContentRequest) ProtoMessage() {}
+
+func (x *SearchContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchContentRequest.ProtoReflect.Descriptor instead.
+func (*SearchContentRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *SearchContentRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *SearchContentRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchContentRequest) GetBeforeSequence() int64 {
+	if x != nil {
+		return x.BeforeSequence
+	}
+	return 0
+}
+
+type SearchContentResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Contents           []*Content             `protobuf:"bytes,1,rep,name=contents,proto3" json:"contents,omitempty"`
+	NextBeforeSequence int64                  `protobuf:"varint,2,opt,name=next_before_sequence,json=nextBeforeSequence,proto3" json:"next_before_sequence,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *SearchContentResponse) Reset() {
+	*x = SearchContentResponse{}
+	mi := &file_space_v1_space_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchContentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchContentResponse) ProtoMessage() {}
+
+func (x *SearchContentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_space_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchContentResponse.ProtoReflect.Descriptor instead.
+func (*SearchContentResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_space_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *SearchContentResponse) GetContents() []*Content {
+	if x != nil {
+		return x.Contents
+	}
+	return nil
+}
+
+func (x *SearchContentResponse) GetNextBeforeSequence() int64 {
+	if x != nil {
+		return x.NextBeforeSequence
+	}
+	return 0
+}
+
 var File_space_v1_space_proto protoreflect.FileDescriptor
 
 const file_space_v1_space_proto_rawDesc = "" +
@@ -8206,7 +8320,15 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x1cApplyContentMutationResponse\x12+\n" +
 	"\acontent\x18\x01 \x01(\v2\x11.space.v1.ContentR\acontent\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12)\n" +
-	"\x10applied_revision\x18\x03 \x01(\x03R\x0fappliedRevision2\xd7\a\n" +
+	"\x10applied_revision\x18\x03 \x01(\x03R\x0fappliedRevision\"t\n" +
+	"\x14SearchContentRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12'\n" +
+	"\x0fbefore_sequence\x18\x03 \x01(\x03R\x0ebeforeSequence\"x\n" +
+	"\x15SearchContentResponse\x12-\n" +
+	"\bcontents\x18\x01 \x03(\v2\x11.space.v1.ContentR\bcontents\x120\n" +
+	"\x14next_before_sequence\x18\x02 \x01(\x03R\x12nextBeforeSequence2\xd7\a\n" +
 	"\x0eChannelService\x12r\n" +
 	"\rWatchChannels\x12\x1e.space.v1.WatchChannelsRequest\x1a\x1f.space.v1.WatchChannelsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/channels/watch0\x01\x12g\n" +
 	"\fListChannels\x12\x1d.space.v1.ListChannelsRequest\x1a\x1e.space.v1.ListChannelsResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/api/v1/channels\x12m\n" +
@@ -8215,8 +8337,9 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\rDeleteChannel\x12\x1e.space.v1.DeleteChannelRequest\x1a\x1f.space.v1.DeleteChannelResponse\"%\x82\xd3\xe4\x93\x02\x1f*\x1d/api/v1/channels/{channel_id}\x12\x87\x01\n" +
 	"\x10GetChannelAccess\x12!.space.v1.GetChannelAccessRequest\x1a\".space.v1.GetChannelAccessResponse\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/channels/{channel_id}/access\x12\x93\x01\n" +
 	"\x13UpdateChannelAccess\x12$.space.v1.UpdateChannelAccessRequest\x1a%.space.v1.UpdateChannelAccessResponse\"/\x82\xd3\xe4\x93\x02):\x01*\x1a$/api/v1/channels/{channel_id}/access\x12d\n" +
-	"\vGetManifest\x12\x1c.space.v1.GetManifestRequest\x1a\x1d.space.v1.GetManifestResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/api/v1/manifest2\xce\x05\n" +
-	"\x0eContentService\x12e\n" +
+	"\vGetManifest\x12\x1c.space.v1.GetManifestRequest\x1a\x1d.space.v1.GetManifestResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/api/v1/manifest2\xd7\x06\n" +
+	"\x0eContentService\x12\x86\x01\n" +
+	"\rSearchContent\x12\x1e.space.v1.SearchContentRequest\x1a\x1f.space.v1.SearchContentResponse\"4\x82\xd3\xe4\x93\x02.\x12,/api/v1/channels/{channel_id}/content/search\x12e\n" +
 	"\x14ApplyContentMutation\x12%.space.v1.ApplyContentMutationRequest\x1a&.space.v1.ApplyContentMutationResponse\x12J\n" +
 	"\vSetReaction\x12\x1c.space.v1.SetReactionRequest\x1a\x1d.space.v1.SetReactionResponse\x12\x84\x01\n" +
 	"\rUpdateContent\x12\x1e.space.v1.UpdateContentRequest\x1a\x1f.space.v1.UpdateContentResponse\"2\x82\xd3\xe4\x93\x02,:\x01*2'/v1/channels/{channel_id}/contents/{id}\x12\x81\x01\n" +
@@ -8286,7 +8409,7 @@ func file_space_v1_space_proto_rawDescGZIP() []byte {
 	return file_space_v1_space_proto_rawDescData
 }
 
-var file_space_v1_space_proto_msgTypes = make([]protoimpl.MessageInfo, 128)
+var file_space_v1_space_proto_msgTypes = make([]protoimpl.MessageInfo, 130)
 var file_space_v1_space_proto_goTypes = []any{
 	(*LogoutRequest)(nil),                // 0: space.v1.LogoutRequest
 	(*LogoutResponse)(nil),               // 1: space.v1.LogoutResponse
@@ -8414,8 +8537,10 @@ var file_space_v1_space_proto_goTypes = []any{
 	(*SetReactionResponse)(nil),          // 123: space.v1.SetReactionResponse
 	(*ApplyContentMutationRequest)(nil),  // 124: space.v1.ApplyContentMutationRequest
 	(*ApplyContentMutationResponse)(nil), // 125: space.v1.ApplyContentMutationResponse
-	nil,                                  // 126: space.v1.Content.ParticipantNamesEntry
-	nil,                                  // 127: space.v1.ListChannelAssetsResponse.AuthorsEntry
+	(*SearchContentRequest)(nil),         // 126: space.v1.SearchContentRequest
+	(*SearchContentResponse)(nil),        // 127: space.v1.SearchContentResponse
+	nil,                                  // 128: space.v1.Content.ParticipantNamesEntry
+	nil,                                  // 129: space.v1.ListChannelAssetsResponse.AuthorsEntry
 }
 var file_space_v1_space_proto_depIdxs = []int32{
 	6,   // 0: space.v1.DeviceGrant.retention_proof:type_name -> space.v1.RetentionProof
@@ -8453,7 +8578,7 @@ var file_space_v1_space_proto_depIdxs = []int32{
 	64,  // 32: space.v1.GetChannelAccessResponse.rules:type_name -> space.v1.ChannelAccessRule
 	94,  // 33: space.v1.Content.attachments:type_name -> space.v1.Asset
 	121, // 34: space.v1.Content.reactions:type_name -> space.v1.Reaction
-	126, // 35: space.v1.Content.participant_names:type_name -> space.v1.Content.ParticipantNamesEntry
+	128, // 35: space.v1.Content.participant_names:type_name -> space.v1.Content.ParticipantNamesEntry
 	77,  // 36: space.v1.UpdateContentResponse.content:type_name -> space.v1.Content
 	77,  // 37: space.v1.DeleteContentResponse.content:type_name -> space.v1.Content
 	77,  // 38: space.v1.CreateContentResponse.content:type_name -> space.v1.Content
@@ -8466,7 +8591,7 @@ var file_space_v1_space_proto_depIdxs = []int32{
 	94,  // 45: space.v1.DownloadChunkResponse.asset:type_name -> space.v1.Asset
 	94,  // 46: space.v1.ListMyAssetsResponse.assets:type_name -> space.v1.Asset
 	94,  // 47: space.v1.ListChannelAssetsResponse.assets:type_name -> space.v1.Asset
-	127, // 48: space.v1.ListChannelAssetsResponse.authors:type_name -> space.v1.ListChannelAssetsResponse.AuthorsEntry
+	129, // 48: space.v1.ListChannelAssetsResponse.authors:type_name -> space.v1.ListChannelAssetsResponse.AuthorsEntry
 	109, // 49: space.v1.RegisterMlsDeviceResponse.device:type_name -> space.v1.MlsDevice
 	109, // 50: space.v1.ListMlsDevicesResponse.devices:type_name -> space.v1.MlsDevice
 	109, // 51: space.v1.GetMlsChannelResponse.devices:type_name -> space.v1.MlsDevice
@@ -8478,119 +8603,122 @@ var file_space_v1_space_proto_depIdxs = []int32{
 	80,  // 57: space.v1.ApplyContentMutationRequest.delete:type_name -> space.v1.DeleteContentRequest
 	122, // 58: space.v1.ApplyContentMutationRequest.reaction:type_name -> space.v1.SetReactionRequest
 	77,  // 59: space.v1.ApplyContentMutationResponse.content:type_name -> space.v1.Content
-	92,  // 60: space.v1.ChannelService.WatchChannels:input_type -> space.v1.WatchChannelsRequest
-	65,  // 61: space.v1.ChannelService.ListChannels:input_type -> space.v1.ListChannelsRequest
-	67,  // 62: space.v1.ChannelService.CreateChannel:input_type -> space.v1.CreateChannelRequest
-	68,  // 63: space.v1.ChannelService.UpdateChannel:input_type -> space.v1.UpdateChannelRequest
-	69,  // 64: space.v1.ChannelService.DeleteChannel:input_type -> space.v1.DeleteChannelRequest
-	73,  // 65: space.v1.ChannelService.GetChannelAccess:input_type -> space.v1.GetChannelAccessRequest
-	74,  // 66: space.v1.ChannelService.UpdateChannelAccess:input_type -> space.v1.UpdateChannelAccessRequest
-	60,  // 67: space.v1.ChannelService.GetManifest:input_type -> space.v1.GetManifestRequest
-	124, // 68: space.v1.ContentService.ApplyContentMutation:input_type -> space.v1.ApplyContentMutationRequest
-	122, // 69: space.v1.ContentService.SetReaction:input_type -> space.v1.SetReactionRequest
-	78,  // 70: space.v1.ContentService.UpdateContent:input_type -> space.v1.UpdateContentRequest
-	80,  // 71: space.v1.ContentService.DeleteContent:input_type -> space.v1.DeleteContentRequest
-	82,  // 72: space.v1.ContentService.CreateContent:input_type -> space.v1.CreateContentRequest
-	84,  // 73: space.v1.ContentService.ListContent:input_type -> space.v1.ListContentRequest
-	95,  // 74: space.v1.AssetService.BeginUpload:input_type -> space.v1.BeginUploadRequest
-	97,  // 75: space.v1.AssetService.UploadChunk:input_type -> space.v1.UploadChunkRequest
-	99,  // 76: space.v1.AssetService.CompleteUpload:input_type -> space.v1.CompleteUploadRequest
-	101, // 77: space.v1.AssetService.CancelUpload:input_type -> space.v1.CancelUploadRequest
-	103, // 78: space.v1.AssetService.DownloadChunk:input_type -> space.v1.DownloadChunkRequest
-	105, // 79: space.v1.AssetService.ListMyAssets:input_type -> space.v1.ListMyAssetsRequest
-	107, // 80: space.v1.AssetService.ListChannelAssets:input_type -> space.v1.ListChannelAssetsRequest
-	86,  // 81: space.v1.AuthService.CreateRootRotation:input_type -> space.v1.CreateRootRotationRequest
-	88,  // 82: space.v1.AuthService.CompleteRootRotation:input_type -> space.v1.CompleteRootRotationRequest
-	19,  // 83: space.v1.AuthService.ProposePairing:input_type -> space.v1.ProposePairingRequest
-	9,   // 84: space.v1.AuthService.CreatePairing:input_type -> space.v1.CreatePairingRequest
-	11,  // 85: space.v1.AuthService.InspectPairing:input_type -> space.v1.InspectPairingRequest
-	13,  // 86: space.v1.AuthService.PollPairing:input_type -> space.v1.PollPairingRequest
-	15,  // 87: space.v1.AuthService.CancelPairing:input_type -> space.v1.CancelPairingRequest
-	17,  // 88: space.v1.AuthService.ClaimPairing:input_type -> space.v1.ClaimPairingRequest
-	3,   // 89: space.v1.AuthService.RevokeCurrentDevice:input_type -> space.v1.RevokeCurrentDeviceRequest
-	2,   // 90: space.v1.AuthService.ListDevices:input_type -> space.v1.ListDevicesRequest
-	0,   // 91: space.v1.AuthService.Logout:input_type -> space.v1.LogoutRequest
-	53,  // 92: space.v1.AuthService.CreateChallenge:input_type -> space.v1.CreateChallengeRequest
-	55,  // 93: space.v1.AuthService.CompleteChallenge:input_type -> space.v1.CompleteChallengeRequest
-	51,  // 94: space.v1.SyncService.Subscribe:input_type -> space.v1.SubscribeRequest
-	57,  // 95: space.v1.SyncService.ListEvents:input_type -> space.v1.ListEventsRequest
-	24,  // 96: space.v1.AdminService.ListMembers:input_type -> space.v1.ListMembersRequest
-	26,  // 97: space.v1.AdminService.UpdateMember:input_type -> space.v1.UpdateMemberRequest
-	29,  // 98: space.v1.AdminService.CreateInvite:input_type -> space.v1.CreateInviteRequest
-	31,  // 99: space.v1.AdminService.ListInvites:input_type -> space.v1.ListInvitesRequest
-	33,  // 100: space.v1.AdminService.RevokeInvite:input_type -> space.v1.RevokeInviteRequest
-	41,  // 101: space.v1.AdminService.GetSetupStatus:input_type -> space.v1.GetSetupStatusRequest
-	43,  // 102: space.v1.AdminService.ClaimOwner:input_type -> space.v1.ClaimOwnerRequest
-	44,  // 103: space.v1.AdminService.GetSettings:input_type -> space.v1.GetSettingsRequest
-	50,  // 104: space.v1.AdminService.UpdateSettings:input_type -> space.v1.UpdateSettingsRequest
-	21,  // 105: space.v1.MembershipService.UpdateProfile:input_type -> space.v1.UpdateProfileRequest
-	35,  // 106: space.v1.MembershipService.PreviewInvite:input_type -> space.v1.PreviewInviteRequest
-	37,  // 107: space.v1.MembershipService.AcceptInvite:input_type -> space.v1.AcceptInviteRequest
-	39,  // 108: space.v1.MembershipService.GetMembership:input_type -> space.v1.GetMembershipRequest
-	110, // 109: space.v1.MlsService.RegisterMlsDevice:input_type -> space.v1.RegisterMlsDeviceRequest
-	112, // 110: space.v1.MlsService.ListMlsDevices:input_type -> space.v1.ListMlsDevicesRequest
-	114, // 111: space.v1.MlsService.GetMlsChannel:input_type -> space.v1.GetMlsChannelRequest
-	116, // 112: space.v1.MlsService.PublishMls:input_type -> space.v1.PublishMlsRequest
-	119, // 113: space.v1.MlsService.ListMlsEnvelopes:input_type -> space.v1.ListMlsEnvelopesRequest
-	93,  // 114: space.v1.ChannelService.WatchChannels:output_type -> space.v1.WatchChannelsResponse
-	66,  // 115: space.v1.ChannelService.ListChannels:output_type -> space.v1.ListChannelsResponse
-	71,  // 116: space.v1.ChannelService.CreateChannel:output_type -> space.v1.CreateChannelResponse
-	72,  // 117: space.v1.ChannelService.UpdateChannel:output_type -> space.v1.UpdateChannelResponse
-	70,  // 118: space.v1.ChannelService.DeleteChannel:output_type -> space.v1.DeleteChannelResponse
-	75,  // 119: space.v1.ChannelService.GetChannelAccess:output_type -> space.v1.GetChannelAccessResponse
-	91,  // 120: space.v1.ChannelService.UpdateChannelAccess:output_type -> space.v1.UpdateChannelAccessResponse
-	61,  // 121: space.v1.ChannelService.GetManifest:output_type -> space.v1.GetManifestResponse
-	125, // 122: space.v1.ContentService.ApplyContentMutation:output_type -> space.v1.ApplyContentMutationResponse
-	123, // 123: space.v1.ContentService.SetReaction:output_type -> space.v1.SetReactionResponse
-	79,  // 124: space.v1.ContentService.UpdateContent:output_type -> space.v1.UpdateContentResponse
-	81,  // 125: space.v1.ContentService.DeleteContent:output_type -> space.v1.DeleteContentResponse
-	83,  // 126: space.v1.ContentService.CreateContent:output_type -> space.v1.CreateContentResponse
-	85,  // 127: space.v1.ContentService.ListContent:output_type -> space.v1.ListContentResponse
-	96,  // 128: space.v1.AssetService.BeginUpload:output_type -> space.v1.BeginUploadResponse
-	98,  // 129: space.v1.AssetService.UploadChunk:output_type -> space.v1.UploadChunkResponse
-	100, // 130: space.v1.AssetService.CompleteUpload:output_type -> space.v1.CompleteUploadResponse
-	102, // 131: space.v1.AssetService.CancelUpload:output_type -> space.v1.CancelUploadResponse
-	104, // 132: space.v1.AssetService.DownloadChunk:output_type -> space.v1.DownloadChunkResponse
-	106, // 133: space.v1.AssetService.ListMyAssets:output_type -> space.v1.ListMyAssetsResponse
-	108, // 134: space.v1.AssetService.ListChannelAssets:output_type -> space.v1.ListChannelAssetsResponse
-	87,  // 135: space.v1.AuthService.CreateRootRotation:output_type -> space.v1.CreateRootRotationResponse
-	89,  // 136: space.v1.AuthService.CompleteRootRotation:output_type -> space.v1.CompleteRootRotationResponse
-	20,  // 137: space.v1.AuthService.ProposePairing:output_type -> space.v1.ProposePairingResponse
-	10,  // 138: space.v1.AuthService.CreatePairing:output_type -> space.v1.CreatePairingResponse
-	12,  // 139: space.v1.AuthService.InspectPairing:output_type -> space.v1.InspectPairingResponse
-	14,  // 140: space.v1.AuthService.PollPairing:output_type -> space.v1.PollPairingResponse
-	16,  // 141: space.v1.AuthService.CancelPairing:output_type -> space.v1.CancelPairingResponse
-	18,  // 142: space.v1.AuthService.ClaimPairing:output_type -> space.v1.ClaimPairingResponse
-	4,   // 143: space.v1.AuthService.RevokeCurrentDevice:output_type -> space.v1.RevokeCurrentDeviceResponse
-	7,   // 144: space.v1.AuthService.ListDevices:output_type -> space.v1.ListDevicesResponse
-	1,   // 145: space.v1.AuthService.Logout:output_type -> space.v1.LogoutResponse
-	54,  // 146: space.v1.AuthService.CreateChallenge:output_type -> space.v1.CreateChallengeResponse
-	56,  // 147: space.v1.AuthService.CompleteChallenge:output_type -> space.v1.CompleteChallengeResponse
-	52,  // 148: space.v1.SyncService.Subscribe:output_type -> space.v1.SubscribeResponse
-	58,  // 149: space.v1.SyncService.ListEvents:output_type -> space.v1.ListEventsResponse
-	25,  // 150: space.v1.AdminService.ListMembers:output_type -> space.v1.ListMembersResponse
-	27,  // 151: space.v1.AdminService.UpdateMember:output_type -> space.v1.UpdateMemberResponse
-	30,  // 152: space.v1.AdminService.CreateInvite:output_type -> space.v1.CreateInviteResponse
-	32,  // 153: space.v1.AdminService.ListInvites:output_type -> space.v1.ListInvitesResponse
-	34,  // 154: space.v1.AdminService.RevokeInvite:output_type -> space.v1.RevokeInviteResponse
-	42,  // 155: space.v1.AdminService.GetSetupStatus:output_type -> space.v1.GetSetupStatusResponse
-	45,  // 156: space.v1.AdminService.ClaimOwner:output_type -> space.v1.ClaimOwnerResponse
-	46,  // 157: space.v1.AdminService.GetSettings:output_type -> space.v1.GetSettingsResponse
-	47,  // 158: space.v1.AdminService.UpdateSettings:output_type -> space.v1.UpdateSettingsResponse
-	22,  // 159: space.v1.MembershipService.UpdateProfile:output_type -> space.v1.UpdateProfileResponse
-	36,  // 160: space.v1.MembershipService.PreviewInvite:output_type -> space.v1.PreviewInviteResponse
-	38,  // 161: space.v1.MembershipService.AcceptInvite:output_type -> space.v1.AcceptInviteResponse
-	40,  // 162: space.v1.MembershipService.GetMembership:output_type -> space.v1.GetMembershipResponse
-	111, // 163: space.v1.MlsService.RegisterMlsDevice:output_type -> space.v1.RegisterMlsDeviceResponse
-	113, // 164: space.v1.MlsService.ListMlsDevices:output_type -> space.v1.ListMlsDevicesResponse
-	115, // 165: space.v1.MlsService.GetMlsChannel:output_type -> space.v1.GetMlsChannelResponse
-	118, // 166: space.v1.MlsService.PublishMls:output_type -> space.v1.PublishMlsResponse
-	120, // 167: space.v1.MlsService.ListMlsEnvelopes:output_type -> space.v1.ListMlsEnvelopesResponse
-	114, // [114:168] is the sub-list for method output_type
-	60,  // [60:114] is the sub-list for method input_type
-	60,  // [60:60] is the sub-list for extension type_name
-	60,  // [60:60] is the sub-list for extension extendee
-	0,   // [0:60] is the sub-list for field type_name
+	77,  // 60: space.v1.SearchContentResponse.contents:type_name -> space.v1.Content
+	92,  // 61: space.v1.ChannelService.WatchChannels:input_type -> space.v1.WatchChannelsRequest
+	65,  // 62: space.v1.ChannelService.ListChannels:input_type -> space.v1.ListChannelsRequest
+	67,  // 63: space.v1.ChannelService.CreateChannel:input_type -> space.v1.CreateChannelRequest
+	68,  // 64: space.v1.ChannelService.UpdateChannel:input_type -> space.v1.UpdateChannelRequest
+	69,  // 65: space.v1.ChannelService.DeleteChannel:input_type -> space.v1.DeleteChannelRequest
+	73,  // 66: space.v1.ChannelService.GetChannelAccess:input_type -> space.v1.GetChannelAccessRequest
+	74,  // 67: space.v1.ChannelService.UpdateChannelAccess:input_type -> space.v1.UpdateChannelAccessRequest
+	60,  // 68: space.v1.ChannelService.GetManifest:input_type -> space.v1.GetManifestRequest
+	126, // 69: space.v1.ContentService.SearchContent:input_type -> space.v1.SearchContentRequest
+	124, // 70: space.v1.ContentService.ApplyContentMutation:input_type -> space.v1.ApplyContentMutationRequest
+	122, // 71: space.v1.ContentService.SetReaction:input_type -> space.v1.SetReactionRequest
+	78,  // 72: space.v1.ContentService.UpdateContent:input_type -> space.v1.UpdateContentRequest
+	80,  // 73: space.v1.ContentService.DeleteContent:input_type -> space.v1.DeleteContentRequest
+	82,  // 74: space.v1.ContentService.CreateContent:input_type -> space.v1.CreateContentRequest
+	84,  // 75: space.v1.ContentService.ListContent:input_type -> space.v1.ListContentRequest
+	95,  // 76: space.v1.AssetService.BeginUpload:input_type -> space.v1.BeginUploadRequest
+	97,  // 77: space.v1.AssetService.UploadChunk:input_type -> space.v1.UploadChunkRequest
+	99,  // 78: space.v1.AssetService.CompleteUpload:input_type -> space.v1.CompleteUploadRequest
+	101, // 79: space.v1.AssetService.CancelUpload:input_type -> space.v1.CancelUploadRequest
+	103, // 80: space.v1.AssetService.DownloadChunk:input_type -> space.v1.DownloadChunkRequest
+	105, // 81: space.v1.AssetService.ListMyAssets:input_type -> space.v1.ListMyAssetsRequest
+	107, // 82: space.v1.AssetService.ListChannelAssets:input_type -> space.v1.ListChannelAssetsRequest
+	86,  // 83: space.v1.AuthService.CreateRootRotation:input_type -> space.v1.CreateRootRotationRequest
+	88,  // 84: space.v1.AuthService.CompleteRootRotation:input_type -> space.v1.CompleteRootRotationRequest
+	19,  // 85: space.v1.AuthService.ProposePairing:input_type -> space.v1.ProposePairingRequest
+	9,   // 86: space.v1.AuthService.CreatePairing:input_type -> space.v1.CreatePairingRequest
+	11,  // 87: space.v1.AuthService.InspectPairing:input_type -> space.v1.InspectPairingRequest
+	13,  // 88: space.v1.AuthService.PollPairing:input_type -> space.v1.PollPairingRequest
+	15,  // 89: space.v1.AuthService.CancelPairing:input_type -> space.v1.CancelPairingRequest
+	17,  // 90: space.v1.AuthService.ClaimPairing:input_type -> space.v1.ClaimPairingRequest
+	3,   // 91: space.v1.AuthService.RevokeCurrentDevice:input_type -> space.v1.RevokeCurrentDeviceRequest
+	2,   // 92: space.v1.AuthService.ListDevices:input_type -> space.v1.ListDevicesRequest
+	0,   // 93: space.v1.AuthService.Logout:input_type -> space.v1.LogoutRequest
+	53,  // 94: space.v1.AuthService.CreateChallenge:input_type -> space.v1.CreateChallengeRequest
+	55,  // 95: space.v1.AuthService.CompleteChallenge:input_type -> space.v1.CompleteChallengeRequest
+	51,  // 96: space.v1.SyncService.Subscribe:input_type -> space.v1.SubscribeRequest
+	57,  // 97: space.v1.SyncService.ListEvents:input_type -> space.v1.ListEventsRequest
+	24,  // 98: space.v1.AdminService.ListMembers:input_type -> space.v1.ListMembersRequest
+	26,  // 99: space.v1.AdminService.UpdateMember:input_type -> space.v1.UpdateMemberRequest
+	29,  // 100: space.v1.AdminService.CreateInvite:input_type -> space.v1.CreateInviteRequest
+	31,  // 101: space.v1.AdminService.ListInvites:input_type -> space.v1.ListInvitesRequest
+	33,  // 102: space.v1.AdminService.RevokeInvite:input_type -> space.v1.RevokeInviteRequest
+	41,  // 103: space.v1.AdminService.GetSetupStatus:input_type -> space.v1.GetSetupStatusRequest
+	43,  // 104: space.v1.AdminService.ClaimOwner:input_type -> space.v1.ClaimOwnerRequest
+	44,  // 105: space.v1.AdminService.GetSettings:input_type -> space.v1.GetSettingsRequest
+	50,  // 106: space.v1.AdminService.UpdateSettings:input_type -> space.v1.UpdateSettingsRequest
+	21,  // 107: space.v1.MembershipService.UpdateProfile:input_type -> space.v1.UpdateProfileRequest
+	35,  // 108: space.v1.MembershipService.PreviewInvite:input_type -> space.v1.PreviewInviteRequest
+	37,  // 109: space.v1.MembershipService.AcceptInvite:input_type -> space.v1.AcceptInviteRequest
+	39,  // 110: space.v1.MembershipService.GetMembership:input_type -> space.v1.GetMembershipRequest
+	110, // 111: space.v1.MlsService.RegisterMlsDevice:input_type -> space.v1.RegisterMlsDeviceRequest
+	112, // 112: space.v1.MlsService.ListMlsDevices:input_type -> space.v1.ListMlsDevicesRequest
+	114, // 113: space.v1.MlsService.GetMlsChannel:input_type -> space.v1.GetMlsChannelRequest
+	116, // 114: space.v1.MlsService.PublishMls:input_type -> space.v1.PublishMlsRequest
+	119, // 115: space.v1.MlsService.ListMlsEnvelopes:input_type -> space.v1.ListMlsEnvelopesRequest
+	93,  // 116: space.v1.ChannelService.WatchChannels:output_type -> space.v1.WatchChannelsResponse
+	66,  // 117: space.v1.ChannelService.ListChannels:output_type -> space.v1.ListChannelsResponse
+	71,  // 118: space.v1.ChannelService.CreateChannel:output_type -> space.v1.CreateChannelResponse
+	72,  // 119: space.v1.ChannelService.UpdateChannel:output_type -> space.v1.UpdateChannelResponse
+	70,  // 120: space.v1.ChannelService.DeleteChannel:output_type -> space.v1.DeleteChannelResponse
+	75,  // 121: space.v1.ChannelService.GetChannelAccess:output_type -> space.v1.GetChannelAccessResponse
+	91,  // 122: space.v1.ChannelService.UpdateChannelAccess:output_type -> space.v1.UpdateChannelAccessResponse
+	61,  // 123: space.v1.ChannelService.GetManifest:output_type -> space.v1.GetManifestResponse
+	127, // 124: space.v1.ContentService.SearchContent:output_type -> space.v1.SearchContentResponse
+	125, // 125: space.v1.ContentService.ApplyContentMutation:output_type -> space.v1.ApplyContentMutationResponse
+	123, // 126: space.v1.ContentService.SetReaction:output_type -> space.v1.SetReactionResponse
+	79,  // 127: space.v1.ContentService.UpdateContent:output_type -> space.v1.UpdateContentResponse
+	81,  // 128: space.v1.ContentService.DeleteContent:output_type -> space.v1.DeleteContentResponse
+	83,  // 129: space.v1.ContentService.CreateContent:output_type -> space.v1.CreateContentResponse
+	85,  // 130: space.v1.ContentService.ListContent:output_type -> space.v1.ListContentResponse
+	96,  // 131: space.v1.AssetService.BeginUpload:output_type -> space.v1.BeginUploadResponse
+	98,  // 132: space.v1.AssetService.UploadChunk:output_type -> space.v1.UploadChunkResponse
+	100, // 133: space.v1.AssetService.CompleteUpload:output_type -> space.v1.CompleteUploadResponse
+	102, // 134: space.v1.AssetService.CancelUpload:output_type -> space.v1.CancelUploadResponse
+	104, // 135: space.v1.AssetService.DownloadChunk:output_type -> space.v1.DownloadChunkResponse
+	106, // 136: space.v1.AssetService.ListMyAssets:output_type -> space.v1.ListMyAssetsResponse
+	108, // 137: space.v1.AssetService.ListChannelAssets:output_type -> space.v1.ListChannelAssetsResponse
+	87,  // 138: space.v1.AuthService.CreateRootRotation:output_type -> space.v1.CreateRootRotationResponse
+	89,  // 139: space.v1.AuthService.CompleteRootRotation:output_type -> space.v1.CompleteRootRotationResponse
+	20,  // 140: space.v1.AuthService.ProposePairing:output_type -> space.v1.ProposePairingResponse
+	10,  // 141: space.v1.AuthService.CreatePairing:output_type -> space.v1.CreatePairingResponse
+	12,  // 142: space.v1.AuthService.InspectPairing:output_type -> space.v1.InspectPairingResponse
+	14,  // 143: space.v1.AuthService.PollPairing:output_type -> space.v1.PollPairingResponse
+	16,  // 144: space.v1.AuthService.CancelPairing:output_type -> space.v1.CancelPairingResponse
+	18,  // 145: space.v1.AuthService.ClaimPairing:output_type -> space.v1.ClaimPairingResponse
+	4,   // 146: space.v1.AuthService.RevokeCurrentDevice:output_type -> space.v1.RevokeCurrentDeviceResponse
+	7,   // 147: space.v1.AuthService.ListDevices:output_type -> space.v1.ListDevicesResponse
+	1,   // 148: space.v1.AuthService.Logout:output_type -> space.v1.LogoutResponse
+	54,  // 149: space.v1.AuthService.CreateChallenge:output_type -> space.v1.CreateChallengeResponse
+	56,  // 150: space.v1.AuthService.CompleteChallenge:output_type -> space.v1.CompleteChallengeResponse
+	52,  // 151: space.v1.SyncService.Subscribe:output_type -> space.v1.SubscribeResponse
+	58,  // 152: space.v1.SyncService.ListEvents:output_type -> space.v1.ListEventsResponse
+	25,  // 153: space.v1.AdminService.ListMembers:output_type -> space.v1.ListMembersResponse
+	27,  // 154: space.v1.AdminService.UpdateMember:output_type -> space.v1.UpdateMemberResponse
+	30,  // 155: space.v1.AdminService.CreateInvite:output_type -> space.v1.CreateInviteResponse
+	32,  // 156: space.v1.AdminService.ListInvites:output_type -> space.v1.ListInvitesResponse
+	34,  // 157: space.v1.AdminService.RevokeInvite:output_type -> space.v1.RevokeInviteResponse
+	42,  // 158: space.v1.AdminService.GetSetupStatus:output_type -> space.v1.GetSetupStatusResponse
+	45,  // 159: space.v1.AdminService.ClaimOwner:output_type -> space.v1.ClaimOwnerResponse
+	46,  // 160: space.v1.AdminService.GetSettings:output_type -> space.v1.GetSettingsResponse
+	47,  // 161: space.v1.AdminService.UpdateSettings:output_type -> space.v1.UpdateSettingsResponse
+	22,  // 162: space.v1.MembershipService.UpdateProfile:output_type -> space.v1.UpdateProfileResponse
+	36,  // 163: space.v1.MembershipService.PreviewInvite:output_type -> space.v1.PreviewInviteResponse
+	38,  // 164: space.v1.MembershipService.AcceptInvite:output_type -> space.v1.AcceptInviteResponse
+	40,  // 165: space.v1.MembershipService.GetMembership:output_type -> space.v1.GetMembershipResponse
+	111, // 166: space.v1.MlsService.RegisterMlsDevice:output_type -> space.v1.RegisterMlsDeviceResponse
+	113, // 167: space.v1.MlsService.ListMlsDevices:output_type -> space.v1.ListMlsDevicesResponse
+	115, // 168: space.v1.MlsService.GetMlsChannel:output_type -> space.v1.GetMlsChannelResponse
+	118, // 169: space.v1.MlsService.PublishMls:output_type -> space.v1.PublishMlsResponse
+	120, // 170: space.v1.MlsService.ListMlsEnvelopes:output_type -> space.v1.ListMlsEnvelopesResponse
+	116, // [116:171] is the sub-list for method output_type
+	61,  // [61:116] is the sub-list for method input_type
+	61,  // [61:61] is the sub-list for extension type_name
+	61,  // [61:61] is the sub-list for extension extendee
+	0,   // [0:61] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_space_proto_init() }
@@ -8613,7 +8741,7 @@ func file_space_v1_space_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_space_proto_rawDesc), len(file_space_v1_space_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   128,
+			NumMessages:   130,
 			NumExtensions: 0,
 			NumServices:   8,
 		},

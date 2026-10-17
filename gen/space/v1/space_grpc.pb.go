@@ -395,6 +395,7 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	ContentService_SearchContent_FullMethodName        = "/space.v1.ContentService/SearchContent"
 	ContentService_ApplyContentMutation_FullMethodName = "/space.v1.ContentService/ApplyContentMutation"
 	ContentService_SetReaction_FullMethodName          = "/space.v1.ContentService/SetReaction"
 	ContentService_UpdateContent_FullMethodName        = "/space.v1.ContentService/UpdateContent"
@@ -407,6 +408,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContentServiceClient interface {
+	SearchContent(ctx context.Context, in *SearchContentRequest, opts ...grpc.CallOption) (*SearchContentResponse, error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
 	ApplyContentMutation(ctx context.Context, in *ApplyContentMutationRequest, opts ...grpc.CallOption) (*ApplyContentMutationResponse, error)
@@ -423,6 +425,16 @@ type contentServiceClient struct {
 
 func NewContentServiceClient(cc grpc.ClientConnInterface) ContentServiceClient {
 	return &contentServiceClient{cc}
+}
+
+func (c *contentServiceClient) SearchContent(ctx context.Context, in *SearchContentRequest, opts ...grpc.CallOption) (*SearchContentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchContentResponse)
+	err := c.cc.Invoke(ctx, ContentService_SearchContent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *contentServiceClient) ApplyContentMutation(ctx context.Context, in *ApplyContentMutationRequest, opts ...grpc.CallOption) (*ApplyContentMutationResponse, error) {
@@ -489,6 +501,7 @@ func (c *contentServiceClient) ListContent(ctx context.Context, in *ListContentR
 // All implementations must embed UnimplementedContentServiceServer
 // for forward compatibility.
 type ContentServiceServer interface {
+	SearchContent(context.Context, *SearchContentRequest) (*SearchContentResponse, error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
 	ApplyContentMutation(context.Context, *ApplyContentMutationRequest) (*ApplyContentMutationResponse, error)
@@ -507,6 +520,9 @@ type ContentServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContentServiceServer struct{}
 
+func (UnimplementedContentServiceServer) SearchContent(context.Context, *SearchContentRequest) (*SearchContentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchContent not implemented")
+}
 func (UnimplementedContentServiceServer) ApplyContentMutation(context.Context, *ApplyContentMutationRequest) (*ApplyContentMutationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApplyContentMutation not implemented")
 }
@@ -544,6 +560,24 @@ func RegisterContentServiceServer(s grpc.ServiceRegistrar, srv ContentServiceSer
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ContentService_ServiceDesc, srv)
+}
+
+func _ContentService_SearchContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContentServiceServer).SearchContent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContentService_SearchContent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContentServiceServer).SearchContent(ctx, req.(*SearchContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ContentService_ApplyContentMutation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -661,6 +695,10 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.ContentService",
 	HandlerType: (*ContentServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SearchContent",
+			Handler:    _ContentService_SearchContent_Handler,
+		},
 		{
 			MethodName: "ApplyContentMutation",
 			Handler:    _ContentService_ApplyContentMutation_Handler,

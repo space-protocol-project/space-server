@@ -51,7 +51,7 @@ func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[s
 	t.Helper()
 	tables := map[string]string{
 		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id']",
-		"contents": "ARRAY['attachments','reactions','reply_to_id']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
+		"contents": "ARRAY['attachments','reactions','reply_to_id','search_text']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
 		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}
 	result := map[string]string{}
@@ -88,6 +88,13 @@ func TestAssetsUpgradeFromReleasedSchema12(t *testing.T) {
 		if after[table] != value {
 			t.Errorf("Миграция изменила прежние данные %s", table)
 		}
+	}
+	var normalized, deletedNormalized string
+	if err = pool.QueryRow(ctx, "SELECT (SELECT search_text FROM contents WHERE sequence=1 AND channel_id='general'),(SELECT search_text FROM contents WHERE sequence=2 AND channel_id='general')").Scan(&normalized, &deletedNormalized); err != nil {
+		t.Fatal(err)
+	}
+	if normalized != "после правки" || deletedNormalized != "" {
+		t.Fatal("Поисковая проекция старых сообщений неверна")
 	}
 	messages, err := store.List(ctx, &pb.ListContentRequest{ChannelId: "general"})
 	if err != nil {

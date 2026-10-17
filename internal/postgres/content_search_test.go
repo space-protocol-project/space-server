@@ -66,3 +66,20 @@ func TestSearchRequiresSessionReadableOrdinaryChannel(t *testing.T) {
 		requireCode(t, err, codes.InvalidArgument)
 	}
 }
+
+func TestSearchIndexUnicodeAndShortLiteral(t *testing.T) {
+	f := newChannelFixture(t)
+	texts := []string{"ЁЖ медведь", "你好世界", "😀🚀 запуск", "Aa%_", "abc xbcd", "real abcd"}
+	for i, text := range texts {
+		_, err := f.contents.CreateContent(f.owner, &pb.CreateContentRequest{ChannelId: "general", Text: text, IdempotencyKey: fmt.Sprintf("unicode-%d", i)})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for query, want := range map[string]string{"ёж": texts[0], "你好": texts[1], "😀🚀": texts[2], "%_": texts[3], "abcd": texts[5]} {
+		result, err := f.contents.SearchContent(f.owner, &pb.SearchContentRequest{ChannelId: "general", Query: query})
+		if err != nil || len(result.GetContents()) != 1 || result.Contents[0].Text != want {
+			t.Fatalf("Буквальный запрос %q: %v %v", query, result, err)
+		}
+	}
+}

@@ -7,8 +7,15 @@ import (
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"strings"
 	"time"
-	"unicode"
 )
+
+const searchContentSQL = `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,
+ revision,updated_at_unix_ms,deleted,attachments,reactions,COALESCE(reply_to_id,'')
+ FROM contents WHERE channel_id=$1 AND NOT deleted AND ($2::bigint=0 OR sequence<$2)
+ AND space_search_terms_v1(search_text,2,3) @>
+ space_search_terms_v1(space_search_fold_v1($3),LEAST(3,char_length($3)),3)
+ AND strpos(search_text,space_search_fold_v1($3))>0
+ ORDER BY sequence DESC LIMIT 51`
 
 func (s *Store) Search(ctx context.Context, req *pb.SearchContentRequest) (*pb.SearchContentResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -24,7 +31,7 @@ func (s *Store) Search(ctx context.Context, req *pb.SearchContentRequest) (*pb.S
 	if err = requireOpenChannelAccess(ctx, tx, req.ChannelId, "read"); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT id,channel_id,text,author_id,sequence,created_at_unix_ms,revision,updated_at_unix_ms,deleted,attachments,reactions,COALESCE(reply_to_id,'') FROM contents WHERE channel_id=$1 AND NOT deleted AND ($2::bigint=0 OR sequence<$2) AND strpos(translate(text,$4,$5),$3)>0 ORDER BY sequence DESC LIMIT 51`, req.ChannelId, req.BeforeSequence, strings.ToLower(strings.TrimSpace(req.Query)), searchUpper, searchLower)
+	rows, err := tx.Query(ctx, searchContentSQL, req.ChannelId, req.BeforeSequence, strings.TrimSpace(req.Query))
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -64,19 +71,4 @@ func readContentRows(ctx context.Context, rows pgx.Rows) ([]*pb.Content, error) 
 		return nil, databaseError(ctx, err)
 	}
 	return result, nil
-}
-
-// Не полагаемся на локаль PostgreSQL: домашняя база может использовать C.
-var searchUpper, searchLower = searchCaseAlphabet()
-
-func searchCaseAlphabet() (string, string) {
-	var upper, lower strings.Builder
-	for value := rune(0); value <= unicode.MaxRune; value++ {
-		mapped := unicode.ToLower(value)
-		if value != mapped {
-			upper.WriteRune(value)
-			lower.WriteRune(mapped)
-		}
-	}
-	return upper.String(), lower.String()
 }

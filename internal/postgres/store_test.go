@@ -23,11 +23,16 @@ import (
 
 func isolatedDatabase(t *testing.T) (context.Context, string) {
 	t.Helper()
+	return isolatedDatabaseTimeout(t, 45*time.Second)
+}
+
+func isolatedDatabaseTimeout(t *testing.T, timeout time.Duration) (context.Context, string) {
+	t.Helper()
 	connectionURL := os.Getenv("SPACE_TEST_DATABASE_URL")
 	if connectionURL == "" {
 		t.Skip("SPACE_TEST_DATABASE_URL не задана: проверка PostgreSQL выполняется в CI")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	t.Cleanup(cancel)
 	admin, err := pgxpool.New(ctx, connectionURL)
 	if err != nil {

@@ -46,6 +46,18 @@ func TestWitnessRejectsLocalOwnReservedAndSameNetwork(t *testing.T) {
 func newTestWitness(t *testing.T) (*NetworkWitness, DoctorReport) {
 	t.Helper()
 	data := t.TempDir()
+	// На Windows удаление переименованного файла может завершиться с задержкой.
+	// Очищаем только собственный TempDir до штатной очистки testing.
+	t.Cleanup(func() {
+		var err error
+		for attempt := 0; attempt < 20; attempt++ {
+			if err = os.RemoveAll(data); err == nil {
+				return
+			}
+			time.Sleep(25 * time.Millisecond)
+		}
+		t.Errorf("Не удалось очистить каталог наблюдателя: %v", err)
+	})
 	endpoint := testWitnessPolicy().targets[0].endpoint
 	w, err := NewNetworkWitness(context.Background(), data, "srv_"+strings.Repeat("1", 32), strings.Repeat("a", 64), []Endpoint{endpoint})
 	if err != nil {

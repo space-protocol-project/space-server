@@ -93,7 +93,12 @@ func TestDeleteChannelPermissionsRevisionAndHistory(t *testing.T) {
 
 func newChannelFixture(t *testing.T) *channelFixture {
 	t.Helper()
-	ctx, url := isolatedDatabase(t)
+	return newChannelFixtureTimeout(t, 45*time.Second)
+}
+
+func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixture {
+	t.Helper()
+	ctx, url := isolatedDatabaseTimeout(t, timeout)
 	store, identity, err := openManual(ctx, url)
 	if err != nil {
 		t.Fatal(err)

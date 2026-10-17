@@ -71,6 +71,9 @@ const (
 	// ChannelServiceGetManifestProcedure is the fully-qualified name of the ChannelService's
 	// GetManifest RPC.
 	ChannelServiceGetManifestProcedure = "/space.v1.ChannelService/GetManifest"
+	// ContentServiceGetHistoryPageProcedure is the fully-qualified name of the ContentService's
+	// GetHistoryPage RPC.
+	ContentServiceGetHistoryPageProcedure = "/space.v1.ContentService/GetHistoryPage"
 	// ContentServiceSearchContentProcedure is the fully-qualified name of the ContentService's
 	// SearchContent RPC.
 	ContentServiceSearchContentProcedure = "/space.v1.ContentService/SearchContent"
@@ -461,6 +464,7 @@ func (UnimplementedChannelServiceHandler) GetManifest(context.Context, *connect.
 
 // ContentServiceClient is a client for the space.v1.ContentService service.
 type ContentServiceClient interface {
+	GetHistoryPage(context.Context, *connect.Request[v1.GetHistoryPageRequest]) (*connect.Response[v1.GetHistoryPageResponse], error)
 	SearchContent(context.Context, *connect.Request[v1.SearchContentRequest]) (*connect.Response[v1.SearchContentResponse], error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
@@ -483,6 +487,12 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	contentServiceMethods := v1.File_space_v1_space_proto.Services().ByName("ContentService").Methods()
 	return &contentServiceClient{
+		getHistoryPage: connect.NewClient[v1.GetHistoryPageRequest, v1.GetHistoryPageResponse](
+			httpClient,
+			baseURL+ContentServiceGetHistoryPageProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("GetHistoryPage")),
+			connect.WithClientOptions(opts...),
+		),
 		searchContent: connect.NewClient[v1.SearchContentRequest, v1.SearchContentResponse](
 			httpClient,
 			baseURL+ContentServiceSearchContentProcedure,
@@ -530,6 +540,7 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // contentServiceClient implements ContentServiceClient.
 type contentServiceClient struct {
+	getHistoryPage       *connect.Client[v1.GetHistoryPageRequest, v1.GetHistoryPageResponse]
 	searchContent        *connect.Client[v1.SearchContentRequest, v1.SearchContentResponse]
 	applyContentMutation *connect.Client[v1.ApplyContentMutationRequest, v1.ApplyContentMutationResponse]
 	setReaction          *connect.Client[v1.SetReactionRequest, v1.SetReactionResponse]
@@ -537,6 +548,11 @@ type contentServiceClient struct {
 	deleteContent        *connect.Client[v1.DeleteContentRequest, v1.DeleteContentResponse]
 	createContent        *connect.Client[v1.CreateContentRequest, v1.CreateContentResponse]
 	listContent          *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
+}
+
+// GetHistoryPage calls space.v1.ContentService.GetHistoryPage.
+func (c *contentServiceClient) GetHistoryPage(ctx context.Context, req *connect.Request[v1.GetHistoryPageRequest]) (*connect.Response[v1.GetHistoryPageResponse], error) {
+	return c.getHistoryPage.CallUnary(ctx, req)
 }
 
 // SearchContent calls space.v1.ContentService.SearchContent.
@@ -576,6 +592,7 @@ func (c *contentServiceClient) ListContent(ctx context.Context, req *connect.Req
 
 // ContentServiceHandler is an implementation of the space.v1.ContentService service.
 type ContentServiceHandler interface {
+	GetHistoryPage(context.Context, *connect.Request[v1.GetHistoryPageRequest]) (*connect.Response[v1.GetHistoryPageResponse], error)
 	SearchContent(context.Context, *connect.Request[v1.SearchContentRequest]) (*connect.Response[v1.SearchContentResponse], error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
@@ -594,6 +611,12 @@ type ContentServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	contentServiceMethods := v1.File_space_v1_space_proto.Services().ByName("ContentService").Methods()
+	contentServiceGetHistoryPageHandler := connect.NewUnaryHandler(
+		ContentServiceGetHistoryPageProcedure,
+		svc.GetHistoryPage,
+		connect.WithSchema(contentServiceMethods.ByName("GetHistoryPage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	contentServiceSearchContentHandler := connect.NewUnaryHandler(
 		ContentServiceSearchContentProcedure,
 		svc.SearchContent,
@@ -638,6 +661,8 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 	)
 	return "/space.v1.ContentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ContentServiceGetHistoryPageProcedure:
+			contentServiceGetHistoryPageHandler.ServeHTTP(w, r)
 		case ContentServiceSearchContentProcedure:
 			contentServiceSearchContentHandler.ServeHTTP(w, r)
 		case ContentServiceApplyContentMutationProcedure:
@@ -660,6 +685,10 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 
 // UnimplementedContentServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedContentServiceHandler struct{}
+
+func (UnimplementedContentServiceHandler) GetHistoryPage(context.Context, *connect.Request[v1.GetHistoryPageRequest]) (*connect.Response[v1.GetHistoryPageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ContentService.GetHistoryPage is not implemented"))
+}
 
 func (UnimplementedContentServiceHandler) SearchContent(context.Context, *connect.Request[v1.SearchContentRequest]) (*connect.Response[v1.SearchContentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ContentService.SearchContent is not implemented"))

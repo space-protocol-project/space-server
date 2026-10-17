@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/space-protocol-project/space-server/internal/authn"
 	"log"
+	"math"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -211,8 +212,8 @@ func (s *Store) Create(ctx context.Context, req *pb.CreateContentRequest) (*pb.C
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, databaseError(ctx, err)
 	}
-	if sequence > 1000 {
-		return nil, status.Error(codes.ResourceExhausted, "Лимит прототипа: 1000 сообщений")
+	if sequence >= math.MaxInt64 {
+		return nil, status.Error(codes.ResourceExhausted, "Исчерпаны порядковые номера канала")
 	}
 	content := &pb.Content{Id: fmt.Sprintf("message-%d", sequence), ChannelId: req.ChannelId, Text: req.Text, AuthorId: actor, Sequence: sequence, Revision: 1}
 	if err = insertContentWithAssets(ctx, tx, req, content, textHash); err != nil {

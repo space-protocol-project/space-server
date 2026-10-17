@@ -28,7 +28,7 @@ func (s *Store) Search(ctx context.Context, req *pb.SearchContentRequest) (*pb.S
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	contents, err := searchContents(ctx, rows)
+	contents, err := readContentRows(ctx, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (s *Store) Search(ctx context.Context, req *pb.SearchContentRequest) (*pb.S
 	return result, nil
 }
 
-func searchContents(ctx context.Context, rows pgx.Rows) ([]*pb.Content, error) {
+func readContentRows(ctx context.Context, rows pgx.Rows) ([]*pb.Content, error) {
 	defer rows.Close()
 	result := make([]*pb.Content, 0, 51)
 	for rows.Next() {

@@ -395,6 +395,7 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	ContentService_GetHistoryPage_FullMethodName       = "/space.v1.ContentService/GetHistoryPage"
 	ContentService_SearchContent_FullMethodName        = "/space.v1.ContentService/SearchContent"
 	ContentService_ApplyContentMutation_FullMethodName = "/space.v1.ContentService/ApplyContentMutation"
 	ContentService_SetReaction_FullMethodName          = "/space.v1.ContentService/SetReaction"
@@ -408,6 +409,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContentServiceClient interface {
+	GetHistoryPage(ctx context.Context, in *GetHistoryPageRequest, opts ...grpc.CallOption) (*GetHistoryPageResponse, error)
 	SearchContent(ctx context.Context, in *SearchContentRequest, opts ...grpc.CallOption) (*SearchContentResponse, error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
@@ -425,6 +427,16 @@ type contentServiceClient struct {
 
 func NewContentServiceClient(cc grpc.ClientConnInterface) ContentServiceClient {
 	return &contentServiceClient{cc}
+}
+
+func (c *contentServiceClient) GetHistoryPage(ctx context.Context, in *GetHistoryPageRequest, opts ...grpc.CallOption) (*GetHistoryPageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHistoryPageResponse)
+	err := c.cc.Invoke(ctx, ContentService_GetHistoryPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *contentServiceClient) SearchContent(ctx context.Context, in *SearchContentRequest, opts ...grpc.CallOption) (*SearchContentResponse, error) {
@@ -501,6 +513,7 @@ func (c *contentServiceClient) ListContent(ctx context.Context, in *ListContentR
 // All implementations must embed UnimplementedContentServiceServer
 // for forward compatibility.
 type ContentServiceServer interface {
+	GetHistoryPage(context.Context, *GetHistoryPageRequest) (*GetHistoryPageResponse, error)
 	SearchContent(context.Context, *SearchContentRequest) (*SearchContentResponse, error)
 	// Постоянная очередь использует отдельный RPC: старый runtime отклоняет
 	// его до изменения данных, а не игнорирует неизвестный ключ запроса.
@@ -520,6 +533,9 @@ type ContentServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContentServiceServer struct{}
 
+func (UnimplementedContentServiceServer) GetHistoryPage(context.Context, *GetHistoryPageRequest) (*GetHistoryPageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHistoryPage not implemented")
+}
 func (UnimplementedContentServiceServer) SearchContent(context.Context, *SearchContentRequest) (*SearchContentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchContent not implemented")
 }
@@ -560,6 +576,24 @@ func RegisterContentServiceServer(s grpc.ServiceRegistrar, srv ContentServiceSer
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ContentService_ServiceDesc, srv)
+}
+
+func _ContentService_GetHistoryPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHistoryPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContentServiceServer).GetHistoryPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContentService_GetHistoryPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContentServiceServer).GetHistoryPage(ctx, req.(*GetHistoryPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ContentService_SearchContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -695,6 +729,10 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.ContentService",
 	HandlerType: (*ContentServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetHistoryPage",
+			Handler:    _ContentService_GetHistoryPage_Handler,
+		},
 		{
 			MethodName: "SearchContent",
 			Handler:    _ContentService_SearchContent_Handler,

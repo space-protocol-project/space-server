@@ -33,7 +33,7 @@ func TestVoiceRoomChannelPermissionsAndPlaintextIsolation(t *testing.T) {
 	}
 	client := pb.NewVoiceServiceClient(f.conn)
 	state, err := client.GetVoiceRoom(f.owner, &pb.GetVoiceRoomRequest{ChannelId: room.Id})
-	if err != nil || !state.GetState().GetCanPublish() || state.State.Capacity != 2 {
+	if err != nil || !state.GetState().GetCanPublish() || state.State.Capacity != 8 {
 		t.Fatal(state, err)
 	}
 	member, id := f.enroll(t, false)

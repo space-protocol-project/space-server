@@ -61,6 +61,10 @@ func TestPortableSpaceRoundTrip(t *testing.T) {
 	if err := ExportPortable(runtime, data, archive); err != nil {
 		t.Fatal(err)
 	}
+	report, err := InspectPortable(archive)
+	if err != nil || report.ServerID != identity.ServerID || report.SchemaVersion != postgres.SchemaVersion() {
+		t.Fatalf("Проверка настоящего архива: %+v %v", report, err)
+	}
 	imported := filepath.Join(root, "another-computer")
 	if err := ImportPortable(runtime, archive, imported, ""); err != nil {
 		t.Fatal(err)
@@ -145,5 +149,37 @@ func TestPortableArchiveRejectsUnexpectedEntries(t *testing.T) {
 				t.Fatal("Выход за пределы назначения")
 			}
 		})
+	}
+}
+
+func TestPortableRestoreFailureDoesNotPublish(t *testing.T) {
+	runtime := os.Getenv("SPACE_HOME_RUNTIME")
+	if runtime == "" {
+		t.Skip("Нужен домашний runtime")
+	}
+	// Состав и хеши корректны, но содержимое database.dump не является дампом PostgreSQL.
+	archive := inspectionFixture(t, func(*portableManifest, map[string][]byte) {})
+	if _, err := InspectPortable(archive); err != nil {
+		t.Fatal(err)
+	}
+	before, err := backupFileDigest(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	destination := filepath.Join(root, "restored")
+	if err := ImportPortable(runtime, archive, destination, ""); err == nil {
+		t.Fatal("Невосстановимый дамп принят")
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatal("Неудачное восстановление опубликовало каталог", err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("После сбоя остались временная база или секреты", err)
+	}
+	after, err := backupFileDigest(archive)
+	if err != nil || after != before {
+		t.Fatal("Восстановление изменило исходный архив", err)
 	}
 }

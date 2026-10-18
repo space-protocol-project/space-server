@@ -25,6 +25,13 @@ func (s *Store) ListMlsEnvelopes(ctx context.Context, req *pb.ListMlsEnvelopesRe
 	if err != nil {
 		return nil, err
 	}
+	var sequence int64
+	if err = tx.QueryRow(ctx, "SELECT sequence FROM mls_channels WHERE channel_id=$1", req.ChannelId).Scan(&sequence); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if req.AfterSequence > sequence {
+		return nil, status.Error(codes.FailedPrecondition, "Архив сервера старше состояния MLS на устройстве. Сохраните локальную историю; откат состояния устройства запрещён.")
+	}
 	rows, err := tx.Query(ctx, "SELECT envelope FROM mls_envelopes WHERE channel_id=$1 AND sequence>$2 AND sequence>=$3 ORDER BY sequence LIMIT 20", req.ChannelId, req.AfterSequence, joined)
 	if err != nil {
 		return nil, databaseError(ctx, err)

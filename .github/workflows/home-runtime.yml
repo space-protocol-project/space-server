@@ -84,6 +84,17 @@ jobs:
       - name: Перенос пространства со сменой адреса и восстановлением владельца
         working-directory: app-source/client
         run: dart run tool/home_transfer_drill.dart ../../dist/home
+      - name: Rust для проверки восстановления MLS
+        run: rustup toolchain install 1.99.0 --profile minimal
+      - name: Три устройства MLS, зашифрованное вложение и старый архив
+        working-directory: app-source/client
+        shell: bash
+        run: |
+          export SPACE_HOME_RUNTIME="$(python -c 'import os; print(os.path.abspath("../../dist/home"))')"
+          executable=space-server
+          if [ "$RUNNER_OS" = Windows ]; then executable=space-server.exe; fi
+          export SPACE_RESTORE_EXECUTABLE="$SPACE_HOME_RUNTIME/$executable"
+          flutter test --no-pub test/live/mls_restore_test.dart
       - uses: actions/upload-artifact@v4
         with:
           name: home-runtime-${{ matrix.os }}

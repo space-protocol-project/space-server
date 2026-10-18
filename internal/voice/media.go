@@ -16,12 +16,17 @@ import (
 )
 
 func validateOffer(raw string) error {
-	if len(raw) == 0 || len(raw) > 12*1024 {
+	if len(raw) == 0 || len(raw) > 64*1024 {
 		return status.Error(codes.InvalidArgument, "Некорректный размер SDP")
 	}
 	description := &sdp.SessionDescription{}
-	if description.Unmarshal([]byte(raw)) != nil || len(description.MediaDescriptions) != 1 || description.MediaDescriptions[0].MediaName.Media != "audio" {
-		return status.Error(codes.InvalidArgument, "Разрешена только одна аудиодорожка")
+	if description.Unmarshal([]byte(raw)) != nil || len(description.MediaDescriptions) != roomCapacity-1 {
+		return status.Error(codes.InvalidArgument, "Нужны семь аудиоканалов для комнаты на восемь участников")
+	}
+	for _, media := range description.MediaDescriptions {
+		if media.MediaName.Media != "audio" {
+			return status.Error(codes.InvalidArgument, "Разрешено только аудио")
+		}
 	}
 	return nil
 }
@@ -69,12 +74,7 @@ func (s *Service) preparePeer(item *mediaSession) error {
 	if err != nil {
 		return err
 	}
-	track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus, ClockRate: 48000, Channels: 2}, "remote", "space-voice")
-	if err != nil {
-		_ = peer.Close()
-		return err
-	}
-	sender, err := peer.AddTrack(track)
+	outputs, err := prepareOutputs(peer)
 	if err != nil {
 		_ = peer.Close()
 		return err
@@ -85,16 +85,8 @@ func (s *Service) preparePeer(item *mediaSession) error {
 		_ = peer.Close()
 		return status.Error(codes.Canceled, "Вход отменён")
 	}
-	item.peer, item.outgoing = peer, track
+	item.peer, item.outgoing = peer, outputs
 	s.mu.Unlock()
-	go func() {
-		buffer := make([]byte, 1500)
-		for {
-			if _, _, err := sender.Read(buffer); err != nil {
-				return
-			}
-		}
-	}()
 	peer.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed {
 			go s.remove(item.id)
@@ -159,15 +151,19 @@ func (s *Service) forward(source *mediaSession, packet *rtp.Packet) {
 		s.mu.Unlock()
 		return
 	}
-	var destinations []*mediaSession
+	var destinations []*audioOutput
 	for _, target := range s.sessions {
 		if target != source && target.room == source.room && target.outgoing != nil && !target.deafened.Load() && time.Now().UnixMilli() < target.expires.Load() {
-			destinations = append(destinations, target)
+			index := source.slot
+			if index > target.slot {
+				index--
+			}
+			destinations = append(destinations, target.outgoing[index])
 		}
 	}
 	s.mu.Unlock()
 	for _, target := range destinations {
-		_ = target.outgoing.WriteRTP(packet)
+		target.write(source.id, packet)
 	}
 }
 

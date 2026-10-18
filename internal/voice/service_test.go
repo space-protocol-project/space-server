@@ -48,6 +48,11 @@ func (p *voicePolicy) auth(t *testing.T, ctx context.Context, token string) cont
 
 func servicePeer(t *testing.T, ctx context.Context, service *Service, peer *webrtc.PeerConnection) *pb.JoinVoiceRoomResponse {
 	t.Helper()
+	for i := 1; i < roomCapacity-1; i++ {
+		if _, err := peer.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	offer, err := peer.CreateOffer(nil)
 	if err != nil {
 		t.Fatal(err)

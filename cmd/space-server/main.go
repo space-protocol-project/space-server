@@ -319,7 +319,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"portableInspectionVersion": 1,
 			"scheduledBackupsVersion":   1,
-			"voiceRoomsVersion":         2,
+			"voiceRoomsVersion":         3,
 			"remoteSetupVersion":        1,
 			"automaticNetworkVersion":   1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,

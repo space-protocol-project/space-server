@@ -24,12 +24,15 @@ type IdentityStore interface {
 	VoiceIdentity(context.Context, string) (Identity, error)
 }
 
+const roomCapacity = 8
+
 type mediaSession struct {
+	slot                     int
 	id, room                 string
 	identity                 Identity
 	auth                     context.Context
 	peer                     *webrtc.PeerConnection
-	outgoing                 *webrtc.TrackLocalStaticRTP
+	outgoing                 []*audioOutput
 	muted, deafened, publish atomic.Bool
 	expires                  atomic.Int64
 	input                    atomic.Bool
@@ -77,18 +80,24 @@ func (s *Service) reserve(ctx context.Context, identity Identity, room string) (
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	count := 0
+	var occupied [roomCapacity]bool
 	for _, existing := range s.sessions {
 		if existing.identity.Actor == identity.Actor {
 			return nil, status.Error(codes.AlreadyExists, "Сначала завершите прежнее голосовое подключение")
 		}
 		if existing.room == room {
+			occupied[existing.slot] = true
 			count++
 		}
 	}
-	if count >= 2 || len(s.sessions) >= 128 {
-		return nil, status.Error(codes.ResourceExhausted, "Первый срез поддерживает двух участников в комнате")
+	if count >= roomCapacity || len(s.sessions) >= 128 {
+		return nil, status.Error(codes.ResourceExhausted, "В комнате может быть не больше восьми участников")
 	}
-	item := &mediaSession{id: hex.EncodeToString(random[:]), room: room, identity: identity, auth: context.WithoutCancel(ctx), done: make(chan struct{})}
+	slot := 0
+	for occupied[slot] {
+		slot++
+	}
+	item := &mediaSession{slot: slot, id: hex.EncodeToString(random[:]), room: room, identity: identity, auth: context.WithoutCancel(ctx), done: make(chan struct{})}
 	item.muted.Store(true)
 	item.publish.Store(identity.CanPublish)
 	item.expires.Store(time.Now().Add(30 * time.Second).UnixMilli())
@@ -125,7 +134,7 @@ func (s *Service) owned(identity Identity, room, id string) (*mediaSession, erro
 }
 
 func (s *Service) snapshot(room string, publish bool) *pb.VoiceRoomState {
-	result := &pb.VoiceRoomState{CanPublish: publish, Capacity: 2}
+	result := &pb.VoiceRoomState{CanPublish: publish, Capacity: roomCapacity}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, item := range s.sessions {

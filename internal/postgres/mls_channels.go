@@ -68,8 +68,12 @@ func mlsGroupOrNull(group []byte) any {
 
 func requireOpenChannel(ctx context.Context, tx pgx.Tx, channel string) error {
 	var encrypted bool
-	if err := tx.QueryRow(ctx, "SELECT mls_group_id IS NOT NULL FROM channels WHERE id=$1", channel).Scan(&encrypted); err != nil {
+	var kind string
+	if err := tx.QueryRow(ctx, "SELECT mls_group_id IS NOT NULL,view_type FROM channels WHERE id=$1", channel).Scan(&encrypted, &kind); err != nil {
 		return databaseError(ctx, err)
+	}
+	if kind != "chat" {
+		return status.Error(codes.FailedPrecondition, "Для голосовой комнаты требуется голосовой API")
 	}
 	if encrypted {
 		return status.Error(codes.FailedPrecondition, "Для закрытого канала требуется MLS")

@@ -634,11 +634,14 @@ func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Me
 }
 
 func validateChannelCreation(req *pb.CreateChannelRequest) error {
+	if req.ViewType == "voice_room" && (len(req.MlsGroupId) > 0 || req.PublicPreview) {
+		return status.Error(codes.InvalidArgument, "Голосовая комната не поддерживает MLS или публичный предпросмотр")
+	}
 	if err := validateMlsChannelRequest(req); err != nil {
 		return err
 	}
-	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || req.ViewType != "chat" {
-		return status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat")
+	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || (req.ViewType != "chat" && req.ViewType != "voice_room") {
+		return status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat или voice_room")
 	}
 
 	return nil

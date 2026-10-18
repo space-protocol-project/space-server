@@ -20,6 +20,7 @@ import (
 	"github.com/space-protocol-project/space-server/internal/authn"
 	"github.com/space-protocol-project/space-server/internal/chat"
 	"github.com/space-protocol-project/space-server/internal/transport"
+	"github.com/space-protocol-project/space-server/internal/voice"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -110,6 +111,11 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	}
 	server := grpc.NewServer(grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
 	service := chat.NewPersistent(identity.ServerID, store)
+	voiceService, voiceErr := voice.NewService(ctx, store)
+	if voiceErr != nil {
+		t.Fatal(voiceErr)
+	}
+	pb.RegisterVoiceServiceServer(server, voiceService)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	pb.RegisterMembershipServiceServer(server, store)

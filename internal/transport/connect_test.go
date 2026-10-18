@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -74,15 +75,18 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
 	expected := 0
-	services := pb.File_space_v1_space_proto.Services()
-	for i := 0; i < services.Len(); i++ {
-		service := services.Get(i)
-		for j := 0; j < service.Methods().Len(); j++ {
-			path := "/" + string(service.FullName()) + "/" + string(service.Methods().Get(j).Name())
-			if !isConnectProcedure(path) {
-				t.Errorf("Не зарегистрирована процедура %s", path)
+	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto}
+	for _, file := range files {
+		services := file.Services()
+		for i := 0; i < services.Len(); i++ {
+			service := services.Get(i)
+			for j := 0; j < service.Methods().Len(); j++ {
+				path := "/" + string(service.FullName()) + "/" + string(service.Methods().Get(j).Name())
+				if !isConnectProcedure(path) {
+					t.Errorf("Не зарегистрирована процедура %s", path)
+				}
+				expected++
 			}
-			expected++
 		}
 	}
 	if len(connectProcedures) != expected {

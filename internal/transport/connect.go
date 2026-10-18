@@ -290,6 +290,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(mlsPath, mlsHandler)
 	assetPath, assetHandler := rpc.NewAssetServiceHandler(connectAsset{client: pb.NewAssetServiceClient(connection)}, connect.WithReadMaxBytes(384*1024), connect.WithSendMaxBytes(1024*1024))
 	mux.Handle(assetPath, assetHandler)
+	voicePath, voiceHandler := rpc.NewVoiceServiceHandler(connectVoice{client: pb.NewVoiceServiceClient(connection)}, options...)
+	mux.Handle(voicePath, voiceHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
 }
@@ -315,6 +317,10 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
+	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,
+	rpc.VoiceServiceLeaveVoiceRoomProcedure:         true,
+	rpc.VoiceServiceGetVoiceRoomProcedure:           true,
 	rpc.ContentServiceApplyContentMutationProcedure: true,
 	rpc.MlsServiceRegisterMlsDeviceProcedure:        true,
 	rpc.MlsServiceListMlsDevicesProcedure:           true,

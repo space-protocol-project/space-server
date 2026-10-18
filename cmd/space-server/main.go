@@ -212,6 +212,7 @@ func finishHomeSetup(ctx context.Context, store interface{ SealHomeSetup(context
 }
 
 type serverOptions struct {
+	portableVerify                             string
 	remoteSetup                                bool
 	output                                     io.Writer
 	portableExport, portableImport, portableTo string
@@ -238,6 +239,7 @@ type serverOptions struct {
 }
 
 func parseOptions() serverOptions {
+	portableVerify := flag.String("home-verify-export", "", "Проверить архив переноса без распаковки и запуска базы")
 	portableExport := flag.String("home-export", "", "Экспорт пространства в переносимый ZIP")
 	portableImport := flag.String("home-import", "", "Импорт переносимого архива пространства")
 	portableTo := flag.String("home-import-to", "", "Новый каталог для импортируемого пространства")
@@ -268,6 +270,7 @@ func parseOptions() serverOptions {
 		}
 	})
 	return serverOptions{
+		portableVerify: *portableVerify,
 		portableExport: *portableExport, portableImport: *portableImport, portableTo: *portableTo, port: *port,
 		grpcAddress:    *grpcAddress,
 		demo:           *demo,
@@ -292,6 +295,9 @@ func parseOptions() serverOptions {
 }
 
 func performMaintenance(options serverOptions) (bool, error) {
+	if options.portableVerify != "" {
+		return true, performPortableInspection(options)
+	}
 	if options.portableExport != "" || options.portableImport != "" || options.portableTo != "" {
 		return true, performPortableTransfer(options)
 	}
@@ -306,8 +312,9 @@ func performMaintenance(options serverOptions) (bool, error) {
 	}
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"remoteSetupVersion":      1,
-			"automaticNetworkVersion": 1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
+			"portableInspectionVersion": 1,
+			"remoteSetupVersion":        1,
+			"automaticNetworkVersion":   1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		})
 	}

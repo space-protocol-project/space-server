@@ -33,6 +33,10 @@ func TestLocalOrigin(t *testing.T) {
 
 func TestMaintenanceRejectsConflictingOperations(t *testing.T) {
 	cases := []serverOptions{
+		{portableVerify: "archive.zip", portableImport: "archive.zip", portableTo: "new"},
+		{portableVerify: "archive.zip", homeMigrate: true},
+		{portableVerify: "archive.zip", backup: "backup"},
+		{portableVerify: "archive.zip", firstOwner: true},
 		{homeCheck: true, homeMigrate: true, homeData: "data", homeRuntime: "runtime"},
 		{homeStopped: true, homeCheck: true, homeData: "data", homeRuntime: "runtime"},
 		{backup: "backup", restore: "backup", homeRuntime: "runtime"},

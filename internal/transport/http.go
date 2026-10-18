@@ -71,7 +71,7 @@ func refreshStreamDeadline(_ context.Context, writer http.ResponseWriter, messag
 }
 
 func discoveryDocument(serverID string, publicKey []byte, endpoint string, connectEnabled []bool) map[string]string {
-	discovery := map[string]string{"protocol_version": "0.1-experimental", "voice_rooms_version": "1", "server_id": serverID, "manifest": "/api/v1/manifest"}
+	discovery := map[string]string{"protocol_version": "0.1-experimental", "voice_rooms_version": "2", "server_id": serverID, "manifest": "/api/v1/manifest"}
 	if len(publicKey) > 0 {
 		discovery["signing_algorithm"] = "Ed25519"
 		discovery["signing_public_key"] = base64.RawURLEncoding.EncodeToString(publicKey)

@@ -1,5 +1,7 @@
 # Space Server
 
+В ветке `codex/voice-rooms` разрабатываются голосовые комнаты для двух настольных клиентов: схема 23, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md). Эти изменения ещё не входят в опубликованный v0.6.0.
+
 Запуск с нуля одной командой (приложение и runtime v0.3.5):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
 

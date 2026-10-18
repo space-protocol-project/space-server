@@ -321,6 +321,7 @@ var connectProcedures = map[string]bool{
 	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,
 	rpc.VoiceServiceLeaveVoiceRoomProcedure:         true,
 	rpc.VoiceServiceGetVoiceRoomProcedure:           true,
+	rpc.VoiceServiceGetVoiceConfigurationProcedure:  true,
 	rpc.ContentServiceApplyContentMutationProcedure: true,
 	rpc.MlsServiceRegisterMlsDeviceProcedure:        true,
 	rpc.MlsServiceListMlsDevicesProcedure:           true,

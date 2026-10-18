@@ -319,7 +319,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"portableInspectionVersion": 1,
 			"scheduledBackupsVersion":   1,
-			"voiceRoomsVersion":         1,
+			"voiceRoomsVersion":         2,
 			"remoteSetupVersion":        1,
 			"automaticNetworkVersion":   1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,
@@ -495,7 +495,15 @@ func homeEndpoint(options serverOptions) (net.IP, string, error) {
 	return ip, publicOrigin, nil
 }
 
-func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string, lifecycle ...context.Context) *grpc.Server {
+func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string) *grpc.Server {
+	voiceService, err := voice.NewService(context.Background(), store)
+	if err != nil {
+		panic(err)
+	}
+	return configuredRPCServer(service, store, serverID, origin, voiceService)
+}
+
+func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string, voiceService *voice.Service) *grpc.Server {
 	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(transport.MaxRPCRequestBytes)}
 	unary := []grpc.UnaryServerInterceptor{transport.MessageSizeLimit}
 	streams := []grpc.StreamServerInterceptor{transport.StreamMessageSizeLimit}
@@ -508,14 +516,6 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	if store != nil {
-		voiceContext := context.Background()
-		if len(lifecycle) > 0 {
-			voiceContext = lifecycle[0]
-		}
-		voiceService, voiceErr := voice.NewService(voiceContext, store)
-		if voiceErr != nil {
-			panic(voiceErr)
-		}
 		pb.RegisterVoiceServiceServer(server, voiceService)
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
 		pb.RegisterAssetServiceServer(server, store)
@@ -669,11 +669,19 @@ func (bridge *rpcBridge) close() {
 	bridge.server.Stop()
 }
 func startRPCBridge(ctx context.Context, options serverOptions, service *chat.Service, store *postgres.Store, identity postgres.Identity, origin, publicOrigin string, cancel context.CancelFunc) (*rpcBridge, error) {
+	network, err := voice.NetworkFromEnvironment()
+	if err != nil {
+		return nil, err
+	}
+	voiceService, err := voice.NewService(ctx, store, network)
+	if err != nil {
+		return nil, err
+	}
 	listener, err := net.Listen("tcp", options.grpcAddress)
 	if err != nil {
 		return nil, err
 	}
-	server := newRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin), ctx)
+	server := configuredRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin), voiceService)
 	go func() {
 		if err := server.Serve(listener); err != nil {
 			log.Printf("gRPC: %v", err)

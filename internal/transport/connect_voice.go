@@ -12,6 +12,10 @@ type connectVoice struct {
 	client pb.VoiceServiceClient
 }
 
+func (s connectVoice) GetVoiceConfiguration(ctx context.Context, req *connect.Request[pb.GetVoiceConfigurationRequest]) (*connect.Response[pb.GetVoiceConfigurationResponse], error) {
+	return bridgeUnary(ctx, req, s.client.GetVoiceConfiguration)
+}
+
 func (s connectVoice) JoinVoiceRoom(ctx context.Context, req *connect.Request[pb.JoinVoiceRoomRequest]) (*connect.Response[pb.JoinVoiceRoomResponse], error) {
 	return bridgeUnary(ctx, req, s.client.JoinVoiceRoom)
 }

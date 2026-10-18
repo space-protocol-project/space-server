@@ -61,7 +61,11 @@ func (s *Service) JoinVoiceRoom(ctx context.Context, req *pb.JoinVoiceRoomReques
 }
 
 func (s *Service) preparePeer(item *mediaSession) error {
-	peer, err := s.api.NewPeerConnection(webrtc.Configuration{})
+	configuration, err := s.network.peerConfiguration()
+	if err != nil {
+		return err
+	}
+	peer, err := s.api.NewPeerConnection(configuration)
 	if err != nil {
 		return err
 	}
@@ -112,7 +116,7 @@ func (s *Service) answer(ctx context.Context, item *mediaSession, offer string) 
 	if err = item.peer.SetLocalDescription(answer); err != nil {
 		return "", err
 	}
-	timer := time.NewTimer(5 * time.Second)
+	timer := time.NewTimer(15 * time.Second)
 	defer timer.Stop()
 	select {
 	case <-ctx.Done():

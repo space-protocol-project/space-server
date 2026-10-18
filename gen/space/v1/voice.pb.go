@@ -565,6 +565,172 @@ func (x *GetVoiceRoomResponse) GetState() *VoiceRoomState {
 	return nil
 }
 
+// Выдаётся только после проверки доступа к комнате. Общий TURN-секрет
+// остаётся на runtime; клиент получает временный пароль без идентификатора личности.
+type VoiceIceServer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Urls          []string               `protobuf:"bytes,1,rep,name=urls,proto3" json:"urls,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Credential    string                 `protobuf:"bytes,3,opt,name=credential,proto3" json:"credential,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VoiceIceServer) Reset() {
+	*x = VoiceIceServer{}
+	mi := &file_space_v1_voice_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VoiceIceServer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VoiceIceServer) ProtoMessage() {}
+
+func (x *VoiceIceServer) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_voice_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VoiceIceServer.ProtoReflect.Descriptor instead.
+func (*VoiceIceServer) Descriptor() ([]byte, []int) {
+	return file_space_v1_voice_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *VoiceIceServer) GetUrls() []string {
+	if x != nil {
+		return x.Urls
+	}
+	return nil
+}
+
+func (x *VoiceIceServer) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *VoiceIceServer) GetCredential() string {
+	if x != nil {
+		return x.Credential
+	}
+	return ""
+}
+
+type GetVoiceConfigurationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetVoiceConfigurationRequest) Reset() {
+	*x = GetVoiceConfigurationRequest{}
+	mi := &file_space_v1_voice_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVoiceConfigurationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVoiceConfigurationRequest) ProtoMessage() {}
+
+func (x *GetVoiceConfigurationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_voice_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVoiceConfigurationRequest.ProtoReflect.Descriptor instead.
+func (*GetVoiceConfigurationRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_voice_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetVoiceConfigurationRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+type GetVoiceConfigurationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IceServers    []*VoiceIceServer      `protobuf:"bytes,1,rep,name=ice_servers,json=iceServers,proto3" json:"ice_servers,omitempty"`
+	RelayOnly     bool                   `protobuf:"varint,2,opt,name=relay_only,json=relayOnly,proto3" json:"relay_only,omitempty"`
+	ExpiresAtUnix int64                  `protobuf:"varint,3,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetVoiceConfigurationResponse) Reset() {
+	*x = GetVoiceConfigurationResponse{}
+	mi := &file_space_v1_voice_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVoiceConfigurationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVoiceConfigurationResponse) ProtoMessage() {}
+
+func (x *GetVoiceConfigurationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_voice_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVoiceConfigurationResponse.ProtoReflect.Descriptor instead.
+func (*GetVoiceConfigurationResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_voice_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetVoiceConfigurationResponse) GetIceServers() []*VoiceIceServer {
+	if x != nil {
+		return x.IceServers
+	}
+	return nil
+}
+
+func (x *GetVoiceConfigurationResponse) GetRelayOnly() bool {
+	if x != nil {
+		return x.RelayOnly
+	}
+	return false
+}
+
+func (x *GetVoiceConfigurationResponse) GetExpiresAtUnix() int64 {
+	if x != nil {
+		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
 var File_space_v1_voice_proto protoreflect.FileDescriptor
 
 const file_space_v1_voice_proto_rawDesc = "" +
@@ -612,8 +778,24 @@ const file_space_v1_voice_proto_rawDesc = "" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\"F\n" +
 	"\x14GetVoiceRoomResponse\x12.\n" +
-	"\x05state\x18\x01 \x01(\v2\x18.space.v1.VoiceRoomStateR\x05state2\xdc\x02\n" +
-	"\fVoiceService\x12P\n" +
+	"\x05state\x18\x01 \x01(\v2\x18.space.v1.VoiceRoomStateR\x05state\"`\n" +
+	"\x0eVoiceIceServer\x12\x12\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1e\n" +
+	"\n" +
+	"credential\x18\x03 \x01(\tR\n" +
+	"credential\"=\n" +
+	"\x1cGetVoiceConfigurationRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\"\xa1\x01\n" +
+	"\x1dGetVoiceConfigurationResponse\x129\n" +
+	"\vice_servers\x18\x01 \x03(\v2\x18.space.v1.VoiceIceServerR\n" +
+	"iceServers\x12\x1d\n" +
+	"\n" +
+	"relay_only\x18\x02 \x01(\bR\trelayOnly\x12&\n" +
+	"\x0fexpires_at_unix\x18\x03 \x01(\x03R\rexpiresAtUnix2\xc6\x03\n" +
+	"\fVoiceService\x12h\n" +
+	"\x15GetVoiceConfiguration\x12&.space.v1.GetVoiceConfigurationRequest\x1a'.space.v1.GetVoiceConfigurationResponse\x12P\n" +
 	"\rJoinVoiceRoom\x12\x1e.space.v1.JoinVoiceRoomRequest\x1a\x1f.space.v1.JoinVoiceRoomResponse\x12V\n" +
 	"\x0fUpdateVoiceRoom\x12 .space.v1.UpdateVoiceRoomRequest\x1a!.space.v1.UpdateVoiceRoomResponse\x12S\n" +
 	"\x0eLeaveVoiceRoom\x12\x1f.space.v1.LeaveVoiceRoomRequest\x1a .space.v1.LeaveVoiceRoomResponse\x12M\n" +
@@ -631,37 +813,43 @@ func file_space_v1_voice_proto_rawDescGZIP() []byte {
 	return file_space_v1_voice_proto_rawDescData
 }
 
-var file_space_v1_voice_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_space_v1_voice_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_space_v1_voice_proto_goTypes = []any{
-	(*VoiceParticipant)(nil),        // 0: space.v1.VoiceParticipant
-	(*VoiceRoomState)(nil),          // 1: space.v1.VoiceRoomState
-	(*JoinVoiceRoomRequest)(nil),    // 2: space.v1.JoinVoiceRoomRequest
-	(*JoinVoiceRoomResponse)(nil),   // 3: space.v1.JoinVoiceRoomResponse
-	(*UpdateVoiceRoomRequest)(nil),  // 4: space.v1.UpdateVoiceRoomRequest
-	(*UpdateVoiceRoomResponse)(nil), // 5: space.v1.UpdateVoiceRoomResponse
-	(*LeaveVoiceRoomRequest)(nil),   // 6: space.v1.LeaveVoiceRoomRequest
-	(*LeaveVoiceRoomResponse)(nil),  // 7: space.v1.LeaveVoiceRoomResponse
-	(*GetVoiceRoomRequest)(nil),     // 8: space.v1.GetVoiceRoomRequest
-	(*GetVoiceRoomResponse)(nil),    // 9: space.v1.GetVoiceRoomResponse
+	(*VoiceParticipant)(nil),              // 0: space.v1.VoiceParticipant
+	(*VoiceRoomState)(nil),                // 1: space.v1.VoiceRoomState
+	(*JoinVoiceRoomRequest)(nil),          // 2: space.v1.JoinVoiceRoomRequest
+	(*JoinVoiceRoomResponse)(nil),         // 3: space.v1.JoinVoiceRoomResponse
+	(*UpdateVoiceRoomRequest)(nil),        // 4: space.v1.UpdateVoiceRoomRequest
+	(*UpdateVoiceRoomResponse)(nil),       // 5: space.v1.UpdateVoiceRoomResponse
+	(*LeaveVoiceRoomRequest)(nil),         // 6: space.v1.LeaveVoiceRoomRequest
+	(*LeaveVoiceRoomResponse)(nil),        // 7: space.v1.LeaveVoiceRoomResponse
+	(*GetVoiceRoomRequest)(nil),           // 8: space.v1.GetVoiceRoomRequest
+	(*GetVoiceRoomResponse)(nil),          // 9: space.v1.GetVoiceRoomResponse
+	(*VoiceIceServer)(nil),                // 10: space.v1.VoiceIceServer
+	(*GetVoiceConfigurationRequest)(nil),  // 11: space.v1.GetVoiceConfigurationRequest
+	(*GetVoiceConfigurationResponse)(nil), // 12: space.v1.GetVoiceConfigurationResponse
 }
 var file_space_v1_voice_proto_depIdxs = []int32{
-	0, // 0: space.v1.VoiceRoomState.participants:type_name -> space.v1.VoiceParticipant
-	1, // 1: space.v1.JoinVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
-	1, // 2: space.v1.UpdateVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
-	1, // 3: space.v1.GetVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
-	2, // 4: space.v1.VoiceService.JoinVoiceRoom:input_type -> space.v1.JoinVoiceRoomRequest
-	4, // 5: space.v1.VoiceService.UpdateVoiceRoom:input_type -> space.v1.UpdateVoiceRoomRequest
-	6, // 6: space.v1.VoiceService.LeaveVoiceRoom:input_type -> space.v1.LeaveVoiceRoomRequest
-	8, // 7: space.v1.VoiceService.GetVoiceRoom:input_type -> space.v1.GetVoiceRoomRequest
-	3, // 8: space.v1.VoiceService.JoinVoiceRoom:output_type -> space.v1.JoinVoiceRoomResponse
-	5, // 9: space.v1.VoiceService.UpdateVoiceRoom:output_type -> space.v1.UpdateVoiceRoomResponse
-	7, // 10: space.v1.VoiceService.LeaveVoiceRoom:output_type -> space.v1.LeaveVoiceRoomResponse
-	9, // 11: space.v1.VoiceService.GetVoiceRoom:output_type -> space.v1.GetVoiceRoomResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: space.v1.VoiceRoomState.participants:type_name -> space.v1.VoiceParticipant
+	1,  // 1: space.v1.JoinVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
+	1,  // 2: space.v1.UpdateVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
+	1,  // 3: space.v1.GetVoiceRoomResponse.state:type_name -> space.v1.VoiceRoomState
+	10, // 4: space.v1.GetVoiceConfigurationResponse.ice_servers:type_name -> space.v1.VoiceIceServer
+	11, // 5: space.v1.VoiceService.GetVoiceConfiguration:input_type -> space.v1.GetVoiceConfigurationRequest
+	2,  // 6: space.v1.VoiceService.JoinVoiceRoom:input_type -> space.v1.JoinVoiceRoomRequest
+	4,  // 7: space.v1.VoiceService.UpdateVoiceRoom:input_type -> space.v1.UpdateVoiceRoomRequest
+	6,  // 8: space.v1.VoiceService.LeaveVoiceRoom:input_type -> space.v1.LeaveVoiceRoomRequest
+	8,  // 9: space.v1.VoiceService.GetVoiceRoom:input_type -> space.v1.GetVoiceRoomRequest
+	12, // 10: space.v1.VoiceService.GetVoiceConfiguration:output_type -> space.v1.GetVoiceConfigurationResponse
+	3,  // 11: space.v1.VoiceService.JoinVoiceRoom:output_type -> space.v1.JoinVoiceRoomResponse
+	5,  // 12: space.v1.VoiceService.UpdateVoiceRoom:output_type -> space.v1.UpdateVoiceRoomResponse
+	7,  // 13: space.v1.VoiceService.LeaveVoiceRoom:output_type -> space.v1.LeaveVoiceRoomResponse
+	9,  // 14: space.v1.VoiceService.GetVoiceRoom:output_type -> space.v1.GetVoiceRoomResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_voice_proto_init() }
@@ -675,7 +863,7 @@ func file_space_v1_voice_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_voice_proto_rawDesc), len(file_space_v1_voice_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VoiceService_JoinVoiceRoom_FullMethodName   = "/space.v1.VoiceService/JoinVoiceRoom"
-	VoiceService_UpdateVoiceRoom_FullMethodName = "/space.v1.VoiceService/UpdateVoiceRoom"
-	VoiceService_LeaveVoiceRoom_FullMethodName  = "/space.v1.VoiceService/LeaveVoiceRoom"
-	VoiceService_GetVoiceRoom_FullMethodName    = "/space.v1.VoiceService/GetVoiceRoom"
+	VoiceService_GetVoiceConfiguration_FullMethodName = "/space.v1.VoiceService/GetVoiceConfiguration"
+	VoiceService_JoinVoiceRoom_FullMethodName         = "/space.v1.VoiceService/JoinVoiceRoom"
+	VoiceService_UpdateVoiceRoom_FullMethodName       = "/space.v1.VoiceService/UpdateVoiceRoom"
+	VoiceService_LeaveVoiceRoom_FullMethodName        = "/space.v1.VoiceService/LeaveVoiceRoom"
+	VoiceService_GetVoiceRoom_FullMethodName          = "/space.v1.VoiceService/GetVoiceRoom"
 )
 
 // VoiceServiceClient is the client API for VoiceService service.
@@ -31,6 +32,7 @@ const (
 //
 // Голос передаётся WebRTC, через RPC проходит только управление и SDP.
 type VoiceServiceClient interface {
+	GetVoiceConfiguration(ctx context.Context, in *GetVoiceConfigurationRequest, opts ...grpc.CallOption) (*GetVoiceConfigurationResponse, error)
 	JoinVoiceRoom(ctx context.Context, in *JoinVoiceRoomRequest, opts ...grpc.CallOption) (*JoinVoiceRoomResponse, error)
 	UpdateVoiceRoom(ctx context.Context, in *UpdateVoiceRoomRequest, opts ...grpc.CallOption) (*UpdateVoiceRoomResponse, error)
 	LeaveVoiceRoom(ctx context.Context, in *LeaveVoiceRoomRequest, opts ...grpc.CallOption) (*LeaveVoiceRoomResponse, error)
@@ -43,6 +45,16 @@ type voiceServiceClient struct {
 
 func NewVoiceServiceClient(cc grpc.ClientConnInterface) VoiceServiceClient {
 	return &voiceServiceClient{cc}
+}
+
+func (c *voiceServiceClient) GetVoiceConfiguration(ctx context.Context, in *GetVoiceConfigurationRequest, opts ...grpc.CallOption) (*GetVoiceConfigurationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVoiceConfigurationResponse)
+	err := c.cc.Invoke(ctx, VoiceService_GetVoiceConfiguration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *voiceServiceClient) JoinVoiceRoom(ctx context.Context, in *JoinVoiceRoomRequest, opts ...grpc.CallOption) (*JoinVoiceRoomResponse, error) {
@@ -91,6 +103,7 @@ func (c *voiceServiceClient) GetVoiceRoom(ctx context.Context, in *GetVoiceRoomR
 //
 // Голос передаётся WebRTC, через RPC проходит только управление и SDP.
 type VoiceServiceServer interface {
+	GetVoiceConfiguration(context.Context, *GetVoiceConfigurationRequest) (*GetVoiceConfigurationResponse, error)
 	JoinVoiceRoom(context.Context, *JoinVoiceRoomRequest) (*JoinVoiceRoomResponse, error)
 	UpdateVoiceRoom(context.Context, *UpdateVoiceRoomRequest) (*UpdateVoiceRoomResponse, error)
 	LeaveVoiceRoom(context.Context, *LeaveVoiceRoomRequest) (*LeaveVoiceRoomResponse, error)
@@ -105,6 +118,9 @@ type VoiceServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedVoiceServiceServer struct{}
 
+func (UnimplementedVoiceServiceServer) GetVoiceConfiguration(context.Context, *GetVoiceConfigurationRequest) (*GetVoiceConfigurationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVoiceConfiguration not implemented")
+}
 func (UnimplementedVoiceServiceServer) JoinVoiceRoom(context.Context, *JoinVoiceRoomRequest) (*JoinVoiceRoomResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JoinVoiceRoom not implemented")
 }
@@ -136,6 +152,24 @@ func RegisterVoiceServiceServer(s grpc.ServiceRegistrar, srv VoiceServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&VoiceService_ServiceDesc, srv)
+}
+
+func _VoiceService_GetVoiceConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVoiceConfigurationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VoiceServiceServer).GetVoiceConfiguration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VoiceService_GetVoiceConfiguration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VoiceServiceServer).GetVoiceConfiguration(ctx, req.(*GetVoiceConfigurationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _VoiceService_JoinVoiceRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -217,6 +251,10 @@ var VoiceService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.VoiceService",
 	HandlerType: (*VoiceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetVoiceConfiguration",
+			Handler:    _VoiceService_GetVoiceConfiguration_Handler,
+		},
 		{
 			MethodName: "JoinVoiceRoom",
 			Handler:    _VoiceService_JoinVoiceRoom_Handler,

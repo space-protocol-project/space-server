@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// VoiceServiceGetVoiceConfigurationProcedure is the fully-qualified name of the VoiceService's
+	// GetVoiceConfiguration RPC.
+	VoiceServiceGetVoiceConfigurationProcedure = "/space.v1.VoiceService/GetVoiceConfiguration"
 	// VoiceServiceJoinVoiceRoomProcedure is the fully-qualified name of the VoiceService's
 	// JoinVoiceRoom RPC.
 	VoiceServiceJoinVoiceRoomProcedure = "/space.v1.VoiceService/JoinVoiceRoom"
@@ -49,6 +52,7 @@ const (
 
 // VoiceServiceClient is a client for the space.v1.VoiceService service.
 type VoiceServiceClient interface {
+	GetVoiceConfiguration(context.Context, *connect.Request[v1.GetVoiceConfigurationRequest]) (*connect.Response[v1.GetVoiceConfigurationResponse], error)
 	JoinVoiceRoom(context.Context, *connect.Request[v1.JoinVoiceRoomRequest]) (*connect.Response[v1.JoinVoiceRoomResponse], error)
 	UpdateVoiceRoom(context.Context, *connect.Request[v1.UpdateVoiceRoomRequest]) (*connect.Response[v1.UpdateVoiceRoomResponse], error)
 	LeaveVoiceRoom(context.Context, *connect.Request[v1.LeaveVoiceRoomRequest]) (*connect.Response[v1.LeaveVoiceRoomResponse], error)
@@ -66,6 +70,12 @@ func NewVoiceServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	voiceServiceMethods := v1.File_space_v1_voice_proto.Services().ByName("VoiceService").Methods()
 	return &voiceServiceClient{
+		getVoiceConfiguration: connect.NewClient[v1.GetVoiceConfigurationRequest, v1.GetVoiceConfigurationResponse](
+			httpClient,
+			baseURL+VoiceServiceGetVoiceConfigurationProcedure,
+			connect.WithSchema(voiceServiceMethods.ByName("GetVoiceConfiguration")),
+			connect.WithClientOptions(opts...),
+		),
 		joinVoiceRoom: connect.NewClient[v1.JoinVoiceRoomRequest, v1.JoinVoiceRoomResponse](
 			httpClient,
 			baseURL+VoiceServiceJoinVoiceRoomProcedure,
@@ -95,10 +105,16 @@ func NewVoiceServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // voiceServiceClient implements VoiceServiceClient.
 type voiceServiceClient struct {
-	joinVoiceRoom   *connect.Client[v1.JoinVoiceRoomRequest, v1.JoinVoiceRoomResponse]
-	updateVoiceRoom *connect.Client[v1.UpdateVoiceRoomRequest, v1.UpdateVoiceRoomResponse]
-	leaveVoiceRoom  *connect.Client[v1.LeaveVoiceRoomRequest, v1.LeaveVoiceRoomResponse]
-	getVoiceRoom    *connect.Client[v1.GetVoiceRoomRequest, v1.GetVoiceRoomResponse]
+	getVoiceConfiguration *connect.Client[v1.GetVoiceConfigurationRequest, v1.GetVoiceConfigurationResponse]
+	joinVoiceRoom         *connect.Client[v1.JoinVoiceRoomRequest, v1.JoinVoiceRoomResponse]
+	updateVoiceRoom       *connect.Client[v1.UpdateVoiceRoomRequest, v1.UpdateVoiceRoomResponse]
+	leaveVoiceRoom        *connect.Client[v1.LeaveVoiceRoomRequest, v1.LeaveVoiceRoomResponse]
+	getVoiceRoom          *connect.Client[v1.GetVoiceRoomRequest, v1.GetVoiceRoomResponse]
+}
+
+// GetVoiceConfiguration calls space.v1.VoiceService.GetVoiceConfiguration.
+func (c *voiceServiceClient) GetVoiceConfiguration(ctx context.Context, req *connect.Request[v1.GetVoiceConfigurationRequest]) (*connect.Response[v1.GetVoiceConfigurationResponse], error) {
+	return c.getVoiceConfiguration.CallUnary(ctx, req)
 }
 
 // JoinVoiceRoom calls space.v1.VoiceService.JoinVoiceRoom.
@@ -123,6 +139,7 @@ func (c *voiceServiceClient) GetVoiceRoom(ctx context.Context, req *connect.Requ
 
 // VoiceServiceHandler is an implementation of the space.v1.VoiceService service.
 type VoiceServiceHandler interface {
+	GetVoiceConfiguration(context.Context, *connect.Request[v1.GetVoiceConfigurationRequest]) (*connect.Response[v1.GetVoiceConfigurationResponse], error)
 	JoinVoiceRoom(context.Context, *connect.Request[v1.JoinVoiceRoomRequest]) (*connect.Response[v1.JoinVoiceRoomResponse], error)
 	UpdateVoiceRoom(context.Context, *connect.Request[v1.UpdateVoiceRoomRequest]) (*connect.Response[v1.UpdateVoiceRoomResponse], error)
 	LeaveVoiceRoom(context.Context, *connect.Request[v1.LeaveVoiceRoomRequest]) (*connect.Response[v1.LeaveVoiceRoomResponse], error)
@@ -136,6 +153,12 @@ type VoiceServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewVoiceServiceHandler(svc VoiceServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	voiceServiceMethods := v1.File_space_v1_voice_proto.Services().ByName("VoiceService").Methods()
+	voiceServiceGetVoiceConfigurationHandler := connect.NewUnaryHandler(
+		VoiceServiceGetVoiceConfigurationProcedure,
+		svc.GetVoiceConfiguration,
+		connect.WithSchema(voiceServiceMethods.ByName("GetVoiceConfiguration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	voiceServiceJoinVoiceRoomHandler := connect.NewUnaryHandler(
 		VoiceServiceJoinVoiceRoomProcedure,
 		svc.JoinVoiceRoom,
@@ -162,6 +185,8 @@ func NewVoiceServiceHandler(svc VoiceServiceHandler, opts ...connect.HandlerOpti
 	)
 	return "/space.v1.VoiceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case VoiceServiceGetVoiceConfigurationProcedure:
+			voiceServiceGetVoiceConfigurationHandler.ServeHTTP(w, r)
 		case VoiceServiceJoinVoiceRoomProcedure:
 			voiceServiceJoinVoiceRoomHandler.ServeHTTP(w, r)
 		case VoiceServiceUpdateVoiceRoomProcedure:
@@ -178,6 +203,10 @@ func NewVoiceServiceHandler(svc VoiceServiceHandler, opts ...connect.HandlerOpti
 
 // UnimplementedVoiceServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedVoiceServiceHandler struct{}
+
+func (UnimplementedVoiceServiceHandler) GetVoiceConfiguration(context.Context, *connect.Request[v1.GetVoiceConfigurationRequest]) (*connect.Response[v1.GetVoiceConfigurationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.VoiceService.GetVoiceConfiguration is not implemented"))
+}
 
 func (UnimplementedVoiceServiceHandler) JoinVoiceRoom(context.Context, *connect.Request[v1.JoinVoiceRoomRequest]) (*connect.Response[v1.JoinVoiceRoomResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.VoiceService.JoinVoiceRoom is not implemented"))

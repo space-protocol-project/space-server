@@ -43,16 +43,23 @@ type Service struct {
 	store    IdentityStore
 	ctx      context.Context
 	api      *webrtc.API
+	network  NetworkConfig
 }
 
-func NewService(ctx context.Context, store IdentityStore) (*Service, error) {
-	settings := webrtc.SettingEngine{}
-	settings.SetIncludeLoopbackCandidate(true)
+func NewService(ctx context.Context, store IdentityStore, configuration ...NetworkConfig) (*Service, error) {
+	network := NetworkConfig{}
+	if len(configuration) > 0 {
+		network = configuration[0]
+	}
+	settings, err := network.settings()
+	if err != nil {
+		return nil, err
+	}
 	api, err := NewOpusAPI(settings)
 	if err != nil {
 		return nil, err
 	}
-	return &Service{ctx: ctx, store: store, api: api, sessions: make(map[string]*mediaSession)}, nil
+	return &Service{ctx: ctx, store: store, api: api, network: network, sessions: make(map[string]*mediaSession)}, nil
 }
 
 func (s *Service) identify(ctx context.Context, room string) (Identity, error) {

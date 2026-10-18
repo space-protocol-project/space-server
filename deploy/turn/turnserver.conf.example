@@ -1,0 +1,41 @@
+# Замените адреса и секрет перед запуском. Не публикуйте заполненный файл.
+listening-port=3478
+listening-ip=203.0.113.10
+relay-ip=203.0.113.10
+realm=voice.example.org
+server-name=voice.example.org
+fingerprint
+use-auth-secret
+static-auth-secret=REPLACE_WITH_RANDOM_64_HEX_CHARACTERS
+
+min-port=49160
+max-port=49259
+user-quota=4
+total-quota=128
+max-bps=131072
+bps-capacity=16777216
+max-allocate-lifetime=600
+stale-nonce=600
+no-cli
+no-tcp-relay
+no-multicast-peers
+
+# Публичный ретранслятор не должен давать доступ во внутреннюю сеть VPS.
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=224.0.0.0-255.255.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
+# Для TURN/TLS установите доверенный сертификат и откройте TCP 5349.
+# tls-listening-port=5349
+# cert=/etc/turnserver/certs/fullchain.pem
+# pkey=/etc/turnserver/certs/privkey.pem
+# no-tlsv1
+# no-tlsv1_1

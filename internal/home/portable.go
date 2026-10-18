@@ -93,6 +93,12 @@ func preparePortableDump(runtime, data, staging string) (result error) {
 }
 
 func portableDatabaseTool(runtime, tool, address, logDir string, arguments ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+	return portableDatabaseToolContext(ctx, runtime, tool, address, logDir, arguments...)
+}
+
+func portableDatabaseToolContext(ctx context.Context, runtime, tool, address, logDir string, arguments ...string) error {
 	parsed, err := url.Parse(address)
 	if err != nil {
 		return err
@@ -102,8 +108,6 @@ func portableDatabaseTool(runtime, tool, address, logDir string, arguments ...st
 	base := command(runtime, tool, append([]string{"--dbname=" + parsed.String()}, arguments...)...)
 	base.Env = append(base.Env, "PGPASSWORD="+password)
 	// Большой сервер может обрабатываться дольше обычной проверки запуска.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	defer cancel()
 	base = commandWithContext(ctx, base)
 	output, err := runPortableLogged(base, logDir)
 	if err != nil {

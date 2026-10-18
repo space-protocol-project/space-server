@@ -125,6 +125,10 @@ func runServer(options serverOptions) (result error) {
 		defer publicServer.close()
 	}
 	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", options.port, identity.ServerID, options.demo)
+	if homeMode && !options.demo {
+		stopBackups := home.StartScheduledBackups(ctx, home.ScheduledBackupOptions{Data: options.homeData, Runtime: options.homeRuntime, Address: os.Getenv("SPACE_DATABASE_URL"), ServerID: identity.ServerID})
+		defer stopBackups()
+	}
 	return waitForServer(ctx, httpServer, failures)
 }
 
@@ -313,6 +317,7 @@ func performMaintenance(options serverOptions) (bool, error) {
 	if options.runtimeInfo {
 		return true, json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"portableInspectionVersion": 1,
+			"scheduledBackupsVersion":   1,
 			"remoteSetupVersion":        1,
 			"automaticNetworkVersion":   1, "networkDoctorVersion": 2, "endpointSetVersion": 1, "portableTransferVersion": 1, "format": 1, "protocolVersion": "0.1-experimental", "schemaVersion": postgres.SchemaVersion(),
 			"postgresMajor": postgres.HomePostgresMajor, "os": runtime.GOOS, "arch": runtime.GOARCH,

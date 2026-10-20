@@ -141,7 +141,8 @@ func (s *Service) snapshot(room string, publish bool) *pb.VoiceRoomState {
 		if item.room != room {
 			continue
 		}
-		result.Participants = append(result.Participants, &pb.VoiceParticipant{SessionId: item.id, PrincipalId: item.identity.Actor.PrincipalID, DeviceId: item.identity.Actor.DeviceID, Nickname: item.identity.Name, Muted: item.muted.Load(), Deafened: item.deafened.Load()})
+		slot := uint32(item.slot)
+		result.Participants = append(result.Participants, &pb.VoiceParticipant{AudioSlot: &slot, SessionId: item.id, PrincipalId: item.identity.Actor.PrincipalID, DeviceId: item.identity.Actor.DeviceID, Nickname: item.identity.Name, Muted: item.muted.Load(), Deafened: item.deafened.Load()})
 	}
 	sort.Slice(result.Participants, func(i, j int) bool { return result.Participants[i].SessionId < result.Participants[j].SessionId })
 	return result

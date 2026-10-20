@@ -54,6 +54,13 @@ func run() error {
 }
 
 func privateAddress() (string, error) {
+	requested := os.Getenv("SPACE_VOICE_TURN_CHECK_IP")
+	if requested != "" {
+		ip := net.ParseIP(requested)
+		if ip == nil || ip.To4() == nil || !ip.IsPrivate() {
+			return "", fmt.Errorf("Нужен частный IPv4 локального интерфейса")
+		}
+	}
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
@@ -68,7 +75,7 @@ func privateAddress() (string, error) {
 		}
 		for _, address := range addresses {
 			ip, _, err := net.ParseCIDR(address.String())
-			if err == nil && ip.To4() != nil && ip.IsPrivate() {
+			if err == nil && ip.To4() != nil && ip.IsPrivate() && (requested == "" || requested == ip.String()) {
 				return ip.String(), nil
 			}
 		}

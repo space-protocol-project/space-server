@@ -140,6 +140,7 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	if _, err = f.admin.ClaimOwner(f.owner, &pb.ClaimOwnerRequest{SetupCode: code}); err != nil {
 		t.Fatal(err)
 	}
+	setAttachmentPolicy(t, f, f.owner, true)
 	return f
 }
 

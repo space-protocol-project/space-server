@@ -6,6 +6,7 @@ import (
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
 	"testing"
+	"time"
 )
 
 func setAttachmentPolicy(t *testing.T, f *channelFixture, actor context.Context, enabled bool) {
@@ -82,5 +83,31 @@ func TestAttachmentPolicyEnforcementAndCatalog(t *testing.T) {
 	setAttachmentPolicy(t, f, reader, true)
 	if _, err = client.DownloadChunk(reader, &pb.DownloadChunkRequest{AssetId: id}); err != nil {
 		t.Fatal("Возврат доступа", err)
+	}
+}
+
+func TestAttachmentDefaultDisabledAndPreserved(t *testing.T) {
+	ctx, url := isolatedDatabaseTimeout(t, 45*time.Second)
+	store, _, err := openManual(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var enabled bool
+	if err = store.pool.QueryRow(ctx, "SELECT attachments_enabled FROM space_settings").Scan(&enabled); err != nil || enabled {
+		store.Close()
+		t.Fatal("Вложения нового пространства должны быть выключены", err)
+	}
+	if _, err = store.pool.Exec(ctx, "UPDATE space_settings SET attachments_enabled=true"); err != nil {
+		store.Close()
+		t.Fatal(err)
+	}
+	store.Close()
+	reopened, _, err := openManual(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if err = reopened.pool.QueryRow(ctx, "SELECT attachments_enabled FROM space_settings").Scan(&enabled); err != nil || !enabled {
+		t.Fatal("Сохранённое разрешение вложений потеряно", err)
 	}
 }

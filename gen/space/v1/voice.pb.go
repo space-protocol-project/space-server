@@ -22,13 +22,15 @@ const (
 )
 
 type VoiceParticipant struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	PrincipalId   string                 `protobuf:"bytes,2,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
-	DeviceId      string                 `protobuf:"bytes,3,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	Nickname      string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`
-	Muted         bool                   `protobuf:"varint,5,opt,name=muted,proto3" json:"muted,omitempty"`
-	Deafened      bool                   `protobuf:"varint,6,opt,name=deafened,proto3" json:"deafened,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	SessionId   string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	PrincipalId string                 `protobuf:"bytes,2,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
+	DeviceId    string                 `protobuf:"bytes,3,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	Nickname    string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Muted       bool                   `protobuf:"varint,5,opt,name=muted,proto3" json:"muted,omitempty"`
+	Deafened    bool                   `protobuf:"varint,6,opt,name=deafened,proto3" json:"deafened,omitempty"`
+	// Стабильное место участника в комнате (0..7), не состояние микрофона.
+	AudioSlot     *uint32 `protobuf:"varint,7,opt,name=audio_slot,json=audioSlot,proto3,oneof" json:"audio_slot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -103,6 +105,13 @@ func (x *VoiceParticipant) GetDeafened() bool {
 		return x.Deafened
 	}
 	return false
+}
+
+func (x *VoiceParticipant) GetAudioSlot() uint32 {
+	if x != nil && x.AudioSlot != nil {
+		return *x.AudioSlot
+	}
+	return 0
 }
 
 type VoiceRoomState struct {
@@ -735,7 +744,7 @@ var File_space_v1_voice_proto protoreflect.FileDescriptor
 
 const file_space_v1_voice_proto_rawDesc = "" +
 	"\n" +
-	"\x14space/v1/voice.proto\x12\bspace.v1\"\xbf\x01\n" +
+	"\x14space/v1/voice.proto\x12\bspace.v1\"\xf2\x01\n" +
 	"\x10VoiceParticipant\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12!\n" +
@@ -743,7 +752,10 @@ const file_space_v1_voice_proto_rawDesc = "" +
 	"\tdevice_id\x18\x03 \x01(\tR\bdeviceId\x12\x1a\n" +
 	"\bnickname\x18\x04 \x01(\tR\bnickname\x12\x14\n" +
 	"\x05muted\x18\x05 \x01(\bR\x05muted\x12\x1a\n" +
-	"\bdeafened\x18\x06 \x01(\bR\bdeafened\"\x8d\x01\n" +
+	"\bdeafened\x18\x06 \x01(\bR\bdeafened\x12\"\n" +
+	"\n" +
+	"audio_slot\x18\a \x01(\rH\x00R\taudioSlot\x88\x01\x01B\r\n" +
+	"\v_audio_slot\"\x8d\x01\n" +
 	"\x0eVoiceRoomState\x12>\n" +
 	"\fparticipants\x18\x01 \x03(\v2\x1a.space.v1.VoiceParticipantR\fparticipants\x12\x1f\n" +
 	"\vcan_publish\x18\x02 \x01(\bR\n" +
@@ -857,6 +869,7 @@ func file_space_v1_voice_proto_init() {
 	if File_space_v1_voice_proto != nil {
 		return
 	}
+	file_space_v1_voice_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

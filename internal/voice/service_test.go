@@ -139,7 +139,12 @@ func TestTwoClientsVoiceControlsAndRevocation(t *testing.T) {
 	if len(bJoin.State.Participants) != 2 {
 		t.Fatal("нет двух участников")
 	}
+	slots := map[uint32]bool{}
 	for _, person := range bJoin.State.Participants {
+		if person.AudioSlot == nil || person.GetAudioSlot() > 7 || slots[person.GetAudioSlot()] {
+			t.Fatal("Некорректное или повторяющееся аудиоместо участника")
+		}
+		slots[person.GetAudioSlot()] = true
 		if !person.Muted {
 			t.Fatal("микрофон включён при входе")
 		}

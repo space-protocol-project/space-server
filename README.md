@@ -1,6 +1,6 @@
 # Space Server
 
-В v0.7.1 доступны голосовые комнаты для восьми настольных клиентов: схема 23, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md). Для работы нужна совместимая пара приложения и runtime v0.7.1, голосовой профиль 3.
+В runtime v0.7.5 доступны голосовые комнаты для восьми настольных клиентов: схема 24, голосовой профиль 3, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. Для рамок речи других участников нужен клиент v0.7.9: сервер передаёт стабильное audio_slot, а клиент связывает его с аудиодорожкой. Старые клиенты сохраняют совместимость голоса. Вложения выключены по умолчанию только в новых пространствах; миграция сохраняет прежние значения. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md).
 
 Запуск с нуля одной командой (приложение и runtime v0.3.5):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
@@ -80,7 +80,7 @@ go run ./cmd/space-server
 
 ## Проверки и релизы
 
-Текущий экспериментальный выпуск: [runtime v0.2.2](https://github.com/space-protocol-project/space-server/releases/latest), опубликован 14 октября 2026 года. [CI выпуска 38482588850](https://github.com/space-protocol-project/space-server/actions/runs/38482588850) прошёл на Windows/macOS/Linux, включая обновление и восстановление реальной PostgreSQL. Runtime закреплён в [приложении v0.2.2](https://github.com/space-protocol-project/space-app/releases/latest); обычному пользователю достаточно установить приложение и создать пространство. [Обновление и ручное восстановление](https://github.com/space-protocol-project/space-app/blob/main/docs/HOME-RECOVERY.md).
+Текущий обычный выпуск — [runtime v0.7.5](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.5). [CI выпуска 39437492845](https://github.com/space-protocol-project/space-server/actions/runs/39437492845) успешно проверил Windows/macOS/Linux: первоначальный TLS-вход, обновление, перенос пространства, старые архивы и восстановление MLS с тремя устройствами и зашифрованным файлом. Совместимый клиент — v0.7.9. Выпуск Latest, не draft и не prerelease. Через API GitHub подтверждены три архива, три JSON-дескриптора и SHA256SUMS: uploaded, ненулевой размер, SHA-256 digest. Архивы при этой проверке не скачивались. Два отдельных Windows-процесса клиента проверены напрямую и через TURN TCP/UDP с восстановлением после перезапуска; акустическая приёмка и публичный интернет остаются открытыми. [Обновление и ручное восстановление](https://github.com/space-protocol-project/space-app/blob/main/docs/HOME-RECOVERY.md).
 
 Новые каталоги копий и восстановления защищены до записи данных: Windows — владелец процесса и SYSTEM, Unix — 0700. Права уже созданных копий автоматически не изменяются. Контрольные суммы архивов доступны в [SHA256SUMS.txt](https://github.com/space-protocol-project/space-server/releases/latest/download/SHA256SUMS.txt).
 

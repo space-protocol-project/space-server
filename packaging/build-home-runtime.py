@@ -28,6 +28,15 @@ def run(*args, cwd=None, env=None):
     subprocess.run(args, cwd=cwd, env=env, check=True)
 
 
+def verify_go_version(executable, required):
+    output = subprocess.check_output(["go", "version", str(executable)], text=True)
+    version = output.strip().split()[-1]
+    if version != "go" + required:
+        raise RuntimeError(f"Версия Go в runtime: {version}, требуется go{required}")
+    print(f"Версия Go в собранном runtime проверена: {version}")
+    return version
+
+
 def build():
     changelog = (ROOT / "Changelog.md").read_text(encoding="utf-8")
     tagged = os.environ.get("GITHUB_REF", "").startswith("refs/tags/")
@@ -82,6 +91,9 @@ def build():
         executable = "space-server.exe" if system == "Windows" else "space-server"
         flags = ["-ldflags=-H=windowsgui"] if system == "Windows" else []
         run("go", "build", "-trimpath", *flags, "-o", str(STAGE / executable), "./cmd/space-server", cwd=ROOT)
+        required_go = next(line.split()[1] for line in (ROOT / "go.mod").read_text().splitlines() if line.startswith("go "))
+        built_go = verify_go_version(STAGE / executable, required_go)
+        (STAGE / "GO-VERSION.txt").write_text(built_go + "\n", encoding="utf-8")
         info = json.loads(subprocess.check_output([str(STAGE / executable), "-runtime-info"], text=True))
         if info["format"] != 1 or info["postgresMajor"] != int(PG_VERSION.split(".")[0]):
             raise RuntimeError("Сервер и комплект PostgreSQL несовместимы")

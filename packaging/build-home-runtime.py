@@ -33,7 +33,7 @@ def verify_go_version(executable, required):
     version = output.strip().split()[-1]
     if version != "go" + required:
         raise RuntimeError(f"Версия Go в runtime: {version}, требуется go{required}")
-    print(f"Версия Go в собранном runtime проверена: {version}")
+    print(f"Go runtime: {version}")
     return version
 
 

@@ -1,6 +1,6 @@
 module github.com/space-protocol-project/space-server
 
-go 1.27.2
+go 1.27.3
 
 require (
 	connectrpc.com/connect v1.19.2

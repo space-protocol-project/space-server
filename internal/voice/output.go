@@ -37,9 +37,9 @@ func (o *audioOutput) write(source string, packet *rtp.Packet) {
 	_ = o.track.WriteRTP(&outgoing)
 }
 
-func prepareOutputs(peer *webrtc.PeerConnection) ([]*audioOutput, error) {
-	outputs := make([]*audioOutput, 0, roomCapacity-1)
-	for i := 0; i < roomCapacity-1; i++ {
+func prepareOutputs(peer *webrtc.PeerConnection, count int) ([]*audioOutput, error) {
+	outputs := make([]*audioOutput, 0, count)
+	for i := 0; i < count; i++ {
 		id := fmt.Sprintf("speaker-%d", i)
 		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus, ClockRate: 48000, Channels: 2}, id, id)
 		if err != nil {

@@ -59,10 +59,16 @@ func TestEightSimultaneousSpeakersAndSlotReuse(t *testing.T) {
 	}
 }
 
-func checkEightSpeakers(t *testing.T, transport string) {
+func checkEightSpeakers(t *testing.T, transport string) { checkGroupSpeakers(t, transport, 8) }
+
+func TestThirtyTwoSimultaneousSpeakersAndSlotReuse(t *testing.T) {
+	checkGroupSpeakers(t, "direct", 32)
+}
+
+func checkGroupSpeakers(t *testing.T, transport string, roomCapacity int) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	policy := &voicePolicy{blocked: map[string]bool{}, reader: map[string]bool{}}
+	policy := &voicePolicy{capacity: roomCapacity, blocked: map[string]bool{}, reader: map[string]bool{}}
 	configuration := NetworkConfig{}
 	factory := func() *webrtc.PeerConnection { return loopbackPeer(t) }
 	if transport != "direct" {
@@ -91,8 +97,8 @@ func checkEightSpeakers(t *testing.T, transport string) {
 		peer := factory()
 		tracks[i] = addOpus(t, peer, fmt.Sprint(i))
 		observeGroup(peer, i, packets)
-		joins[i] = servicePeer(t, identities[i], service, peer)
-		if joins[i].State.Capacity != roomCapacity {
+		joins[i] = servicePeer(t, identities[i], service, peer, roomCapacity)
+		if joins[i].State.Capacity != int32(roomCapacity) {
 			t.Fatal("Неверная вместимость")
 		}
 		_, err = service.UpdateVoiceRoom(identities[i], &pb.UpdateVoiceRoomRequest{ChannelId: "room", SessionId: joins[i].SessionId})
@@ -142,16 +148,16 @@ func checkEightSpeakers(t *testing.T, transport string) {
 	replacement := factory()
 	replacementTrack := addOpus(t, replacement, "replacement")
 	observeGroup(replacement, 7, packets)
-	joined := servicePeer(t, outsider, service, replacement)
+	joined := servicePeer(t, outsider, service, replacement, roomCapacity)
 	if _, err = service.UpdateVoiceRoom(outsider, &pb.UpdateVoiceRoomRequest{ChannelId: "room", SessionId: joined.SessionId}); err != nil {
 		t.Fatal(err)
 	}
-	go publishGroup(ctx, replacementTrack, 9)
+	go publishGroup(ctx, replacementTrack, 255)
 	received := make(map[int]bool)
 	for len(received) < roomCapacity-1 {
 		select {
 		case packet := <-packets:
-			if packet.marker == 9 {
+			if packet.marker == 255 {
 				if packet.listener == 7 {
 					t.Fatal("Эхо заменившего участника")
 				}

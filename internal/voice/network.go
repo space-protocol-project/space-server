@@ -137,7 +137,7 @@ func (c NetworkConfig) settings() (webrtc.SettingEngine, error) {
 }
 
 func (c NetworkConfig) credentials() (*pb.GetVoiceConfigurationResponse, error) {
-	result := &pb.GetVoiceConfigurationResponse{RelayOnly: c.RelayOnly}
+	result := &pb.GetVoiceConfigurationResponse{RelayOnly: c.RelayOnly, MediaCapacity: MaxRoomCapacity}
 	if len(c.STUNURLs) > 0 {
 		result.IceServers = append(result.IceServers, &pb.VoiceIceServer{Urls: append([]string(nil), c.STUNURLs...)})
 	}

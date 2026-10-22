@@ -29,7 +29,7 @@ type VoiceParticipant struct {
 	Nickname    string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`
 	Muted       bool                   `protobuf:"varint,5,opt,name=muted,proto3" json:"muted,omitempty"`
 	Deafened    bool                   `protobuf:"varint,6,opt,name=deafened,proto3" json:"deafened,omitempty"`
-	// Стабильное место участника в комнате (0..7), не состояние микрофона.
+	// Стабильное место участника в комнате (0..31), не состояние микрофона.
 	AudioSlot     *uint32 `protobuf:"varint,7,opt,name=audio_slot,json=audioSlot,proto3,oneof" json:"audio_slot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -685,6 +685,8 @@ type GetVoiceConfigurationResponse struct {
 	IceServers    []*VoiceIceServer      `protobuf:"bytes,1,rep,name=ice_servers,json=iceServers,proto3" json:"ice_servers,omitempty"`
 	RelayOnly     bool                   `protobuf:"varint,2,opt,name=relay_only,json=relayOnly,proto3" json:"relay_only,omitempty"`
 	ExpiresAtUnix int64                  `protobuf:"varint,3,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	// Число участников, для которого клиент готовит аудиопотоки; 0 означает 8.
+	MediaCapacity int32 `protobuf:"varint,4,opt,name=media_capacity,json=mediaCapacity,proto3" json:"media_capacity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -736,6 +738,13 @@ func (x *GetVoiceConfigurationResponse) GetRelayOnly() bool {
 func (x *GetVoiceConfigurationResponse) GetExpiresAtUnix() int64 {
 	if x != nil {
 		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
+func (x *GetVoiceConfigurationResponse) GetMediaCapacity() int32 {
+	if x != nil {
+		return x.MediaCapacity
 	}
 	return 0
 }
@@ -799,13 +808,14 @@ const file_space_v1_voice_proto_rawDesc = "" +
 	"credential\"=\n" +
 	"\x1cGetVoiceConfigurationRequest\x12\x1d\n" +
 	"\n" +
-	"channel_id\x18\x01 \x01(\tR\tchannelId\"\xa1\x01\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\"\xc8\x01\n" +
 	"\x1dGetVoiceConfigurationResponse\x129\n" +
 	"\vice_servers\x18\x01 \x03(\v2\x18.space.v1.VoiceIceServerR\n" +
 	"iceServers\x12\x1d\n" +
 	"\n" +
 	"relay_only\x18\x02 \x01(\bR\trelayOnly\x12&\n" +
-	"\x0fexpires_at_unix\x18\x03 \x01(\x03R\rexpiresAtUnix2\xc6\x03\n" +
+	"\x0fexpires_at_unix\x18\x03 \x01(\x03R\rexpiresAtUnix\x12%\n" +
+	"\x0emedia_capacity\x18\x04 \x01(\x05R\rmediaCapacity2\xc6\x03\n" +
 	"\fVoiceService\x12h\n" +
 	"\x15GetVoiceConfiguration\x12&.space.v1.GetVoiceConfigurationRequest\x1a'.space.v1.GetVoiceConfigurationResponse\x12P\n" +
 	"\rJoinVoiceRoom\x12\x1e.space.v1.JoinVoiceRoomRequest\x1a\x1f.space.v1.JoinVoiceRoomResponse\x12V\n" +

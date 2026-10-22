@@ -19,12 +19,22 @@ type Identity struct {
 	Actor      Actor
 	Name       string
 	CanPublish bool
+	Capacity   int
 }
 type IdentityStore interface {
 	VoiceIdentity(context.Context, string) (Identity, error)
 }
 
 const roomCapacity = 8
+const MaxRoomCapacity = 32
+
+// Capacity сохраняет прежний лимит для хранилищ без настройки.
+func Capacity(value int) int {
+	if value == 0 {
+		return roomCapacity
+	}
+	return value
+}
 
 type mediaSession struct {
 	slot                     int
@@ -72,30 +82,20 @@ func (s *Service) identify(ctx context.Context, room string) (Identity, error) {
 	return s.store.VoiceIdentity(ctx, room)
 }
 
-func (s *Service) reserve(ctx context.Context, identity Identity, room string) (*mediaSession, error) {
+func (s *Service) reserve(ctx context.Context, identity Identity, room string, outputCounts ...int) (*mediaSession, error) {
 	var random [16]byte
 	if _, err := rand.Read(random[:]); err != nil {
 		return nil, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	count := 0
-	var occupied [roomCapacity]bool
-	for _, existing := range s.sessions {
-		if existing.identity.Actor == identity.Actor {
-			return nil, status.Error(codes.AlreadyExists, "Сначала завершите прежнее голосовое подключение")
-		}
-		if existing.room == room {
-			occupied[existing.slot] = true
-			count++
-		}
+	outputs := MaxRoomCapacity - 1
+	if len(outputCounts) > 0 {
+		outputs = outputCounts[0]
 	}
-	if count >= roomCapacity || len(s.sessions) >= 128 {
-		return nil, status.Error(codes.ResourceExhausted, "В комнате может быть не больше восьми участников")
-	}
-	slot := 0
-	for occupied[slot] {
-		slot++
+	slot, err := s.reserveSlot(identity, room, outputs)
+	if err != nil {
+		return nil, err
 	}
 	item := &mediaSession{slot: slot, id: hex.EncodeToString(random[:]), room: room, identity: identity, auth: context.WithoutCancel(ctx), done: make(chan struct{})}
 	item.muted.Store(true)
@@ -103,6 +103,55 @@ func (s *Service) reserve(ctx context.Context, identity Identity, room string) (
 	item.expires.Store(time.Now().Add(30 * time.Second).UnixMilli())
 	s.sessions[item.id] = item
 	return item, nil
+}
+
+// Вызывается под s.mu: выбор места и резервирование должны быть атомарными.
+func (s *Service) occupiedSlots(identity Identity, room string) ([MaxRoomCapacity]bool, int, error) {
+	var occupied [MaxRoomCapacity]bool
+	count := 0
+	for _, existing := range s.sessions {
+		if existing.identity.Actor == identity.Actor {
+			return occupied, count, status.Error(codes.AlreadyExists, "Сначала завершите прежнее голосовое подключение")
+		}
+		if existing.room == room {
+			occupied[existing.slot] = true
+			count++
+		}
+	}
+	return occupied, count, nil
+}
+
+func (s *Service) reserveSlot(identity Identity, room string, outputs int) (int, error) {
+	occupied, count, err := s.occupiedSlots(identity, room)
+	if err != nil {
+		return 0, err
+	}
+	if count >= Capacity(identity.Capacity) || len(s.sessions) >= 128 {
+		return 0, status.Error(codes.ResourceExhausted, "Достигнут лимит участников комнаты или голосовых подключений сервера")
+	}
+	slot := 0
+	for occupied[slot] {
+		slot++
+	}
+	if slot > outputs {
+		return 0, status.Error(codes.FailedPrecondition, "Обновите приложение для входа в большую голосовую комнату")
+	}
+	return slot, s.checkReceiverSlots(room, slot, outputs)
+}
+
+func (s *Service) checkReceiverSlots(room string, slot, outputs int) error {
+	for _, existing := range s.sessions {
+		if existing.room != room {
+			continue
+		}
+		if existing.slot > outputs {
+			return status.Error(codes.FailedPrecondition, "Обновите приложение для входа в большую голосовую комнату")
+		}
+		if existing.outgoing != nil && slot > len(existing.outgoing) {
+			return status.Error(codes.FailedPrecondition, "Дождитесь переподключения участников после изменения лимита")
+		}
+	}
+	return nil
 }
 
 func (s *Service) remove(id string) {
@@ -133,8 +182,8 @@ func (s *Service) owned(identity Identity, room, id string) (*mediaSession, erro
 	return item, nil
 }
 
-func (s *Service) snapshot(room string, publish bool) *pb.VoiceRoomState {
-	result := &pb.VoiceRoomState{CanPublish: publish, Capacity: roomCapacity}
+func (s *Service) snapshot(room string, identity Identity) *pb.VoiceRoomState {
+	result := &pb.VoiceRoomState{CanPublish: identity.CanPublish, Capacity: int32(Capacity(identity.Capacity))}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, item := range s.sessions {
@@ -153,7 +202,7 @@ func (s *Service) GetVoiceRoom(ctx context.Context, req *pb.GetVoiceRoomRequest)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetVoiceRoomResponse{State: s.snapshot(req.ChannelId, identity.CanPublish)}, nil
+	return &pb.GetVoiceRoomResponse{State: s.snapshot(req.ChannelId, identity)}, nil
 }
 
 func (s *Service) UpdateVoiceRoom(ctx context.Context, req *pb.UpdateVoiceRoomRequest) (*pb.UpdateVoiceRoomResponse, error) {
@@ -176,7 +225,7 @@ func (s *Service) UpdateVoiceRoom(ctx context.Context, req *pb.UpdateVoiceRoomRe
 	s.mu.Lock()
 	item.auth = context.WithoutCancel(ctx)
 	s.mu.Unlock()
-	return &pb.UpdateVoiceRoomResponse{State: s.snapshot(req.ChannelId, identity.CanPublish)}, nil
+	return &pb.UpdateVoiceRoomResponse{State: s.snapshot(req.ChannelId, identity)}, nil
 }
 
 func (s *Service) LeaveVoiceRoom(ctx context.Context, req *pb.LeaveVoiceRoomRequest) (*pb.LeaveVoiceRoomResponse, error) {

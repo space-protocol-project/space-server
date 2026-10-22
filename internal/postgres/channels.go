@@ -10,18 +10,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"github.com/space-protocol-project/space-server/internal/authn"
+	"github.com/space-protocol-project/space-server/internal/voice"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var channelIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
-const channelColumns = "id,title,view_type,position,archived,public_preview,revision,mls_group_id"
+const channelColumns = "id,title,view_type,position,archived,public_preview,revision,mls_group_id,voice_capacity"
 
 func scanChannel(row pgx.Row) (*pb.Channel, error) {
 	c := new(pb.Channel)
 	var kind string
-	err := row.Scan(&c.Id, &c.Title, &kind, &c.Position, &c.Archived, &c.PublicPreview, &c.Revision, &c.MlsGroupId)
+	err := row.Scan(&c.Id, &c.Title, &kind, &c.Position, &c.Archived, &c.PublicPreview, &c.Revision, &c.MlsGroupId, &c.VoiceCapacity)
 	c.Views = []*pb.View{{Id: kind, Type: kind}}
 	return c, err
 }
@@ -269,12 +270,15 @@ func (s *Store) UpdateChannel(ctx context.Context, req *pb.UpdateChannelRequest)
 		return nil, err
 	}
 	c.Title, c.Position, c.Archived, c.PublicPreview = req.Title, req.Position, req.Archived, req.PublicPreview
+	if req.VoiceCapacity != 0 {
+		c.VoiceCapacity = req.VoiceCapacity
+	}
 	c.Revision++
 	c.Permissions = p
 	if c.Archived {
 		c.Permissions.Write = false
 	}
-	if _, err = tx.Exec(ctx, "UPDATE channels SET title=$2,position=$3,archived=$4,public_preview=$5,revision=$6 WHERE id=$1", c.Id, c.Title, c.Position, c.Archived, c.PublicPreview, c.Revision); err != nil {
+	if _, err = tx.Exec(ctx, "UPDATE channels SET title=$2,position=$3,archived=$4,public_preview=$5,revision=$6,voice_capacity=$7 WHERE id=$1", c.Id, c.Title, c.Position, c.Archived, c.PublicPreview, c.Revision, c.VoiceCapacity); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err := synchronizeGeneralTitle(ctx, tx, c); err != nil {
@@ -620,6 +624,9 @@ func updateChannelReadState(ctx context.Context, q rowQuery, c *pb.Channel, disa
 }
 
 func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Member) error {
+	if err := validateVoiceCapacity(req.VoiceCapacity, c.Views[0].Type); err != nil {
+		return err
+	}
 	if len(c.MlsGroupId) > 0 && req.PublicPreview {
 		return status.Error(codes.InvalidArgument, "Закрытый канал не может иметь публичное превью")
 	}
@@ -634,6 +641,9 @@ func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Me
 }
 
 func validateChannelCreation(req *pb.CreateChannelRequest) error {
+	if err := validateVoiceCapacity(req.VoiceCapacity, req.ViewType); err != nil {
+		return err
+	}
 	if req.ViewType == "voice_room" && (len(req.MlsGroupId) > 0 || req.PublicPreview) {
 		return status.Error(codes.InvalidArgument, "Голосовая комната не поддерживает MLS или публичный предпросмотр")
 	}
@@ -648,9 +658,19 @@ func validateChannelCreation(req *pb.CreateChannelRequest) error {
 }
 
 func insertChannelMetadata(ctx context.Context, tx pgx.Tx, req *pb.CreateChannelRequest) error {
-	if _, err := tx.Exec(ctx, "INSERT INTO channels(id,title,view_type,position,public_preview,mls_group_id) VALUES($1,$2,$3,$4,$5,$6)", req.ChannelId, req.Title, req.ViewType, req.Position, req.PublicPreview, mlsGroupOrNull(req.MlsGroupId)); err != nil {
+	if _, err := tx.Exec(ctx, "INSERT INTO channels(id,title,view_type,position,public_preview,mls_group_id,voice_capacity) VALUES($1,$2,$3,$4,$5,$6,$7)", req.ChannelId, req.Title, req.ViewType, req.Position, req.PublicPreview, mlsGroupOrNull(req.MlsGroupId), voice.Capacity(int(req.VoiceCapacity))); err != nil {
 		return databaseError(ctx, err)
 	}
 
 	return initializeMlsChannel(ctx, tx, req)
+}
+
+func validateVoiceCapacity(capacity int32, kind string) error {
+	if capacity == 0 {
+		return nil
+	}
+	if kind != "voice_room" || capacity < 2 || capacity > voice.MaxRoomCapacity {
+		return status.Error(codes.InvalidArgument, "Лимит голосовой комнаты должен быть от 2 до 32")
+	}
+	return nil
 }

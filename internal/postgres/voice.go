@@ -47,6 +47,7 @@ func (s *Store) VoiceIdentity(ctx context.Context, channel string) (voice.Identi
 		return identity, databaseError(ctx, err)
 	}
 	identity.CanPublish = c.Permissions.Write
+	identity.Capacity = int(c.VoiceCapacity)
 	if err = tx.Commit(ctx); err != nil {
 		return identity, databaseError(ctx, err)
 	}

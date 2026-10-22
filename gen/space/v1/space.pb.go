@@ -3547,6 +3547,7 @@ type Channel struct {
 	// Только для авторизованного read; иначе 0.
 	LatestMessageSequence int64  `protobuf:"varint,9,opt,name=latest_message_sequence,json=latestMessageSequence,proto3" json:"latest_message_sequence,omitempty"`
 	MlsGroupId            []byte `protobuf:"bytes,10,opt,name=mls_group_id,json=mlsGroupId,proto3" json:"mls_group_id,omitempty"`
+	VoiceCapacity         int32  `protobuf:"varint,11,opt,name=voice_capacity,json=voiceCapacity,proto3" json:"voice_capacity,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -3649,6 +3650,13 @@ func (x *Channel) GetMlsGroupId() []byte {
 		return x.MlsGroupId
 	}
 	return nil
+}
+
+func (x *Channel) GetVoiceCapacity() int32 {
+	if x != nil {
+		return x.VoiceCapacity
+	}
+	return 0
 }
 
 // write требует read, read и manage требуют visible.
@@ -3877,6 +3885,8 @@ type CreateChannelRequest struct {
 	Position      int32                  `protobuf:"varint,4,opt,name=position,proto3" json:"position,omitempty"`
 	PublicPreview bool                   `protobuf:"varint,5,opt,name=public_preview,json=publicPreview,proto3" json:"public_preview,omitempty"`
 	MlsGroupId    []byte                 `protobuf:"bytes,6,opt,name=mls_group_id,json=mlsGroupId,proto3" json:"mls_group_id,omitempty"`
+	// 0 сохраняет значение по умолчанию: 8. Только для voice_room.
+	VoiceCapacity int32 `protobuf:"varint,7,opt,name=voice_capacity,json=voiceCapacity,proto3" json:"voice_capacity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3953,6 +3963,13 @@ func (x *CreateChannelRequest) GetMlsGroupId() []byte {
 	return nil
 }
 
+func (x *CreateChannelRequest) GetVoiceCapacity() int32 {
+	if x != nil {
+		return x.VoiceCapacity
+	}
+	return 0
+}
+
 type UpdateChannelRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	ChannelId        string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
@@ -3961,8 +3978,10 @@ type UpdateChannelRequest struct {
 	Archived         bool                   `protobuf:"varint,4,opt,name=archived,proto3" json:"archived,omitempty"`
 	PublicPreview    bool                   `protobuf:"varint,5,opt,name=public_preview,json=publicPreview,proto3" json:"public_preview,omitempty"`
 	ExpectedRevision int64                  `protobuf:"varint,6,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// 0 оставляет прежний лимит. Допустимо 2..32.
+	VoiceCapacity int32 `protobuf:"varint,7,opt,name=voice_capacity,json=voiceCapacity,proto3" json:"voice_capacity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateChannelRequest) Reset() {
@@ -4033,6 +4052,13 @@ func (x *UpdateChannelRequest) GetPublicPreview() bool {
 func (x *UpdateChannelRequest) GetExpectedRevision() int64 {
 	if x != nil {
 		return x.ExpectedRevision
+	}
+	return 0
+}
+
+func (x *UpdateChannelRequest) GetVoiceCapacity() int32 {
+	if x != nil {
+		return x.VoiceCapacity
 	}
 	return 0
 }
@@ -8099,7 +8125,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\tserver_id\x18\x02 \x01(\tR\bserverId\x12-\n" +
 	"\bchannels\x18\x03 \x03(\v2\x11.space.v1.ChannelR\bchannels\x12\x14\n" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12(\n" +
-	"\x04icon\x18\x05 \x01(\v2\x14.space.v1.ServerIconR\x04icon\"\xea\x02\n" +
+	"\x04icon\x18\x05 \x01(\v2\x14.space.v1.ServerIconR\x04icon\"\x91\x03\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12$\n" +
@@ -8112,7 +8138,8 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x17latest_message_sequence\x18\t \x01(\x03R\x15latestMessageSequence\x12 \n" +
 	"\fmls_group_id\x18\n" +
 	" \x01(\fR\n" +
-	"mlsGroupId\"p\n" +
+	"mlsGroupId\x12%\n" +
+	"\x0evoice_capacity\x18\v \x01(\x05R\rvoiceCapacity\"p\n" +
 	"\x12ChannelPermissions\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12\x12\n" +
 	"\x04read\x18\x02 \x01(\bR\x04read\x12\x14\n" +
@@ -8125,7 +8152,7 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x13ListChannelsRequest\x12)\n" +
 	"\x10include_archived\x18\x01 \x01(\bR\x0fincludeArchived\"E\n" +
 	"\x14ListChannelsResponse\x12-\n" +
-	"\bchannels\x18\x01 \x03(\v2\x11.space.v1.ChannelR\bchannels\"\xcd\x01\n" +
+	"\bchannels\x18\x01 \x03(\v2\x11.space.v1.ChannelR\bchannels\"\xf4\x01\n" +
 	"\x14CreateChannelRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
@@ -8134,7 +8161,8 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\bposition\x18\x04 \x01(\x05R\bposition\x12%\n" +
 	"\x0epublic_preview\x18\x05 \x01(\bR\rpublicPreview\x12 \n" +
 	"\fmls_group_id\x18\x06 \x01(\fR\n" +
-	"mlsGroupId\"\xd7\x01\n" +
+	"mlsGroupId\x12%\n" +
+	"\x0evoice_capacity\x18\a \x01(\x05R\rvoiceCapacity\"\xfe\x01\n" +
 	"\x14UpdateChannelRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
@@ -8142,7 +8170,8 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\bposition\x18\x03 \x01(\x05R\bposition\x12\x1a\n" +
 	"\barchived\x18\x04 \x01(\bR\barchived\x12%\n" +
 	"\x0epublic_preview\x18\x05 \x01(\bR\rpublicPreview\x12+\n" +
-	"\x11expected_revision\x18\x06 \x01(\x03R\x10expectedRevision\"b\n" +
+	"\x11expected_revision\x18\x06 \x01(\x03R\x10expectedRevision\x12%\n" +
+	"\x0evoice_capacity\x18\a \x01(\x05R\rvoiceCapacity\"b\n" +
 	"\x14DeleteChannelRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12+\n" +

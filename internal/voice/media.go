@@ -20,8 +20,8 @@ func validateOffer(raw string) error {
 		return status.Error(codes.InvalidArgument, "Некорректный размер SDP")
 	}
 	description := &sdp.SessionDescription{}
-	if description.Unmarshal([]byte(raw)) != nil || len(description.MediaDescriptions) != roomCapacity-1 {
-		return status.Error(codes.InvalidArgument, "Нужны семь аудиоканалов для комнаты на восемь участников")
+	if description.Unmarshal([]byte(raw)) != nil || (len(description.MediaDescriptions) != roomCapacity-1 && len(description.MediaDescriptions) != MaxRoomCapacity-1) {
+		return status.Error(codes.InvalidArgument, "Нужны 7 или 31 аудиоканал")
 	}
 	for _, media := range description.MediaDescriptions {
 		if media.MediaName.Media != "audio" {
@@ -39,7 +39,13 @@ func (s *Service) JoinVoiceRoom(ctx context.Context, req *pb.JoinVoiceRoomReques
 	if err != nil {
 		return nil, err
 	}
-	item, err := s.reserve(ctx, identity, req.ChannelId)
+	description := &sdp.SessionDescription{}
+	_ = description.Unmarshal([]byte(req.OfferSdp))
+	outputs := len(description.MediaDescriptions)
+	if outputs < Capacity(identity.Capacity)-1 {
+		return nil, status.Error(codes.FailedPrecondition, "Обновите приложение для входа в большую голосовую комнату")
+	}
+	item, err := s.reserve(ctx, identity, req.ChannelId, outputs)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +54,7 @@ func (s *Service) JoinVoiceRoom(ctx context.Context, req *pb.JoinVoiceRoomReques
 			s.remove(item.id)
 		}
 	}()
-	if err = s.preparePeer(item); err != nil {
+	if err = s.preparePeer(item, outputs); err != nil {
 		return nil, err
 	}
 	answer, err := s.answer(ctx, item, req.OfferSdp)
@@ -62,10 +68,10 @@ func (s *Service) JoinVoiceRoom(ctx context.Context, req *pb.JoinVoiceRoomReques
 	}
 	item.publish.Store(identity.CanPublish)
 	go s.monitor(item)
-	return &pb.JoinVoiceRoomResponse{SessionId: item.id, AnswerSdp: answer, State: s.snapshot(req.ChannelId, identity.CanPublish)}, nil
+	return &pb.JoinVoiceRoomResponse{SessionId: item.id, AnswerSdp: answer, State: s.snapshot(req.ChannelId, identity)}, nil
 }
 
-func (s *Service) preparePeer(item *mediaSession) error {
+func (s *Service) preparePeer(item *mediaSession, outputCount int) error {
 	configuration, err := s.network.peerConfiguration()
 	if err != nil {
 		return err
@@ -74,7 +80,7 @@ func (s *Service) preparePeer(item *mediaSession) error {
 	if err != nil {
 		return err
 	}
-	outputs, err := prepareOutputs(peer)
+	outputs, err := prepareOutputs(peer, outputCount)
 	if err != nil {
 		_ = peer.Close()
 		return err
@@ -158,7 +164,9 @@ func (s *Service) forward(source *mediaSession, packet *rtp.Packet) {
 			if index > target.slot {
 				index--
 			}
-			destinations = append(destinations, target.outgoing[index])
+			if index < len(target.outgoing) {
+				destinations = append(destinations, target.outgoing[index])
+			}
 		}
 	}
 	s.mu.Unlock()
@@ -188,7 +196,7 @@ func (s *Service) monitor(item *mediaSession) {
 		ctx, cancel := context.WithTimeout(auth, 2*time.Second)
 		identity, err := s.identify(ctx, item.room)
 		cancel()
-		if err != nil || identity.Actor != item.identity.Actor {
+		if err != nil || identity.Actor != item.identity.Actor || len(item.outgoing) < Capacity(identity.Capacity)-1 {
 			log.Printf("voice authorization ended: %v; device matched: %t", err, identity.Actor == item.identity.Actor)
 			return
 		}

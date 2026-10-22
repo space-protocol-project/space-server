@@ -17,9 +17,10 @@ import (
 )
 
 type voicePolicy struct {
-	mu      sync.Mutex
-	blocked map[string]bool
-	reader  map[string]bool
+	capacity int
+	mu       sync.Mutex
+	blocked  map[string]bool
+	reader   map[string]bool
 }
 
 func (p *voicePolicy) Authenticate(_ context.Context, token string) (string, error) {
@@ -35,7 +36,7 @@ func (p *voicePolicy) VoiceIdentity(ctx context.Context, room string) (Identity,
 	if token == "" || p.blocked[token] || room != "room" {
 		return Identity{}, status.Error(codes.PermissionDenied, "Комната недоступна")
 	}
-	return Identity{Actor: Actor{"server", authn.Actor(ctx), "device-" + token}, Name: token, CanPublish: !p.reader[token]}, nil
+	return Identity{Actor: Actor{"server", authn.Actor(ctx), "device-" + token}, Name: token, CanPublish: !p.reader[token], Capacity: p.capacity}, nil
 }
 func (p *voicePolicy) auth(t *testing.T, ctx context.Context, token string) context.Context {
 	t.Helper()
@@ -46,9 +47,13 @@ func (p *voicePolicy) auth(t *testing.T, ctx context.Context, token string) cont
 	return result
 }
 
-func servicePeer(t *testing.T, ctx context.Context, service *Service, peer *webrtc.PeerConnection) *pb.JoinVoiceRoomResponse {
+func servicePeer(t *testing.T, ctx context.Context, service *Service, peer *webrtc.PeerConnection, capacities ...int) *pb.JoinVoiceRoomResponse {
 	t.Helper()
-	for i := 1; i < roomCapacity-1; i++ {
+	capacity := roomCapacity
+	if len(capacities) > 0 {
+		capacity = capacities[0]
+	}
+	for i := 1; i < capacity-1; i++ {
 		if _, err := peer.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 			t.Fatal(err)
 		}

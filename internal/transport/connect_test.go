@@ -40,6 +40,8 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ForumServiceCloseForumThreadProcedure,
 		rpc.ForumServiceListForumThreadsProcedure,
 		rpc.ForumServiceGetForumThreadProcedure,
+		rpc.ForumServiceSetForumThreadPinnedProcedure,
+		rpc.ForumServiceMarkForumThreadReadProcedure,
 		rpc.ContentServiceSearchContentProcedure,
 		rpc.ContentServiceGetHistoryPageProcedure,
 		rpc.ContentServiceSetReactionProcedure,

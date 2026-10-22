@@ -319,11 +319,13 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.ForumServiceListForumThreadsProcedure:  true,
-	rpc.ForumServiceGetForumThreadProcedure:    true,
-	rpc.ForumServiceCreateForumThreadProcedure: true,
-	rpc.ForumServiceReplyForumThreadProcedure:  true,
-	rpc.ForumServiceCloseForumThreadProcedure:  true,
+	rpc.ForumServiceListForumThreadsProcedure:     true,
+	rpc.ForumServiceGetForumThreadProcedure:       true,
+	rpc.ForumServiceCreateForumThreadProcedure:    true,
+	rpc.ForumServiceReplyForumThreadProcedure:     true,
+	rpc.ForumServiceCloseForumThreadProcedure:     true,
+	rpc.ForumServiceSetForumThreadPinnedProcedure: true,
+	rpc.ForumServiceMarkForumThreadReadProcedure:  true,
 
 	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
 	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,

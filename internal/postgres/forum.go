@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments"
+const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments,pinned"
 const forumReplyColumns = "id,thread_id,author_id,author_name,body,created_at,sequence,attachments"
 
 func scanForumThread(row pgx.Row) (*pb.ForumThread, error) {
 	t := new(pb.ForumThread)
 	var attachments []byte
-	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments)
+	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments, &t.Pinned)
 	if err == nil {
 		err = json.Unmarshal(attachments, &t.Attachments)
 	}
@@ -114,7 +114,7 @@ func (s *Store) ListForumThreads(ctx context.Context, req *pb.ListForumThreadsRe
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx, "SELECT "+forumThreadColumns+" FROM forum_threads WHERE channel_id=$1 AND sequence>$2 ORDER BY sequence LIMIT $3", req.ChannelId, req.AfterSequence, limit+1)
+	rows, err := forumThreadPage(ctx, tx, req, limit+1)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -127,11 +127,17 @@ func (s *Store) ListForumThreads(ctx context.Context, req *pb.ListForumThreadsRe
 		}
 		if len(out.Threads) == limit {
 			out.NextSequence = out.Threads[limit-1].Sequence
+			out.NextPinned = out.Threads[limit-1].Pinned
 			break
 		}
 		out.Threads = append(out.Threads, t)
 	}
-	return out, databaseErrorOrNil(ctx, rows.Err())
+	err = rows.Err()
+	rows.Close()
+	if err == nil {
+		err = forumReadStates(ctx, tx, out.Threads)
+	}
+	return out, databaseErrorOrNil(ctx, err)
 }
 func (s *Store) GetForumThread(ctx context.Context, req *pb.GetForumThreadRequest) (*pb.GetForumThreadResponse, error) {
 	limit, err := forumPage(req.AfterSequence, req.Limit)
@@ -164,7 +170,12 @@ func (s *Store) GetForumThread(ctx context.Context, req *pb.GetForumThreadReques
 		}
 		out.Replies = append(out.Replies, r)
 	}
-	return out, databaseErrorOrNil(ctx, rows.Err())
+	err = rows.Err()
+	rows.Close()
+	if err == nil {
+		err = forumReadStates(ctx, tx, []*pb.ForumThread{t})
+	}
+	return out, databaseErrorOrNil(ctx, err)
 }
 func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThreadRequest) (*pb.CreateForumThreadResponse, error) {
 	if err := validateForumMessage(req.Text, req.IdempotencyKey, req.AttachmentIds); err != nil {
@@ -182,6 +193,9 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	if err == nil {
 		if old.Title != req.Title || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
 			return nil, forumKeyConflict()
+		}
+		if err = forumReadStates(ctx, tx, []*pb.ForumThread{old}); err != nil {
+			return nil, databaseError(ctx, err)
 		}
 		return &pb.CreateForumThreadResponse{Thread: old}, nil
 	}
@@ -212,6 +226,9 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	if err = bindForumAssets(ctx, tx, assets, t.Id, true); err != nil {
 		return nil, err
 	}
+	if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
+		return nil, databaseError(ctx, err)
+	}
 	return &pb.CreateForumThreadResponse{Thread: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
 func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRequest) (*pb.ReplyForumThreadResponse, error) {
@@ -231,6 +248,9 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	if err == nil {
 		if old.ThreadId != req.ThreadId || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
 			return nil, forumKeyConflict()
+		}
+		if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
+			return nil, databaseError(ctx, err)
 		}
 		return &pb.ReplyForumThreadResponse{Reply: old, Thread: t}, nil
 	}
@@ -264,6 +284,9 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	if err = bindForumAssets(ctx, tx, assets, r.Id, false); err != nil {
 		return nil, err
 	}
+	if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
+		return nil, databaseError(ctx, err)
+	}
 	return &pb.ReplyForumThreadResponse{Reply: r, Thread: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
 func (s *Store) CloseForumThread(ctx context.Context, req *pb.CloseForumThreadRequest) (*pb.CloseForumThreadResponse, error) {
@@ -280,6 +303,9 @@ func (s *Store) CloseForumThread(ctx context.Context, req *pb.CloseForumThreadRe
 		return nil, status.Error(codes.Aborted, "Тема изменилась; обновите её перед закрытием")
 	}
 	if t.Closed {
+		if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
+			return nil, databaseError(ctx, err)
+		}
 		return &pb.CloseForumThreadResponse{Thread: t}, nil
 	}
 	t, err = scanForumThread(tx.QueryRow(ctx, "UPDATE forum_threads SET closed=true,revision=revision+1 WHERE id=$1 RETURNING "+forumThreadColumns, t.Id))
@@ -287,6 +313,9 @@ func (s *Store) CloseForumThread(ctx context.Context, req *pb.CloseForumThreadRe
 		return nil, databaseError(ctx, err)
 	}
 	if err = audit(ctx, tx, authn.Actor(ctx), "forum.close:"+req.ChannelId+":"+t.Id, t.Revision); err != nil {
+		return nil, databaseError(ctx, err)
+	}
+	if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	return &pb.CloseForumThreadResponse{Thread: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))

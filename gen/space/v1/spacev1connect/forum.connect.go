@@ -45,6 +45,12 @@ const (
 	// ForumServiceReplyForumThreadProcedure is the fully-qualified name of the ForumService's
 	// ReplyForumThread RPC.
 	ForumServiceReplyForumThreadProcedure = "/space.v1.ForumService/ReplyForumThread"
+	// ForumServiceSetForumThreadPinnedProcedure is the fully-qualified name of the ForumService's
+	// SetForumThreadPinned RPC.
+	ForumServiceSetForumThreadPinnedProcedure = "/space.v1.ForumService/SetForumThreadPinned"
+	// ForumServiceMarkForumThreadReadProcedure is the fully-qualified name of the ForumService's
+	// MarkForumThreadRead RPC.
+	ForumServiceMarkForumThreadReadProcedure = "/space.v1.ForumService/MarkForumThreadRead"
 	// ForumServiceCloseForumThreadProcedure is the fully-qualified name of the ForumService's
 	// CloseForumThread RPC.
 	ForumServiceCloseForumThreadProcedure = "/space.v1.ForumService/CloseForumThread"
@@ -56,6 +62,8 @@ type ForumServiceClient interface {
 	GetForumThread(context.Context, *connect.Request[v1.GetForumThreadRequest]) (*connect.Response[v1.GetForumThreadResponse], error)
 	CreateForumThread(context.Context, *connect.Request[v1.CreateForumThreadRequest]) (*connect.Response[v1.CreateForumThreadResponse], error)
 	ReplyForumThread(context.Context, *connect.Request[v1.ReplyForumThreadRequest]) (*connect.Response[v1.ReplyForumThreadResponse], error)
+	SetForumThreadPinned(context.Context, *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error)
+	MarkForumThreadRead(context.Context, *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error)
 	CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error)
 }
 
@@ -94,6 +102,18 @@ func NewForumServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(forumServiceMethods.ByName("ReplyForumThread")),
 			connect.WithClientOptions(opts...),
 		),
+		setForumThreadPinned: connect.NewClient[v1.SetForumThreadPinnedRequest, v1.SetForumThreadPinnedResponse](
+			httpClient,
+			baseURL+ForumServiceSetForumThreadPinnedProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("SetForumThreadPinned")),
+			connect.WithClientOptions(opts...),
+		),
+		markForumThreadRead: connect.NewClient[v1.MarkForumThreadReadRequest, v1.MarkForumThreadReadResponse](
+			httpClient,
+			baseURL+ForumServiceMarkForumThreadReadProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("MarkForumThreadRead")),
+			connect.WithClientOptions(opts...),
+		),
 		closeForumThread: connect.NewClient[v1.CloseForumThreadRequest, v1.CloseForumThreadResponse](
 			httpClient,
 			baseURL+ForumServiceCloseForumThreadProcedure,
@@ -105,11 +125,13 @@ func NewForumServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // forumServiceClient implements ForumServiceClient.
 type forumServiceClient struct {
-	listForumThreads  *connect.Client[v1.ListForumThreadsRequest, v1.ListForumThreadsResponse]
-	getForumThread    *connect.Client[v1.GetForumThreadRequest, v1.GetForumThreadResponse]
-	createForumThread *connect.Client[v1.CreateForumThreadRequest, v1.CreateForumThreadResponse]
-	replyForumThread  *connect.Client[v1.ReplyForumThreadRequest, v1.ReplyForumThreadResponse]
-	closeForumThread  *connect.Client[v1.CloseForumThreadRequest, v1.CloseForumThreadResponse]
+	listForumThreads     *connect.Client[v1.ListForumThreadsRequest, v1.ListForumThreadsResponse]
+	getForumThread       *connect.Client[v1.GetForumThreadRequest, v1.GetForumThreadResponse]
+	createForumThread    *connect.Client[v1.CreateForumThreadRequest, v1.CreateForumThreadResponse]
+	replyForumThread     *connect.Client[v1.ReplyForumThreadRequest, v1.ReplyForumThreadResponse]
+	setForumThreadPinned *connect.Client[v1.SetForumThreadPinnedRequest, v1.SetForumThreadPinnedResponse]
+	markForumThreadRead  *connect.Client[v1.MarkForumThreadReadRequest, v1.MarkForumThreadReadResponse]
+	closeForumThread     *connect.Client[v1.CloseForumThreadRequest, v1.CloseForumThreadResponse]
 }
 
 // ListForumThreads calls space.v1.ForumService.ListForumThreads.
@@ -132,6 +154,16 @@ func (c *forumServiceClient) ReplyForumThread(ctx context.Context, req *connect.
 	return c.replyForumThread.CallUnary(ctx, req)
 }
 
+// SetForumThreadPinned calls space.v1.ForumService.SetForumThreadPinned.
+func (c *forumServiceClient) SetForumThreadPinned(ctx context.Context, req *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error) {
+	return c.setForumThreadPinned.CallUnary(ctx, req)
+}
+
+// MarkForumThreadRead calls space.v1.ForumService.MarkForumThreadRead.
+func (c *forumServiceClient) MarkForumThreadRead(ctx context.Context, req *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error) {
+	return c.markForumThreadRead.CallUnary(ctx, req)
+}
+
 // CloseForumThread calls space.v1.ForumService.CloseForumThread.
 func (c *forumServiceClient) CloseForumThread(ctx context.Context, req *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error) {
 	return c.closeForumThread.CallUnary(ctx, req)
@@ -143,6 +175,8 @@ type ForumServiceHandler interface {
 	GetForumThread(context.Context, *connect.Request[v1.GetForumThreadRequest]) (*connect.Response[v1.GetForumThreadResponse], error)
 	CreateForumThread(context.Context, *connect.Request[v1.CreateForumThreadRequest]) (*connect.Response[v1.CreateForumThreadResponse], error)
 	ReplyForumThread(context.Context, *connect.Request[v1.ReplyForumThreadRequest]) (*connect.Response[v1.ReplyForumThreadResponse], error)
+	SetForumThreadPinned(context.Context, *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error)
+	MarkForumThreadRead(context.Context, *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error)
 	CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error)
 }
 
@@ -177,6 +211,18 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(forumServiceMethods.ByName("ReplyForumThread")),
 		connect.WithHandlerOptions(opts...),
 	)
+	forumServiceSetForumThreadPinnedHandler := connect.NewUnaryHandler(
+		ForumServiceSetForumThreadPinnedProcedure,
+		svc.SetForumThreadPinned,
+		connect.WithSchema(forumServiceMethods.ByName("SetForumThreadPinned")),
+		connect.WithHandlerOptions(opts...),
+	)
+	forumServiceMarkForumThreadReadHandler := connect.NewUnaryHandler(
+		ForumServiceMarkForumThreadReadProcedure,
+		svc.MarkForumThreadRead,
+		connect.WithSchema(forumServiceMethods.ByName("MarkForumThreadRead")),
+		connect.WithHandlerOptions(opts...),
+	)
 	forumServiceCloseForumThreadHandler := connect.NewUnaryHandler(
 		ForumServiceCloseForumThreadProcedure,
 		svc.CloseForumThread,
@@ -193,6 +239,10 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 			forumServiceCreateForumThreadHandler.ServeHTTP(w, r)
 		case ForumServiceReplyForumThreadProcedure:
 			forumServiceReplyForumThreadHandler.ServeHTTP(w, r)
+		case ForumServiceSetForumThreadPinnedProcedure:
+			forumServiceSetForumThreadPinnedHandler.ServeHTTP(w, r)
+		case ForumServiceMarkForumThreadReadProcedure:
+			forumServiceMarkForumThreadReadHandler.ServeHTTP(w, r)
 		case ForumServiceCloseForumThreadProcedure:
 			forumServiceCloseForumThreadHandler.ServeHTTP(w, r)
 		default:
@@ -218,6 +268,14 @@ func (UnimplementedForumServiceHandler) CreateForumThread(context.Context, *conn
 
 func (UnimplementedForumServiceHandler) ReplyForumThread(context.Context, *connect.Request[v1.ReplyForumThreadRequest]) (*connect.Response[v1.ReplyForumThreadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ReplyForumThread is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) SetForumThreadPinned(context.Context, *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.SetForumThreadPinned is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) MarkForumThreadRead(context.Context, *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.MarkForumThreadRead is not implemented"))
 }
 
 func (UnimplementedForumServiceHandler) CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error) {

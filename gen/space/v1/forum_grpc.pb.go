@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ForumService_ListForumThreads_FullMethodName  = "/space.v1.ForumService/ListForumThreads"
-	ForumService_GetForumThread_FullMethodName    = "/space.v1.ForumService/GetForumThread"
-	ForumService_CreateForumThread_FullMethodName = "/space.v1.ForumService/CreateForumThread"
-	ForumService_ReplyForumThread_FullMethodName  = "/space.v1.ForumService/ReplyForumThread"
-	ForumService_CloseForumThread_FullMethodName  = "/space.v1.ForumService/CloseForumThread"
+	ForumService_ListForumThreads_FullMethodName     = "/space.v1.ForumService/ListForumThreads"
+	ForumService_GetForumThread_FullMethodName       = "/space.v1.ForumService/GetForumThread"
+	ForumService_CreateForumThread_FullMethodName    = "/space.v1.ForumService/CreateForumThread"
+	ForumService_ReplyForumThread_FullMethodName     = "/space.v1.ForumService/ReplyForumThread"
+	ForumService_SetForumThreadPinned_FullMethodName = "/space.v1.ForumService/SetForumThreadPinned"
+	ForumService_MarkForumThreadRead_FullMethodName  = "/space.v1.ForumService/MarkForumThreadRead"
+	ForumService_CloseForumThread_FullMethodName     = "/space.v1.ForumService/CloseForumThread"
 )
 
 // ForumServiceClient is the client API for ForumService service.
@@ -36,6 +38,8 @@ type ForumServiceClient interface {
 	GetForumThread(ctx context.Context, in *GetForumThreadRequest, opts ...grpc.CallOption) (*GetForumThreadResponse, error)
 	CreateForumThread(ctx context.Context, in *CreateForumThreadRequest, opts ...grpc.CallOption) (*CreateForumThreadResponse, error)
 	ReplyForumThread(ctx context.Context, in *ReplyForumThreadRequest, opts ...grpc.CallOption) (*ReplyForumThreadResponse, error)
+	SetForumThreadPinned(ctx context.Context, in *SetForumThreadPinnedRequest, opts ...grpc.CallOption) (*SetForumThreadPinnedResponse, error)
+	MarkForumThreadRead(ctx context.Context, in *MarkForumThreadReadRequest, opts ...grpc.CallOption) (*MarkForumThreadReadResponse, error)
 	CloseForumThread(ctx context.Context, in *CloseForumThreadRequest, opts ...grpc.CallOption) (*CloseForumThreadResponse, error)
 }
 
@@ -87,6 +91,26 @@ func (c *forumServiceClient) ReplyForumThread(ctx context.Context, in *ReplyForu
 	return out, nil
 }
 
+func (c *forumServiceClient) SetForumThreadPinned(ctx context.Context, in *SetForumThreadPinnedRequest, opts ...grpc.CallOption) (*SetForumThreadPinnedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetForumThreadPinnedResponse)
+	err := c.cc.Invoke(ctx, ForumService_SetForumThreadPinned_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *forumServiceClient) MarkForumThreadRead(ctx context.Context, in *MarkForumThreadReadRequest, opts ...grpc.CallOption) (*MarkForumThreadReadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkForumThreadReadResponse)
+	err := c.cc.Invoke(ctx, ForumService_MarkForumThreadRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *forumServiceClient) CloseForumThread(ctx context.Context, in *CloseForumThreadRequest, opts ...grpc.CallOption) (*CloseForumThreadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CloseForumThreadResponse)
@@ -107,6 +131,8 @@ type ForumServiceServer interface {
 	GetForumThread(context.Context, *GetForumThreadRequest) (*GetForumThreadResponse, error)
 	CreateForumThread(context.Context, *CreateForumThreadRequest) (*CreateForumThreadResponse, error)
 	ReplyForumThread(context.Context, *ReplyForumThreadRequest) (*ReplyForumThreadResponse, error)
+	SetForumThreadPinned(context.Context, *SetForumThreadPinnedRequest) (*SetForumThreadPinnedResponse, error)
+	MarkForumThreadRead(context.Context, *MarkForumThreadReadRequest) (*MarkForumThreadReadResponse, error)
 	CloseForumThread(context.Context, *CloseForumThreadRequest) (*CloseForumThreadResponse, error)
 	mustEmbedUnimplementedForumServiceServer()
 }
@@ -129,6 +155,12 @@ func (UnimplementedForumServiceServer) CreateForumThread(context.Context, *Creat
 }
 func (UnimplementedForumServiceServer) ReplyForumThread(context.Context, *ReplyForumThreadRequest) (*ReplyForumThreadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplyForumThread not implemented")
+}
+func (UnimplementedForumServiceServer) SetForumThreadPinned(context.Context, *SetForumThreadPinnedRequest) (*SetForumThreadPinnedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetForumThreadPinned not implemented")
+}
+func (UnimplementedForumServiceServer) MarkForumThreadRead(context.Context, *MarkForumThreadReadRequest) (*MarkForumThreadReadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarkForumThreadRead not implemented")
 }
 func (UnimplementedForumServiceServer) CloseForumThread(context.Context, *CloseForumThreadRequest) (*CloseForumThreadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseForumThread not implemented")
@@ -226,6 +258,42 @@ func _ForumService_ReplyForumThread_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ForumService_SetForumThreadPinned_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetForumThreadPinnedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).SetForumThreadPinned(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_SetForumThreadPinned_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).SetForumThreadPinned(ctx, req.(*SetForumThreadPinnedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ForumService_MarkForumThreadRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkForumThreadReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).MarkForumThreadRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_MarkForumThreadRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).MarkForumThreadRead(ctx, req.(*MarkForumThreadReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ForumService_CloseForumThread_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CloseForumThreadRequest)
 	if err := dec(in); err != nil {
@@ -266,6 +334,14 @@ var ForumService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReplyForumThread",
 			Handler:    _ForumService_ReplyForumThread_Handler,
+		},
+		{
+			MethodName: "SetForumThreadPinned",
+			Handler:    _ForumService_SetForumThreadPinned_Handler,
+		},
+		{
+			MethodName: "MarkForumThreadRead",
+			Handler:    _ForumService_MarkForumThreadRead_Handler,
 		},
 		{
 			MethodName: "CloseForumThread",

@@ -22,21 +22,26 @@ const (
 )
 
 type ForumThread struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attachments   []*Asset               `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	AuthorId      string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	AuthorName    string                 `protobuf:"bytes,4,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
-	Title         string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
-	Text          string                 `protobuf:"bytes,6,opt,name=text,proto3" json:"text,omitempty"`
-	CreatedAtUnix int64                  `protobuf:"varint,7,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
-	Sequence      int64                  `protobuf:"varint,8,opt,name=sequence,proto3" json:"sequence,omitempty"`
-	Revision      int64                  `protobuf:"varint,9,opt,name=revision,proto3" json:"revision,omitempty"`
-	Closed        bool                   `protobuf:"varint,10,opt,name=closed,proto3" json:"closed,omitempty"`
-	ReplyCount    int64                  `protobuf:"varint,11,opt,name=reply_count,json=replyCount,proto3" json:"reply_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Pinned             bool                   `protobuf:"varint,13,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	ReadStateSupported bool                   `protobuf:"varint,14,opt,name=read_state_supported,json=readStateSupported,proto3" json:"read_state_supported,omitempty"`
+	Seen               bool                   `protobuf:"varint,15,opt,name=seen,proto3" json:"seen,omitempty"`
+	ReadSequence       int64                  `protobuf:"varint,16,opt,name=read_sequence,json=readSequence,proto3" json:"read_sequence,omitempty"`
+	UnreadCount        int64                  `protobuf:"varint,17,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
+	Attachments        []*Asset               `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ChannelId          string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	AuthorId           string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorName         string                 `protobuf:"bytes,4,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	Title              string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
+	Text               string                 `protobuf:"bytes,6,opt,name=text,proto3" json:"text,omitempty"`
+	CreatedAtUnix      int64                  `protobuf:"varint,7,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	Sequence           int64                  `protobuf:"varint,8,opt,name=sequence,proto3" json:"sequence,omitempty"`
+	Revision           int64                  `protobuf:"varint,9,opt,name=revision,proto3" json:"revision,omitempty"`
+	Closed             bool                   `protobuf:"varint,10,opt,name=closed,proto3" json:"closed,omitempty"`
+	ReplyCount         int64                  `protobuf:"varint,11,opt,name=reply_count,json=replyCount,proto3" json:"reply_count,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ForumThread) Reset() {
@@ -67,6 +72,41 @@ func (x *ForumThread) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ForumThread.ProtoReflect.Descriptor instead.
 func (*ForumThread) Descriptor() ([]byte, []int) {
 	return file_space_v1_forum_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ForumThread) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *ForumThread) GetReadStateSupported() bool {
+	if x != nil {
+		return x.ReadStateSupported
+	}
+	return false
+}
+
+func (x *ForumThread) GetSeen() bool {
+	if x != nil {
+		return x.Seen
+	}
+	return false
+}
+
+func (x *ForumThread) GetReadSequence() int64 {
+	if x != nil {
+		return x.ReadSequence
+	}
+	return 0
+}
+
+func (x *ForumThread) GetUnreadCount() int64 {
+	if x != nil {
+		return x.UnreadCount
+	}
+	return 0
 }
 
 func (x *ForumThread) GetAttachments() []*Asset {
@@ -259,6 +299,8 @@ type ListForumThreadsRequest struct {
 	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	AfterSequence int64                  `protobuf:"varint,2,opt,name=after_sequence,json=afterSequence,proto3" json:"after_sequence,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	PinnedFirst   bool                   `protobuf:"varint,4,opt,name=pinned_first,json=pinnedFirst,proto3" json:"pinned_first,omitempty"`
+	AfterPinned   bool                   `protobuf:"varint,5,opt,name=after_pinned,json=afterPinned,proto3" json:"after_pinned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -314,10 +356,25 @@ func (x *ListForumThreadsRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListForumThreadsRequest) GetPinnedFirst() bool {
+	if x != nil {
+		return x.PinnedFirst
+	}
+	return false
+}
+
+func (x *ListForumThreadsRequest) GetAfterPinned() bool {
+	if x != nil {
+		return x.AfterPinned
+	}
+	return false
+}
+
 type ListForumThreadsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Threads       []*ForumThread         `protobuf:"bytes,1,rep,name=threads,proto3" json:"threads,omitempty"`
 	NextSequence  int64                  `protobuf:"varint,2,opt,name=next_sequence,json=nextSequence,proto3" json:"next_sequence,omitempty"`
+	NextPinned    bool                   `protobuf:"varint,3,opt,name=next_pinned,json=nextPinned,proto3" json:"next_pinned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -364,6 +421,13 @@ func (x *ListForumThreadsResponse) GetNextSequence() int64 {
 		return x.NextSequence
 	}
 	return 0
+}
+
+func (x *ListForumThreadsResponse) GetNextPinned() bool {
+	if x != nil {
+		return x.NextPinned
+	}
+	return false
 }
 
 type GetForumThreadRequest struct {
@@ -849,12 +913,235 @@ func (x *CloseForumThreadResponse) GetThread() *ForumThread {
 	return nil
 }
 
+// core.forum.navigation.v1. Закрепление требует read/manage и scope space.manage.
+type SetForumThreadPinnedRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId        string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ThreadId         string                 `protobuf:"bytes,2,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
+	Pinned           bool                   `protobuf:"varint,3,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	ExpectedRevision int64                  `protobuf:"varint,4,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SetForumThreadPinnedRequest) Reset() {
+	*x = SetForumThreadPinnedRequest{}
+	mi := &file_space_v1_forum_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetForumThreadPinnedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetForumThreadPinnedRequest) ProtoMessage() {}
+
+func (x *SetForumThreadPinnedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetForumThreadPinnedRequest.ProtoReflect.Descriptor instead.
+func (*SetForumThreadPinnedRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SetForumThreadPinnedRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *SetForumThreadPinnedRequest) GetThreadId() string {
+	if x != nil {
+		return x.ThreadId
+	}
+	return ""
+}
+
+func (x *SetForumThreadPinnedRequest) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *SetForumThreadPinnedRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
+}
+
+type SetForumThreadPinnedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Thread        *ForumThread           `protobuf:"bytes,1,opt,name=thread,proto3" json:"thread,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetForumThreadPinnedResponse) Reset() {
+	*x = SetForumThreadPinnedResponse{}
+	mi := &file_space_v1_forum_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetForumThreadPinnedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetForumThreadPinnedResponse) ProtoMessage() {}
+
+func (x *SetForumThreadPinnedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetForumThreadPinnedResponse.ProtoReflect.Descriptor instead.
+func (*SetForumThreadPinnedResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SetForumThreadPinnedResponse) GetThread() *ForumThread {
+	if x != nil {
+		return x.Thread
+	}
+	return nil
+}
+
+// Курсор чтения относится к principal сессии, монотонный; 0 отмечает первое сообщение.
+type MarkForumThreadReadRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId       string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ThreadId        string                 `protobuf:"bytes,2,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
+	ThroughSequence int64                  `protobuf:"varint,3,opt,name=through_sequence,json=throughSequence,proto3" json:"through_sequence,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MarkForumThreadReadRequest) Reset() {
+	*x = MarkForumThreadReadRequest{}
+	mi := &file_space_v1_forum_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkForumThreadReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkForumThreadReadRequest) ProtoMessage() {}
+
+func (x *MarkForumThreadReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkForumThreadReadRequest.ProtoReflect.Descriptor instead.
+func (*MarkForumThreadReadRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *MarkForumThreadReadRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *MarkForumThreadReadRequest) GetThreadId() string {
+	if x != nil {
+		return x.ThreadId
+	}
+	return ""
+}
+
+func (x *MarkForumThreadReadRequest) GetThroughSequence() int64 {
+	if x != nil {
+		return x.ThroughSequence
+	}
+	return 0
+}
+
+type MarkForumThreadReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Thread        *ForumThread           `protobuf:"bytes,1,opt,name=thread,proto3" json:"thread,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkForumThreadReadResponse) Reset() {
+	*x = MarkForumThreadReadResponse{}
+	mi := &file_space_v1_forum_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkForumThreadReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkForumThreadReadResponse) ProtoMessage() {}
+
+func (x *MarkForumThreadReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkForumThreadReadResponse.ProtoReflect.Descriptor instead.
+func (*MarkForumThreadReadResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *MarkForumThreadReadResponse) GetThread() *ForumThread {
+	if x != nil {
+		return x.Thread
+	}
+	return nil
+}
+
 var File_space_v1_forum_proto protoreflect.FileDescriptor
 
 const file_space_v1_forum_proto_rawDesc = "" +
 	"\n" +
-	"\x14space/v1/forum.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\"\xf0\x02\n" +
-	"\vForumThread\x121\n" +
+	"\x14space/v1/forum.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\"\x96\x04\n" +
+	"\vForumThread\x12\x16\n" +
+	"\x06pinned\x18\r \x01(\bR\x06pinned\x120\n" +
+	"\x14read_state_supported\x18\x0e \x01(\bR\x12readStateSupported\x12\x12\n" +
+	"\x04seen\x18\x0f \x01(\bR\x04seen\x12#\n" +
+	"\rread_sequence\x18\x10 \x01(\x03R\freadSequence\x12!\n" +
+	"\funread_count\x18\x11 \x01(\x03R\vunreadCount\x121\n" +
 	"\vattachments\x18\f \x03(\v2\x0f.space.v1.AssetR\vattachments\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -881,15 +1168,19 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"authorName\x12\x12\n" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12&\n" +
 	"\x0fcreated_at_unix\x18\x06 \x01(\x03R\rcreatedAtUnix\x12\x1a\n" +
-	"\bsequence\x18\a \x01(\x03R\bsequence\"u\n" +
+	"\bsequence\x18\a \x01(\x03R\bsequence\"\xbb\x01\n" +
 	"\x17ListForumThreadsRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12%\n" +
 	"\x0eafter_sequence\x18\x02 \x01(\x03R\rafterSequence\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"p\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12!\n" +
+	"\fpinned_first\x18\x04 \x01(\bR\vpinnedFirst\x12!\n" +
+	"\fafter_pinned\x18\x05 \x01(\bR\vafterPinned\"\x91\x01\n" +
 	"\x18ListForumThreadsResponse\x12/\n" +
 	"\athreads\x18\x01 \x03(\v2\x15.space.v1.ForumThreadR\athreads\x12#\n" +
-	"\rnext_sequence\x18\x02 \x01(\x03R\fnextSequence\"\x90\x01\n" +
+	"\rnext_sequence\x18\x02 \x01(\x03R\fnextSequence\x12\x1f\n" +
+	"\vnext_pinned\x18\x03 \x01(\bR\n" +
+	"nextPinned\"\x90\x01\n" +
 	"\x15GetForumThreadRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
@@ -925,12 +1216,29 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12+\n" +
 	"\x11expected_revision\x18\x03 \x01(\x03R\x10expectedRevision\"I\n" +
 	"\x18CloseForumThreadResponse\x12-\n" +
-	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread2\xd2\x03\n" +
+	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\"\x9e\x01\n" +
+	"\x1bSetForumThreadPinnedRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
+	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x16\n" +
+	"\x06pinned\x18\x03 \x01(\bR\x06pinned\x12+\n" +
+	"\x11expected_revision\x18\x04 \x01(\x03R\x10expectedRevision\"M\n" +
+	"\x1cSetForumThreadPinnedResponse\x12-\n" +
+	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\"\x83\x01\n" +
+	"\x1aMarkForumThreadReadRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
+	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12)\n" +
+	"\x10through_sequence\x18\x03 \x01(\x03R\x0fthroughSequence\"L\n" +
+	"\x1bMarkForumThreadReadResponse\x12-\n" +
+	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread2\x9d\x05\n" +
 	"\fForumService\x12Y\n" +
 	"\x10ListForumThreads\x12!.space.v1.ListForumThreadsRequest\x1a\".space.v1.ListForumThreadsResponse\x12S\n" +
 	"\x0eGetForumThread\x12\x1f.space.v1.GetForumThreadRequest\x1a .space.v1.GetForumThreadResponse\x12\\\n" +
 	"\x11CreateForumThread\x12\".space.v1.CreateForumThreadRequest\x1a#.space.v1.CreateForumThreadResponse\x12Y\n" +
-	"\x10ReplyForumThread\x12!.space.v1.ReplyForumThreadRequest\x1a\".space.v1.ReplyForumThreadResponse\x12Y\n" +
+	"\x10ReplyForumThread\x12!.space.v1.ReplyForumThreadRequest\x1a\".space.v1.ReplyForumThreadResponse\x12e\n" +
+	"\x14SetForumThreadPinned\x12%.space.v1.SetForumThreadPinnedRequest\x1a&.space.v1.SetForumThreadPinnedResponse\x12b\n" +
+	"\x13MarkForumThreadRead\x12$.space.v1.MarkForumThreadReadRequest\x1a%.space.v1.MarkForumThreadReadResponse\x12Y\n" +
 	"\x10CloseForumThread\x12!.space.v1.CloseForumThreadRequest\x1a\".space.v1.CloseForumThreadResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
@@ -945,25 +1253,29 @@ func file_space_v1_forum_proto_rawDescGZIP() []byte {
 	return file_space_v1_forum_proto_rawDescData
 }
 
-var file_space_v1_forum_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_space_v1_forum_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_space_v1_forum_proto_goTypes = []any{
-	(*ForumThread)(nil),               // 0: space.v1.ForumThread
-	(*ForumReply)(nil),                // 1: space.v1.ForumReply
-	(*ListForumThreadsRequest)(nil),   // 2: space.v1.ListForumThreadsRequest
-	(*ListForumThreadsResponse)(nil),  // 3: space.v1.ListForumThreadsResponse
-	(*GetForumThreadRequest)(nil),     // 4: space.v1.GetForumThreadRequest
-	(*GetForumThreadResponse)(nil),    // 5: space.v1.GetForumThreadResponse
-	(*CreateForumThreadRequest)(nil),  // 6: space.v1.CreateForumThreadRequest
-	(*CreateForumThreadResponse)(nil), // 7: space.v1.CreateForumThreadResponse
-	(*ReplyForumThreadRequest)(nil),   // 8: space.v1.ReplyForumThreadRequest
-	(*ReplyForumThreadResponse)(nil),  // 9: space.v1.ReplyForumThreadResponse
-	(*CloseForumThreadRequest)(nil),   // 10: space.v1.CloseForumThreadRequest
-	(*CloseForumThreadResponse)(nil),  // 11: space.v1.CloseForumThreadResponse
-	(*Asset)(nil),                     // 12: space.v1.Asset
+	(*ForumThread)(nil),                  // 0: space.v1.ForumThread
+	(*ForumReply)(nil),                   // 1: space.v1.ForumReply
+	(*ListForumThreadsRequest)(nil),      // 2: space.v1.ListForumThreadsRequest
+	(*ListForumThreadsResponse)(nil),     // 3: space.v1.ListForumThreadsResponse
+	(*GetForumThreadRequest)(nil),        // 4: space.v1.GetForumThreadRequest
+	(*GetForumThreadResponse)(nil),       // 5: space.v1.GetForumThreadResponse
+	(*CreateForumThreadRequest)(nil),     // 6: space.v1.CreateForumThreadRequest
+	(*CreateForumThreadResponse)(nil),    // 7: space.v1.CreateForumThreadResponse
+	(*ReplyForumThreadRequest)(nil),      // 8: space.v1.ReplyForumThreadRequest
+	(*ReplyForumThreadResponse)(nil),     // 9: space.v1.ReplyForumThreadResponse
+	(*CloseForumThreadRequest)(nil),      // 10: space.v1.CloseForumThreadRequest
+	(*CloseForumThreadResponse)(nil),     // 11: space.v1.CloseForumThreadResponse
+	(*SetForumThreadPinnedRequest)(nil),  // 12: space.v1.SetForumThreadPinnedRequest
+	(*SetForumThreadPinnedResponse)(nil), // 13: space.v1.SetForumThreadPinnedResponse
+	(*MarkForumThreadReadRequest)(nil),   // 14: space.v1.MarkForumThreadReadRequest
+	(*MarkForumThreadReadResponse)(nil),  // 15: space.v1.MarkForumThreadReadResponse
+	(*Asset)(nil),                        // 16: space.v1.Asset
 }
 var file_space_v1_forum_proto_depIdxs = []int32{
-	12, // 0: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
-	12, // 1: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
+	16, // 0: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
+	16, // 1: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
 	0,  // 2: space.v1.ListForumThreadsResponse.threads:type_name -> space.v1.ForumThread
 	0,  // 3: space.v1.GetForumThreadResponse.thread:type_name -> space.v1.ForumThread
 	1,  // 4: space.v1.GetForumThreadResponse.replies:type_name -> space.v1.ForumReply
@@ -971,21 +1283,27 @@ var file_space_v1_forum_proto_depIdxs = []int32{
 	1,  // 6: space.v1.ReplyForumThreadResponse.reply:type_name -> space.v1.ForumReply
 	0,  // 7: space.v1.ReplyForumThreadResponse.thread:type_name -> space.v1.ForumThread
 	0,  // 8: space.v1.CloseForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	2,  // 9: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
-	4,  // 10: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
-	6,  // 11: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
-	8,  // 12: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
-	10, // 13: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
-	3,  // 14: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
-	5,  // 15: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
-	7,  // 16: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
-	9,  // 17: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
-	11, // 18: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	0,  // 9: space.v1.SetForumThreadPinnedResponse.thread:type_name -> space.v1.ForumThread
+	0,  // 10: space.v1.MarkForumThreadReadResponse.thread:type_name -> space.v1.ForumThread
+	2,  // 11: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
+	4,  // 12: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
+	6,  // 13: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
+	8,  // 14: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
+	12, // 15: space.v1.ForumService.SetForumThreadPinned:input_type -> space.v1.SetForumThreadPinnedRequest
+	14, // 16: space.v1.ForumService.MarkForumThreadRead:input_type -> space.v1.MarkForumThreadReadRequest
+	10, // 17: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
+	3,  // 18: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
+	5,  // 19: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
+	7,  // 20: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
+	9,  // 21: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
+	13, // 22: space.v1.ForumService.SetForumThreadPinned:output_type -> space.v1.SetForumThreadPinnedResponse
+	15, // 23: space.v1.ForumService.MarkForumThreadRead:output_type -> space.v1.MarkForumThreadReadResponse
+	11, // 24: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
+	18, // [18:25] is the sub-list for method output_type
+	11, // [11:18] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_forum_proto_init() }
@@ -1000,7 +1318,7 @@ func file_space_v1_forum_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_forum_proto_rawDesc), len(file_space_v1_forum_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

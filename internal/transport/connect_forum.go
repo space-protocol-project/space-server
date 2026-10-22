@@ -27,3 +27,11 @@ func (s connectForum) ReplyForumThread(ctx context.Context, req *connect.Request
 func (s connectForum) CloseForumThread(ctx context.Context, req *connect.Request[pb.CloseForumThreadRequest]) (*connect.Response[pb.CloseForumThreadResponse], error) {
 	return bridgeUnary(ctx, req, s.client.CloseForumThread)
 }
+
+func (s connectForum) SetForumThreadPinned(ctx context.Context, req *connect.Request[pb.SetForumThreadPinnedRequest]) (*connect.Response[pb.SetForumThreadPinnedResponse], error) {
+	return bridgeUnary(ctx, req, s.client.SetForumThreadPinned)
+}
+
+func (s connectForum) MarkForumThreadRead(ctx context.Context, req *connect.Request[pb.MarkForumThreadReadRequest]) (*connect.Response[pb.MarkForumThreadReadResponse], error) {
+	return bridgeUnary(ctx, req, s.client.MarkForumThreadRead)
+}

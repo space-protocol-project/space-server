@@ -50,7 +50,7 @@ func seedVersion12(t *testing.T, ctx context.Context, pool *pgxpool.Pool) Identi
 func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[string]string {
 	t.Helper()
 	tables := map[string]string{
-		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id']",
+		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id','voice_capacity']",
 		"contents": "ARRAY['attachments','reactions','reply_to_id','search_text']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
 		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}
@@ -88,6 +88,13 @@ func TestAssetsUpgradeFromReleasedSchema12(t *testing.T) {
 		if after[table] != value {
 			t.Errorf("Миграция изменила прежние данные %s", table)
 		}
+	}
+	var changedCapacity int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM channels WHERE voice_capacity <> 8").Scan(&changedCapacity); err != nil {
+		t.Fatal(err)
+	}
+	if changedCapacity != 0 {
+		t.Fatal("Прежним комнатам назначен неверный лимит")
 	}
 	var normalized, deletedNormalized string
 	if err = pool.QueryRow(ctx, "SELECT (SELECT search_text FROM contents WHERE sequence=1 AND channel_id='general'),(SELECT search_text FROM contents WHERE sequence=2 AND channel_id='general')").Scan(&normalized, &deletedNormalized); err != nil {

@@ -38,7 +38,7 @@ func contentAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateContentRequest)
 			return nil, status.Error(codes.InvalidArgument, "Файл указан повторно")
 		}
 		seen[id] = true
-		a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence FROM assets WHERE id=$1 FOR UPDATE`, id))
+		a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id FROM assets WHERE id=$1 FOR UPDATE`, id))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.NotFound, "Вложение не найдено")
 		}
@@ -48,7 +48,7 @@ func contentAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateContentRequest)
 		if a.asset.ChannelId != req.ChannelId || a.asset.AuthorId != authn.Actor(ctx) {
 			return nil, status.Error(codes.PermissionDenied, "Вложение другого автора или канала")
 		}
-		if !a.ready || a.contentID != nil {
+		if !a.ready || a.contentID != nil || a.mlsSequence != nil || a.forumThreadID != nil || a.forumReplyID != nil {
 			return nil, status.Error(codes.FailedPrecondition, "Вложение не готово или уже опубликовано")
 		}
 		result = append(result, a.asset)

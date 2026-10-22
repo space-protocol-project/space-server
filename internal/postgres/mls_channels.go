@@ -73,7 +73,7 @@ func requireOpenChannel(ctx context.Context, tx pgx.Tx, channel string) error {
 		return databaseError(ctx, err)
 	}
 	if kind != "chat" {
-		return status.Error(codes.FailedPrecondition, "Для голосовой комнаты требуется голосовой API")
+		return status.Error(codes.FailedPrecondition, "Для этого раздела требуется отдельный API")
 	}
 	if encrypted {
 		return status.Error(codes.FailedPrecondition, "Для закрытого канала требуется MLS")

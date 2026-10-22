@@ -517,6 +517,7 @@ func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID,
 	pb.RegisterContentServiceServer(server, service)
 	if store != nil {
 		pb.RegisterVoiceServiceServer(server, voiceService)
+		pb.RegisterForumServiceServer(server, store)
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
 		pb.RegisterAssetServiceServer(server, store)
 		pb.RegisterMlsServiceServer(server, store)

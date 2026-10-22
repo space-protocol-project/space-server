@@ -13,6 +13,9 @@ import (
 const MaxRPCRequestBytes = 1024 * 1024
 
 func requestMessageLimit(method string) int {
+	if method == rpc.ForumServiceCreateForumThreadProcedure || method == rpc.ForumServiceReplyForumThreadProcedure {
+		return 64 * 1024
+	}
 	if method == rpc.MlsServicePublishMlsProcedure {
 		return MaxRPCRequestBytes
 	}

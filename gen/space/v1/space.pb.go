@@ -3435,6 +3435,8 @@ func (*GetManifestRequest) Descriptor() ([]byte, []int) {
 
 type GetManifestResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// Поддерживаемые расширения, например core.forum.v1.
+	Capabilities []string `protobuf:"bytes,9,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
 	// Только ответы обычных каналов. MLS-ответы согласуются отдельно.
 	OrdinaryRepliesSupported bool        `protobuf:"varint,8,opt,name=ordinary_replies_supported,json=ordinaryRepliesSupported,proto3" json:"ordinary_replies_supported,omitempty"`
 	MlsSupported             bool        `protobuf:"varint,7,opt,name=mls_supported,json=mlsSupported,proto3" json:"mls_supported,omitempty"`
@@ -3476,6 +3478,13 @@ func (x *GetManifestResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetManifestResponse.ProtoReflect.Descriptor instead.
 func (*GetManifestResponse) Descriptor() ([]byte, []int) {
 	return file_space_v1_space_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *GetManifestResponse) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
 }
 
 func (x *GetManifestResponse) GetOrdinaryRepliesSupported() bool {
@@ -8116,8 +8125,9 @@ const file_space_v1_space_proto_rawDesc = "" +
 	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12+\n" +
 	"\acontent\x18\x03 \x01(\v2\x11.space.v1.ContentR\acontent\"\x14\n" +
-	"\x12GetManifestRequest\"\xe0\x02\n" +
-	"\x13GetManifestResponse\x12<\n" +
+	"\x12GetManifestRequest\"\x84\x03\n" +
+	"\x13GetManifestResponse\x12\"\n" +
+	"\fcapabilities\x18\t \x03(\tR\fcapabilities\x12<\n" +
 	"\x1aordinary_replies_supported\x18\b \x01(\bR\x18ordinaryRepliesSupported\x12#\n" +
 	"\rmls_supported\x18\a \x01(\bR\fmlsSupported\x12/\n" +
 	"\x13attachments_enabled\x18\x06 \x01(\bR\x12attachmentsEnabled\x12)\n" +

@@ -292,6 +292,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(assetPath, assetHandler)
 	voicePath, voiceHandler := rpc.NewVoiceServiceHandler(connectVoice{client: pb.NewVoiceServiceClient(connection)}, options...)
 	mux.Handle(voicePath, voiceHandler)
+	forumPath, forumHandler := rpc.NewForumServiceHandler(connectForum{client: pb.NewForumServiceClient(connection)}, connect.WithReadMaxBytes(64*1024), connect.WithSendMaxBytes(4*1024*1024))
+	mux.Handle(forumPath, forumHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
 }
@@ -317,6 +319,12 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.ForumServiceListForumThreadsProcedure:  true,
+	rpc.ForumServiceGetForumThreadProcedure:    true,
+	rpc.ForumServiceCreateForumThreadProcedure: true,
+	rpc.ForumServiceReplyForumThreadProcedure:  true,
+	rpc.ForumServiceCloseForumThreadProcedure:  true,
+
 	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
 	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,
 	rpc.VoiceServiceLeaveVoiceRoomProcedure:         true,

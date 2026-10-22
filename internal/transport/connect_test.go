@@ -35,6 +35,11 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ChannelServiceListChannelsProcedure,
 		rpc.ChannelServiceWatchChannelsProcedure,
 		rpc.ContentServiceCreateContentProcedure,
+		rpc.ForumServiceCreateForumThreadProcedure,
+		rpc.ForumServiceReplyForumThreadProcedure,
+		rpc.ForumServiceCloseForumThreadProcedure,
+		rpc.ForumServiceListForumThreadsProcedure,
+		rpc.ForumServiceGetForumThreadProcedure,
 		rpc.ContentServiceSearchContentProcedure,
 		rpc.ContentServiceGetHistoryPageProcedure,
 		rpc.ContentServiceSetReactionProcedure,
@@ -75,7 +80,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
 	expected := 0
-	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto}
+	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto}
 	for _, file := range files {
 		services := file.Services()
 		for i := 0; i < services.Len(); i++ {

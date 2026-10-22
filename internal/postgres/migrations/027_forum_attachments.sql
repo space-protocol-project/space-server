@@ -1,0 +1,11 @@
+ALTER TABLE forum_threads ADD COLUMN attachments jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE forum_replies ADD COLUMN attachments jsonb NOT NULL DEFAULT '[]';
+ALTER TABLE forum_threads DROP CONSTRAINT forum_threads_body_check;
+ALTER TABLE forum_threads ADD CHECK(octet_length(body)<=8192 AND (octet_length(body)>0 OR jsonb_array_length(attachments)>0));
+ALTER TABLE forum_replies DROP CONSTRAINT forum_replies_body_check;
+ALTER TABLE forum_replies ADD CHECK(octet_length(body)<=8192 AND (octet_length(body)>0 OR jsonb_array_length(attachments)>0));
+ALTER TABLE forum_replies ADD UNIQUE(channel_id,id);
+ALTER TABLE assets ADD COLUMN forum_thread_id text, ADD COLUMN forum_reply_id text;
+ALTER TABLE assets ADD FOREIGN KEY(channel_id,forum_thread_id) REFERENCES forum_threads(channel_id,id) ON DELETE CASCADE;
+ALTER TABLE assets ADD FOREIGN KEY(channel_id,forum_reply_id) REFERENCES forum_replies(channel_id,id) ON DELETE CASCADE;
+ALTER TABLE assets ADD CHECK(num_nonnulls(content_id,mls_sequence,forum_thread_id,forum_reply_id)<=1);

@@ -116,6 +116,7 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 		t.Fatal(voiceErr)
 	}
 	pb.RegisterVoiceServiceServer(server, voiceService)
+	pb.RegisterForumServiceServer(server, store)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
 	pb.RegisterMembershipServiceServer(server, store)
@@ -197,7 +198,7 @@ func TestChannelsIsolationPermissionsAndPersistence(t *testing.T) {
 	}
 	_, err := f.channels.CreateChannel(f.owner, &pb.CreateChannelRequest{ChannelId: secret.Id, Title: "Повтор", ViewType: "chat"})
 	requireCode(t, err, codes.AlreadyExists)
-	_, err = f.channels.CreateChannel(f.owner, &pb.CreateChannelRequest{ChannelId: "forum", Title: "Форум", ViewType: "forum"})
+	_, err = f.channels.CreateChannel(f.owner, &pb.CreateChannelRequest{ChannelId: "forum", Title: "Форум", ViewType: "unknown"})
 	requireCode(t, err, codes.InvalidArgument)
 	f.acl(t, secret, principalRule(memberID, permissions(true, true, true, true)))
 	first, err := f.contents.CreateContent(member, &pb.CreateContentRequest{ChannelId: secret.Id, Text: "Секрет", IdempotencyKey: "same"})

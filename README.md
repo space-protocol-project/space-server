@@ -1,6 +1,8 @@
 # Space Server
 
-Готовится **runtime v0.7.14** для клиента **v0.7.17**; прежний клиент v0.7.16 совместим. Go 1.27.3, PostgreSQL 17.11, обновлённые Connect/gRPC/pgx/WebRTC. Схема **30** и голосовой профиль **3** сохранены, новых миграций нет. Все 332 локальных теста с проверкой гонок и PostgreSQL прошли; сквозная проверка TLS, владельца, приглашения, ACL, сообщения и перезапуска успешна. [Изменения](Changelog.md), [отчёт обновления](docs/DEPENDENCY_UPDATES.md).
+Опубликован [runtime **v0.7.14**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.14), совместимый с [клиентом **v0.7.17**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.17); прежний клиент v0.7.16 совместим. Go 1.27.3, PostgreSQL 17.11, обновлённые Connect/gRPC/pgx/WebRTC. Схема **30** и голосовой профиль **3** сохранены, новых миграций нет. [Изменения](Changelog.md), [отчёт обновления](docs/DEPENDENCY_UPDATES.md).
+
+[Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40019247321) прошёл на Windows x64, Linux x64 и macOS arm64: TLS, обновление с сохранением данных, перенос и восстановление MLS. Три runtime-архива, три JSON-дескриптора и SHA256SUMS.txt полностью скачаны; размеры и SHA-256 совпадают с GitHub API и контрольными суммами. Выпуск Latest, не draft и не prerelease. [Настоящий опубликованный Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40022024509) прошёл проверку SHA-256, запуска PostgreSQL, TLS pin и настройки владельца.
 
 Перед обновлением сохраните резервную копию пространства и ключей MLS. Установленные данные не заменяются комплектом runtime.
 

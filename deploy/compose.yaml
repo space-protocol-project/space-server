@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17.6
+    image: postgres:17.11
     environment:
       POSTGRES_DB: space
       POSTGRES_USER: space

@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17.6
+        image: postgres:17.11
         env:
           POSTGRES_DB: space_test
           POSTGRES_USER: space
@@ -86,7 +86,7 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -C cmd/space-server -show=verbose ./...
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.7'
+          flutter-version: '3.47.8'
           channel: stable
           cache: true
       - name: Анализ и тесты Flutter-клиента
@@ -108,7 +108,7 @@ jobs:
           "$RUNNER_TEMP/space-server" -http 127.0.0.1:18080 &
           server_pid=$!
           trap 'kill "$server_pid"; wait "$server_pid" || true' EXIT
-          for attempt in $(seq 1 20); do
+          for _ in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18080/healthz; then break; fi
             sleep 1
           done
@@ -127,7 +127,7 @@ jobs:
           "$RUNNER_TEMP/space-server" -http 127.0.0.1:18081 -grpc 127.0.0.1:19091 &
           bootstrap_pid=$!
           trap 'kill "$bootstrap_pid"; wait "$bootstrap_pid" || true' EXIT
-          for attempt in $(seq 1 20); do
+          for _ in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18081/healthz; then break; fi
             sleep 1
           done
@@ -145,7 +145,7 @@ jobs:
           "$RUNNER_TEMP/space-server" -http 127.0.0.1:18082 -grpc 127.0.0.1:19092 &
           bootstrap_pid=$!
           trap 'kill "$bootstrap_pid"; wait "$bootstrap_pid" || true' EXIT
-          for attempt in $(seq 1 20); do
+          for _ in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18082/healthz; then break; fi
             sleep 1
           done
@@ -160,7 +160,7 @@ jobs:
           "$RUNNER_TEMP/space-server" -http 127.0.0.1:18083 -grpc 127.0.0.1:19093 &
           attachments_pid=$!
           trap 'kill "$attachments_pid"; wait "$attachments_pid" || true' EXIT
-          for attempt in $(seq 1 20); do
+          for _ in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18083/healthz; then break; fi
             sleep 1
           done
@@ -175,7 +175,7 @@ jobs:
           "$RUNNER_TEMP/space-server" -http 127.0.0.1:18084 -grpc 127.0.0.1:19094 &
           mls_pid=$!
           trap 'kill "$mls_pid"; wait "$mls_pid" || true' EXIT
-          for attempt in $(seq 1 20); do
+          for _ in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18084/healthz; then break; fi
             sleep 1
           done
@@ -205,7 +205,7 @@ jobs:
           path: app-source
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.7'
+          flutter-version: '3.47.8'
           channel: stable
           cache: true
       - name: Сборка отдельного проверочного приложения

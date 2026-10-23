@@ -156,7 +156,7 @@ func (s *Store) ListForumModeration(ctx context.Context, req *pb.ListForumModera
 	if _, err = forumThread(ctx, tx, req.ChannelId, req.ThreadId); err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT id,thread_id,reply_id,action,reason,actor_id,revision,created_at_unix FROM forum_moderation WHERE thread_id=$1 AND id>$2 ORDER BY id LIMIT $3`, req.ThreadId, req.AfterId, limit+1)
+	rows, err := tx.Query(ctx, `SELECT id,thread_id,reply_id,action,reason,actor_id,revision,created_at_unix,report_id FROM forum_moderation WHERE thread_id=$1 AND id>$2 ORDER BY id LIMIT $3`, req.ThreadId, req.AfterId, limit+1)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -164,7 +164,7 @@ func (s *Store) ListForumModeration(ctx context.Context, req *pb.ListForumModera
 	out := new(pb.ListForumModerationResponse)
 	for rows.Next() {
 		e := new(pb.ForumModerationEvent)
-		if err = rows.Scan(&e.Id, &e.ThreadId, &e.ReplyId, &e.Action, &e.Reason, &e.ActorId, &e.Revision, &e.CreatedAtUnix); err != nil {
+		if err = rows.Scan(&e.Id, &e.ThreadId, &e.ReplyId, &e.Action, &e.Reason, &e.ActorId, &e.Revision, &e.CreatedAtUnix, &e.ReportId); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		if len(out.Events) == limit {

@@ -33,6 +33,15 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// ForumServiceReportForumContentProcedure is the fully-qualified name of the ForumService's
+	// ReportForumContent RPC.
+	ForumServiceReportForumContentProcedure = "/space.v1.ForumService/ReportForumContent"
+	// ForumServiceListForumReportsProcedure is the fully-qualified name of the ForumService's
+	// ListForumReports RPC.
+	ForumServiceListForumReportsProcedure = "/space.v1.ForumService/ListForumReports"
+	// ForumServiceResolveForumReportProcedure is the fully-qualified name of the ForumService's
+	// ResolveForumReport RPC.
+	ForumServiceResolveForumReportProcedure = "/space.v1.ForumService/ResolveForumReport"
 	// ForumServiceListForumThreadsProcedure is the fully-qualified name of the ForumService's
 	// ListForumThreads RPC.
 	ForumServiceListForumThreadsProcedure = "/space.v1.ForumService/ListForumThreads"
@@ -67,6 +76,9 @@ const (
 
 // ForumServiceClient is a client for the space.v1.ForumService service.
 type ForumServiceClient interface {
+	ReportForumContent(context.Context, *connect.Request[v1.ReportForumContentRequest]) (*connect.Response[v1.ReportForumContentResponse], error)
+	ListForumReports(context.Context, *connect.Request[v1.ListForumReportsRequest]) (*connect.Response[v1.ListForumReportsResponse], error)
+	ResolveForumReport(context.Context, *connect.Request[v1.ResolveForumReportRequest]) (*connect.Response[v1.ResolveForumReportResponse], error)
 	ListForumThreads(context.Context, *connect.Request[v1.ListForumThreadsRequest]) (*connect.Response[v1.ListForumThreadsResponse], error)
 	GetForumThread(context.Context, *connect.Request[v1.GetForumThreadRequest]) (*connect.Response[v1.GetForumThreadResponse], error)
 	CreateForumThread(context.Context, *connect.Request[v1.CreateForumThreadRequest]) (*connect.Response[v1.CreateForumThreadResponse], error)
@@ -90,6 +102,24 @@ func NewForumServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	forumServiceMethods := v1.File_space_v1_forum_proto.Services().ByName("ForumService").Methods()
 	return &forumServiceClient{
+		reportForumContent: connect.NewClient[v1.ReportForumContentRequest, v1.ReportForumContentResponse](
+			httpClient,
+			baseURL+ForumServiceReportForumContentProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ReportForumContent")),
+			connect.WithClientOptions(opts...),
+		),
+		listForumReports: connect.NewClient[v1.ListForumReportsRequest, v1.ListForumReportsResponse](
+			httpClient,
+			baseURL+ForumServiceListForumReportsProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ListForumReports")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveForumReport: connect.NewClient[v1.ResolveForumReportRequest, v1.ResolveForumReportResponse](
+			httpClient,
+			baseURL+ForumServiceResolveForumReportProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ResolveForumReport")),
+			connect.WithClientOptions(opts...),
+		),
 		listForumThreads: connect.NewClient[v1.ListForumThreadsRequest, v1.ListForumThreadsResponse](
 			httpClient,
 			baseURL+ForumServiceListForumThreadsProcedure,
@@ -155,6 +185,9 @@ func NewForumServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // forumServiceClient implements ForumServiceClient.
 type forumServiceClient struct {
+	reportForumContent   *connect.Client[v1.ReportForumContentRequest, v1.ReportForumContentResponse]
+	listForumReports     *connect.Client[v1.ListForumReportsRequest, v1.ListForumReportsResponse]
+	resolveForumReport   *connect.Client[v1.ResolveForumReportRequest, v1.ResolveForumReportResponse]
 	listForumThreads     *connect.Client[v1.ListForumThreadsRequest, v1.ListForumThreadsResponse]
 	getForumThread       *connect.Client[v1.GetForumThreadRequest, v1.GetForumThreadResponse]
 	createForumThread    *connect.Client[v1.CreateForumThreadRequest, v1.CreateForumThreadResponse]
@@ -165,6 +198,21 @@ type forumServiceClient struct {
 	moderateForumThread  *connect.Client[v1.ModerateForumThreadRequest, v1.ModerateForumThreadResponse]
 	moderateForumReply   *connect.Client[v1.ModerateForumReplyRequest, v1.ModerateForumReplyResponse]
 	listForumModeration  *connect.Client[v1.ListForumModerationRequest, v1.ListForumModerationResponse]
+}
+
+// ReportForumContent calls space.v1.ForumService.ReportForumContent.
+func (c *forumServiceClient) ReportForumContent(ctx context.Context, req *connect.Request[v1.ReportForumContentRequest]) (*connect.Response[v1.ReportForumContentResponse], error) {
+	return c.reportForumContent.CallUnary(ctx, req)
+}
+
+// ListForumReports calls space.v1.ForumService.ListForumReports.
+func (c *forumServiceClient) ListForumReports(ctx context.Context, req *connect.Request[v1.ListForumReportsRequest]) (*connect.Response[v1.ListForumReportsResponse], error) {
+	return c.listForumReports.CallUnary(ctx, req)
+}
+
+// ResolveForumReport calls space.v1.ForumService.ResolveForumReport.
+func (c *forumServiceClient) ResolveForumReport(ctx context.Context, req *connect.Request[v1.ResolveForumReportRequest]) (*connect.Response[v1.ResolveForumReportResponse], error) {
+	return c.resolveForumReport.CallUnary(ctx, req)
 }
 
 // ListForumThreads calls space.v1.ForumService.ListForumThreads.
@@ -219,6 +267,9 @@ func (c *forumServiceClient) ListForumModeration(ctx context.Context, req *conne
 
 // ForumServiceHandler is an implementation of the space.v1.ForumService service.
 type ForumServiceHandler interface {
+	ReportForumContent(context.Context, *connect.Request[v1.ReportForumContentRequest]) (*connect.Response[v1.ReportForumContentResponse], error)
+	ListForumReports(context.Context, *connect.Request[v1.ListForumReportsRequest]) (*connect.Response[v1.ListForumReportsResponse], error)
+	ResolveForumReport(context.Context, *connect.Request[v1.ResolveForumReportRequest]) (*connect.Response[v1.ResolveForumReportResponse], error)
 	ListForumThreads(context.Context, *connect.Request[v1.ListForumThreadsRequest]) (*connect.Response[v1.ListForumThreadsResponse], error)
 	GetForumThread(context.Context, *connect.Request[v1.GetForumThreadRequest]) (*connect.Response[v1.GetForumThreadResponse], error)
 	CreateForumThread(context.Context, *connect.Request[v1.CreateForumThreadRequest]) (*connect.Response[v1.CreateForumThreadResponse], error)
@@ -238,6 +289,24 @@ type ForumServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	forumServiceMethods := v1.File_space_v1_forum_proto.Services().ByName("ForumService").Methods()
+	forumServiceReportForumContentHandler := connect.NewUnaryHandler(
+		ForumServiceReportForumContentProcedure,
+		svc.ReportForumContent,
+		connect.WithSchema(forumServiceMethods.ByName("ReportForumContent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	forumServiceListForumReportsHandler := connect.NewUnaryHandler(
+		ForumServiceListForumReportsProcedure,
+		svc.ListForumReports,
+		connect.WithSchema(forumServiceMethods.ByName("ListForumReports")),
+		connect.WithHandlerOptions(opts...),
+	)
+	forumServiceResolveForumReportHandler := connect.NewUnaryHandler(
+		ForumServiceResolveForumReportProcedure,
+		svc.ResolveForumReport,
+		connect.WithSchema(forumServiceMethods.ByName("ResolveForumReport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	forumServiceListForumThreadsHandler := connect.NewUnaryHandler(
 		ForumServiceListForumThreadsProcedure,
 		svc.ListForumThreads,
@@ -300,6 +369,12 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 	)
 	return "/space.v1.ForumService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ForumServiceReportForumContentProcedure:
+			forumServiceReportForumContentHandler.ServeHTTP(w, r)
+		case ForumServiceListForumReportsProcedure:
+			forumServiceListForumReportsHandler.ServeHTTP(w, r)
+		case ForumServiceResolveForumReportProcedure:
+			forumServiceResolveForumReportHandler.ServeHTTP(w, r)
 		case ForumServiceListForumThreadsProcedure:
 			forumServiceListForumThreadsHandler.ServeHTTP(w, r)
 		case ForumServiceGetForumThreadProcedure:
@@ -328,6 +403,18 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 
 // UnimplementedForumServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedForumServiceHandler struct{}
+
+func (UnimplementedForumServiceHandler) ReportForumContent(context.Context, *connect.Request[v1.ReportForumContentRequest]) (*connect.Response[v1.ReportForumContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ReportForumContent is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) ListForumReports(context.Context, *connect.Request[v1.ListForumReportsRequest]) (*connect.Response[v1.ListForumReportsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ListForumReports is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) ResolveForumReport(context.Context, *connect.Request[v1.ResolveForumReportRequest]) (*connect.Response[v1.ResolveForumReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ResolveForumReport is not implemented"))
+}
 
 func (UnimplementedForumServiceHandler) ListForumThreads(context.Context, *connect.Request[v1.ListForumThreadsRequest]) (*connect.Response[v1.ListForumThreadsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ListForumThreads is not implemented"))

@@ -1485,6 +1485,7 @@ func (x *ListForumModerationRequest) GetLimit() int32 {
 
 type ForumModerationEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReportId      int64                  `protobuf:"varint,9,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ThreadId      string                 `protobuf:"bytes,2,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
 	ReplyId       string                 `protobuf:"bytes,3,opt,name=reply_id,json=replyId,proto3" json:"reply_id,omitempty"`
@@ -1525,6 +1526,13 @@ func (x *ForumModerationEvent) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ForumModerationEvent.ProtoReflect.Descriptor instead.
 func (*ForumModerationEvent) Descriptor() ([]byte, []int) {
 	return file_space_v1_forum_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ForumModerationEvent) GetReportId() int64 {
+	if x != nil {
+		return x.ReportId
+	}
+	return 0
 }
 
 func (x *ForumModerationEvent) GetId() int64 {
@@ -1633,6 +1641,467 @@ func (x *ListForumModerationResponse) GetNextId() int64 {
 		return x.NextId
 	}
 	return 0
+}
+
+// core.forum.reports.v1: сведения о заявителе не возвращаются клиентам.
+type ForumReport struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ThreadTitle    string                 `protobuf:"bytes,10,opt,name=thread_title,json=threadTitle,proto3" json:"thread_title,omitempty"`
+	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ThreadId       string                 `protobuf:"bytes,2,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
+	ReplyId        string                 `protobuf:"bytes,3,opt,name=reply_id,json=replyId,proto3" json:"reply_id,omitempty"`
+	Reason         string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	Decision       string                 `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`
+	DecisionReason string                 `protobuf:"bytes,6,opt,name=decision_reason,json=decisionReason,proto3" json:"decision_reason,omitempty"`
+	ModeratorId    string                 `protobuf:"bytes,7,opt,name=moderator_id,json=moderatorId,proto3" json:"moderator_id,omitempty"`
+	CreatedAtUnix  int64                  `protobuf:"varint,8,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	ResolvedAtUnix int64                  `protobuf:"varint,9,opt,name=resolved_at_unix,json=resolvedAtUnix,proto3" json:"resolved_at_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ForumReport) Reset() {
+	*x = ForumReport{}
+	mi := &file_space_v1_forum_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForumReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForumReport) ProtoMessage() {}
+
+func (x *ForumReport) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForumReport.ProtoReflect.Descriptor instead.
+func (*ForumReport) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ForumReport) GetThreadTitle() string {
+	if x != nil {
+		return x.ThreadTitle
+	}
+	return ""
+}
+
+func (x *ForumReport) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ForumReport) GetThreadId() string {
+	if x != nil {
+		return x.ThreadId
+	}
+	return ""
+}
+
+func (x *ForumReport) GetReplyId() string {
+	if x != nil {
+		return x.ReplyId
+	}
+	return ""
+}
+
+func (x *ForumReport) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ForumReport) GetDecision() string {
+	if x != nil {
+		return x.Decision
+	}
+	return ""
+}
+
+func (x *ForumReport) GetDecisionReason() string {
+	if x != nil {
+		return x.DecisionReason
+	}
+	return ""
+}
+
+func (x *ForumReport) GetModeratorId() string {
+	if x != nil {
+		return x.ModeratorId
+	}
+	return ""
+}
+
+func (x *ForumReport) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *ForumReport) GetResolvedAtUnix() int64 {
+	if x != nil {
+		return x.ResolvedAtUnix
+	}
+	return 0
+}
+
+type ReportForumContentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ThreadId      string                 `protobuf:"bytes,2,opt,name=thread_id,json=threadId,proto3" json:"thread_id,omitempty"`
+	ReplyId       string                 `protobuf:"bytes,3,opt,name=reply_id,json=replyId,proto3" json:"reply_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportForumContentRequest) Reset() {
+	*x = ReportForumContentRequest{}
+	mi := &file_space_v1_forum_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportForumContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportForumContentRequest) ProtoMessage() {}
+
+func (x *ReportForumContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportForumContentRequest.ProtoReflect.Descriptor instead.
+func (*ReportForumContentRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ReportForumContentRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *ReportForumContentRequest) GetThreadId() string {
+	if x != nil {
+		return x.ThreadId
+	}
+	return ""
+}
+
+func (x *ReportForumContentRequest) GetReplyId() string {
+	if x != nil {
+		return x.ReplyId
+	}
+	return ""
+}
+
+func (x *ReportForumContentRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ReportForumContentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportForumContentResponse) Reset() {
+	*x = ReportForumContentResponse{}
+	mi := &file_space_v1_forum_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportForumContentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportForumContentResponse) ProtoMessage() {}
+
+func (x *ReportForumContentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportForumContentResponse.ProtoReflect.Descriptor instead.
+func (*ReportForumContentResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{25}
+}
+
+type ListForumReportsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	AfterId       int64                  `protobuf:"varint,2,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Resolved      bool                   `protobuf:"varint,4,opt,name=resolved,proto3" json:"resolved,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListForumReportsRequest) Reset() {
+	*x = ListForumReportsRequest{}
+	mi := &file_space_v1_forum_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListForumReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListForumReportsRequest) ProtoMessage() {}
+
+func (x *ListForumReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListForumReportsRequest.ProtoReflect.Descriptor instead.
+func (*ListForumReportsRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ListForumReportsRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *ListForumReportsRequest) GetAfterId() int64 {
+	if x != nil {
+		return x.AfterId
+	}
+	return 0
+}
+
+func (x *ListForumReportsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListForumReportsRequest) GetResolved() bool {
+	if x != nil {
+		return x.Resolved
+	}
+	return false
+}
+
+type ListForumReportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*ForumReport         `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	NextId        int64                  `protobuf:"varint,2,opt,name=next_id,json=nextId,proto3" json:"next_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListForumReportsResponse) Reset() {
+	*x = ListForumReportsResponse{}
+	mi := &file_space_v1_forum_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListForumReportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListForumReportsResponse) ProtoMessage() {}
+
+func (x *ListForumReportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListForumReportsResponse.ProtoReflect.Descriptor instead.
+func (*ListForumReportsResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ListForumReportsResponse) GetReports() []*ForumReport {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+func (x *ListForumReportsResponse) GetNextId() int64 {
+	if x != nil {
+		return x.NextId
+	}
+	return 0
+}
+
+type ResolveForumReportRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId        string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ReportId         int64                  `protobuf:"varint,2,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	Decision         string                 `protobuf:"bytes,3,opt,name=decision,proto3" json:"decision,omitempty"` // dismiss или hide.
+	Reason           string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	ExpectedRevision int64                  `protobuf:"varint,5,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"` // Ревизия темы или ответа для hide.
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ResolveForumReportRequest) Reset() {
+	*x = ResolveForumReportRequest{}
+	mi := &file_space_v1_forum_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveForumReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveForumReportRequest) ProtoMessage() {}
+
+func (x *ResolveForumReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveForumReportRequest.ProtoReflect.Descriptor instead.
+func (*ResolveForumReportRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ResolveForumReportRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *ResolveForumReportRequest) GetReportId() int64 {
+	if x != nil {
+		return x.ReportId
+	}
+	return 0
+}
+
+func (x *ResolveForumReportRequest) GetDecision() string {
+	if x != nil {
+		return x.Decision
+	}
+	return ""
+}
+
+func (x *ResolveForumReportRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ResolveForumReportRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
+}
+
+type ResolveForumReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Report        *ForumReport           `protobuf:"bytes,1,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveForumReportResponse) Reset() {
+	*x = ResolveForumReportResponse{}
+	mi := &file_space_v1_forum_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveForumReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveForumReportResponse) ProtoMessage() {}
+
+func (x *ResolveForumReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_forum_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveForumReportResponse.ProtoReflect.Descriptor instead.
+func (*ResolveForumReportResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_forum_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ResolveForumReportResponse) GetReport() *ForumReport {
+	if x != nil {
+		return x.Report
+	}
+	return nil
 }
 
 var File_space_v1_forum_proto protoreflect.FileDescriptor
@@ -1765,8 +2234,9 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x19\n" +
 	"\bafter_id\x18\x03 \x01(\x03R\aafterId\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\xed\x01\n" +
-	"\x14ForumModerationEvent\x12\x0e\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x8a\x02\n" +
+	"\x14ForumModerationEvent\x12\x1b\n" +
+	"\treport_id\x18\t \x01(\x03R\breportId\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x19\n" +
 	"\breply_id\x18\x03 \x01(\tR\areplyId\x12\x16\n" +
@@ -1777,8 +2247,48 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"\x0fcreated_at_unix\x18\b \x01(\x03R\rcreatedAtUnix\"n\n" +
 	"\x1bListForumModerationResponse\x126\n" +
 	"\x06events\x18\x01 \x03(\v2\x1e.space.v1.ForumModerationEventR\x06events\x12\x17\n" +
-	"\anext_id\x18\x02 \x01(\x03R\x06nextId2\xc6\a\n" +
-	"\fForumService\x12Y\n" +
+	"\anext_id\x18\x02 \x01(\x03R\x06nextId\"\xca\x02\n" +
+	"\vForumReport\x12!\n" +
+	"\fthread_title\x18\n" +
+	" \x01(\tR\vthreadTitle\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
+	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x19\n" +
+	"\breply_id\x18\x03 \x01(\tR\areplyId\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1a\n" +
+	"\bdecision\x18\x05 \x01(\tR\bdecision\x12'\n" +
+	"\x0fdecision_reason\x18\x06 \x01(\tR\x0edecisionReason\x12!\n" +
+	"\fmoderator_id\x18\a \x01(\tR\vmoderatorId\x12&\n" +
+	"\x0fcreated_at_unix\x18\b \x01(\x03R\rcreatedAtUnix\x12(\n" +
+	"\x10resolved_at_unix\x18\t \x01(\x03R\x0eresolvedAtUnix\"\x8a\x01\n" +
+	"\x19ReportForumContentRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
+	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x19\n" +
+	"\breply_id\x18\x03 \x01(\tR\areplyId\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"\x1c\n" +
+	"\x1aReportForumContentResponse\"\x85\x01\n" +
+	"\x17ListForumReportsRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x19\n" +
+	"\bafter_id\x18\x02 \x01(\x03R\aafterId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1a\n" +
+	"\bresolved\x18\x04 \x01(\bR\bresolved\"d\n" +
+	"\x18ListForumReportsResponse\x12/\n" +
+	"\areports\x18\x01 \x03(\v2\x15.space.v1.ForumReportR\areports\x12\x17\n" +
+	"\anext_id\x18\x02 \x01(\x03R\x06nextId\"\xb8\x01\n" +
+	"\x19ResolveForumReportRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
+	"\treport_id\x18\x02 \x01(\x03R\breportId\x12\x1a\n" +
+	"\bdecision\x18\x03 \x01(\tR\bdecision\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12+\n" +
+	"\x11expected_revision\x18\x05 \x01(\x03R\x10expectedRevision\"K\n" +
+	"\x1aResolveForumReportResponse\x12-\n" +
+	"\x06report\x18\x01 \x01(\v2\x15.space.v1.ForumReportR\x06report2\xe3\t\n" +
+	"\fForumService\x12_\n" +
+	"\x12ReportForumContent\x12#.space.v1.ReportForumContentRequest\x1a$.space.v1.ReportForumContentResponse\x12Y\n" +
+	"\x10ListForumReports\x12!.space.v1.ListForumReportsRequest\x1a\".space.v1.ListForumReportsResponse\x12_\n" +
+	"\x12ResolveForumReport\x12#.space.v1.ResolveForumReportRequest\x1a$.space.v1.ResolveForumReportResponse\x12Y\n" +
 	"\x10ListForumThreads\x12!.space.v1.ListForumThreadsRequest\x1a\".space.v1.ListForumThreadsResponse\x12S\n" +
 	"\x0eGetForumThread\x12\x1f.space.v1.GetForumThreadRequest\x1a .space.v1.GetForumThreadResponse\x12\\\n" +
 	"\x11CreateForumThread\x12\".space.v1.CreateForumThreadRequest\x1a#.space.v1.CreateForumThreadResponse\x12Y\n" +
@@ -1802,7 +2312,7 @@ func file_space_v1_forum_proto_rawDescGZIP() []byte {
 	return file_space_v1_forum_proto_rawDescData
 }
 
-var file_space_v1_forum_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_space_v1_forum_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_space_v1_forum_proto_goTypes = []any{
 	(*ForumThread)(nil),                  // 0: space.v1.ForumThread
 	(*ForumReply)(nil),                   // 1: space.v1.ForumReply
@@ -1827,11 +2337,18 @@ var file_space_v1_forum_proto_goTypes = []any{
 	(*ListForumModerationRequest)(nil),   // 20: space.v1.ListForumModerationRequest
 	(*ForumModerationEvent)(nil),         // 21: space.v1.ForumModerationEvent
 	(*ListForumModerationResponse)(nil),  // 22: space.v1.ListForumModerationResponse
-	(*Asset)(nil),                        // 23: space.v1.Asset
+	(*ForumReport)(nil),                  // 23: space.v1.ForumReport
+	(*ReportForumContentRequest)(nil),    // 24: space.v1.ReportForumContentRequest
+	(*ReportForumContentResponse)(nil),   // 25: space.v1.ReportForumContentResponse
+	(*ListForumReportsRequest)(nil),      // 26: space.v1.ListForumReportsRequest
+	(*ListForumReportsResponse)(nil),     // 27: space.v1.ListForumReportsResponse
+	(*ResolveForumReportRequest)(nil),    // 28: space.v1.ResolveForumReportRequest
+	(*ResolveForumReportResponse)(nil),   // 29: space.v1.ResolveForumReportResponse
+	(*Asset)(nil),                        // 30: space.v1.Asset
 }
 var file_space_v1_forum_proto_depIdxs = []int32{
-	23, // 0: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
-	23, // 1: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
+	30, // 0: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
+	30, // 1: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
 	0,  // 2: space.v1.ListForumThreadsResponse.threads:type_name -> space.v1.ForumThread
 	0,  // 3: space.v1.GetForumThreadResponse.thread:type_name -> space.v1.ForumThread
 	1,  // 4: space.v1.GetForumThreadResponse.replies:type_name -> space.v1.ForumReply
@@ -1845,31 +2362,39 @@ var file_space_v1_forum_proto_depIdxs = []int32{
 	1,  // 12: space.v1.ModerateForumReplyResponse.reply:type_name -> space.v1.ForumReply
 	0,  // 13: space.v1.ModerateForumReplyResponse.thread:type_name -> space.v1.ForumThread
 	21, // 14: space.v1.ListForumModerationResponse.events:type_name -> space.v1.ForumModerationEvent
-	2,  // 15: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
-	4,  // 16: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
-	6,  // 17: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
-	8,  // 18: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
-	12, // 19: space.v1.ForumService.SetForumThreadPinned:input_type -> space.v1.SetForumThreadPinnedRequest
-	14, // 20: space.v1.ForumService.MarkForumThreadRead:input_type -> space.v1.MarkForumThreadReadRequest
-	10, // 21: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
-	16, // 22: space.v1.ForumService.ModerateForumThread:input_type -> space.v1.ModerateForumThreadRequest
-	18, // 23: space.v1.ForumService.ModerateForumReply:input_type -> space.v1.ModerateForumReplyRequest
-	20, // 24: space.v1.ForumService.ListForumModeration:input_type -> space.v1.ListForumModerationRequest
-	3,  // 25: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
-	5,  // 26: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
-	7,  // 27: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
-	9,  // 28: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
-	13, // 29: space.v1.ForumService.SetForumThreadPinned:output_type -> space.v1.SetForumThreadPinnedResponse
-	15, // 30: space.v1.ForumService.MarkForumThreadRead:output_type -> space.v1.MarkForumThreadReadResponse
-	11, // 31: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
-	17, // 32: space.v1.ForumService.ModerateForumThread:output_type -> space.v1.ModerateForumThreadResponse
-	19, // 33: space.v1.ForumService.ModerateForumReply:output_type -> space.v1.ModerateForumReplyResponse
-	22, // 34: space.v1.ForumService.ListForumModeration:output_type -> space.v1.ListForumModerationResponse
-	25, // [25:35] is the sub-list for method output_type
-	15, // [15:25] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	23, // 15: space.v1.ListForumReportsResponse.reports:type_name -> space.v1.ForumReport
+	23, // 16: space.v1.ResolveForumReportResponse.report:type_name -> space.v1.ForumReport
+	24, // 17: space.v1.ForumService.ReportForumContent:input_type -> space.v1.ReportForumContentRequest
+	26, // 18: space.v1.ForumService.ListForumReports:input_type -> space.v1.ListForumReportsRequest
+	28, // 19: space.v1.ForumService.ResolveForumReport:input_type -> space.v1.ResolveForumReportRequest
+	2,  // 20: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
+	4,  // 21: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
+	6,  // 22: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
+	8,  // 23: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
+	12, // 24: space.v1.ForumService.SetForumThreadPinned:input_type -> space.v1.SetForumThreadPinnedRequest
+	14, // 25: space.v1.ForumService.MarkForumThreadRead:input_type -> space.v1.MarkForumThreadReadRequest
+	10, // 26: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
+	16, // 27: space.v1.ForumService.ModerateForumThread:input_type -> space.v1.ModerateForumThreadRequest
+	18, // 28: space.v1.ForumService.ModerateForumReply:input_type -> space.v1.ModerateForumReplyRequest
+	20, // 29: space.v1.ForumService.ListForumModeration:input_type -> space.v1.ListForumModerationRequest
+	25, // 30: space.v1.ForumService.ReportForumContent:output_type -> space.v1.ReportForumContentResponse
+	27, // 31: space.v1.ForumService.ListForumReports:output_type -> space.v1.ListForumReportsResponse
+	29, // 32: space.v1.ForumService.ResolveForumReport:output_type -> space.v1.ResolveForumReportResponse
+	3,  // 33: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
+	5,  // 34: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
+	7,  // 35: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
+	9,  // 36: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
+	13, // 37: space.v1.ForumService.SetForumThreadPinned:output_type -> space.v1.SetForumThreadPinnedResponse
+	15, // 38: space.v1.ForumService.MarkForumThreadRead:output_type -> space.v1.MarkForumThreadReadResponse
+	11, // 39: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
+	17, // 40: space.v1.ForumService.ModerateForumThread:output_type -> space.v1.ModerateForumThreadResponse
+	19, // 41: space.v1.ForumService.ModerateForumReply:output_type -> space.v1.ModerateForumReplyResponse
+	22, // 42: space.v1.ForumService.ListForumModeration:output_type -> space.v1.ListForumModerationResponse
+	30, // [30:43] is the sub-list for method output_type
+	17, // [17:30] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_forum_proto_init() }
@@ -1884,7 +2409,7 @@ func file_space_v1_forum_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_forum_proto_rawDesc), len(file_space_v1_forum_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -47,3 +47,15 @@ func (s connectForum) ModerateForumReply(ctx context.Context, req *connect.Reque
 func (s connectForum) ListForumModeration(ctx context.Context, req *connect.Request[pb.ListForumModerationRequest]) (*connect.Response[pb.ListForumModerationResponse], error) {
 	return bridgeUnary(ctx, req, s.client.ListForumModeration)
 }
+
+func (s connectForum) ReportForumContent(ctx context.Context, req *connect.Request[pb.ReportForumContentRequest]) (*connect.Response[pb.ReportForumContentResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ReportForumContent)
+}
+
+func (s connectForum) ListForumReports(ctx context.Context, req *connect.Request[pb.ListForumReportsRequest]) (*connect.Response[pb.ListForumReportsResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ListForumReports)
+}
+
+func (s connectForum) ResolveForumReport(ctx context.Context, req *connect.Request[pb.ResolveForumReportRequest]) (*connect.Response[pb.ResolveForumReportResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ResolveForumReport)
+}

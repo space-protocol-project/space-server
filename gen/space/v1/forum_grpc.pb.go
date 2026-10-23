@@ -19,6 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ForumService_ReportForumContent_FullMethodName   = "/space.v1.ForumService/ReportForumContent"
+	ForumService_ListForumReports_FullMethodName     = "/space.v1.ForumService/ListForumReports"
+	ForumService_ResolveForumReport_FullMethodName   = "/space.v1.ForumService/ResolveForumReport"
 	ForumService_ListForumThreads_FullMethodName     = "/space.v1.ForumService/ListForumThreads"
 	ForumService_GetForumThread_FullMethodName       = "/space.v1.ForumService/GetForumThread"
 	ForumService_CreateForumThread_FullMethodName    = "/space.v1.ForumService/CreateForumThread"
@@ -37,6 +40,9 @@ const (
 //
 // core.forum.v1: отдельные открытые форумные разделы с ACL канала.
 type ForumServiceClient interface {
+	ReportForumContent(ctx context.Context, in *ReportForumContentRequest, opts ...grpc.CallOption) (*ReportForumContentResponse, error)
+	ListForumReports(ctx context.Context, in *ListForumReportsRequest, opts ...grpc.CallOption) (*ListForumReportsResponse, error)
+	ResolveForumReport(ctx context.Context, in *ResolveForumReportRequest, opts ...grpc.CallOption) (*ResolveForumReportResponse, error)
 	ListForumThreads(ctx context.Context, in *ListForumThreadsRequest, opts ...grpc.CallOption) (*ListForumThreadsResponse, error)
 	GetForumThread(ctx context.Context, in *GetForumThreadRequest, opts ...grpc.CallOption) (*GetForumThreadResponse, error)
 	CreateForumThread(ctx context.Context, in *CreateForumThreadRequest, opts ...grpc.CallOption) (*CreateForumThreadResponse, error)
@@ -55,6 +61,36 @@ type forumServiceClient struct {
 
 func NewForumServiceClient(cc grpc.ClientConnInterface) ForumServiceClient {
 	return &forumServiceClient{cc}
+}
+
+func (c *forumServiceClient) ReportForumContent(ctx context.Context, in *ReportForumContentRequest, opts ...grpc.CallOption) (*ReportForumContentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportForumContentResponse)
+	err := c.cc.Invoke(ctx, ForumService_ReportForumContent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *forumServiceClient) ListForumReports(ctx context.Context, in *ListForumReportsRequest, opts ...grpc.CallOption) (*ListForumReportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListForumReportsResponse)
+	err := c.cc.Invoke(ctx, ForumService_ListForumReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *forumServiceClient) ResolveForumReport(ctx context.Context, in *ResolveForumReportRequest, opts ...grpc.CallOption) (*ResolveForumReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveForumReportResponse)
+	err := c.cc.Invoke(ctx, ForumService_ResolveForumReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *forumServiceClient) ListForumThreads(ctx context.Context, in *ListForumThreadsRequest, opts ...grpc.CallOption) (*ListForumThreadsResponse, error) {
@@ -163,6 +199,9 @@ func (c *forumServiceClient) ListForumModeration(ctx context.Context, in *ListFo
 //
 // core.forum.v1: отдельные открытые форумные разделы с ACL канала.
 type ForumServiceServer interface {
+	ReportForumContent(context.Context, *ReportForumContentRequest) (*ReportForumContentResponse, error)
+	ListForumReports(context.Context, *ListForumReportsRequest) (*ListForumReportsResponse, error)
+	ResolveForumReport(context.Context, *ResolveForumReportRequest) (*ResolveForumReportResponse, error)
 	ListForumThreads(context.Context, *ListForumThreadsRequest) (*ListForumThreadsResponse, error)
 	GetForumThread(context.Context, *GetForumThreadRequest) (*GetForumThreadResponse, error)
 	CreateForumThread(context.Context, *CreateForumThreadRequest) (*CreateForumThreadResponse, error)
@@ -183,6 +222,15 @@ type ForumServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedForumServiceServer struct{}
 
+func (UnimplementedForumServiceServer) ReportForumContent(context.Context, *ReportForumContentRequest) (*ReportForumContentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportForumContent not implemented")
+}
+func (UnimplementedForumServiceServer) ListForumReports(context.Context, *ListForumReportsRequest) (*ListForumReportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListForumReports not implemented")
+}
+func (UnimplementedForumServiceServer) ResolveForumReport(context.Context, *ResolveForumReportRequest) (*ResolveForumReportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolveForumReport not implemented")
+}
 func (UnimplementedForumServiceServer) ListForumThreads(context.Context, *ListForumThreadsRequest) (*ListForumThreadsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListForumThreads not implemented")
 }
@@ -232,6 +280,60 @@ func RegisterForumServiceServer(s grpc.ServiceRegistrar, srv ForumServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ForumService_ServiceDesc, srv)
+}
+
+func _ForumService_ReportForumContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportForumContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ReportForumContent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ReportForumContent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ReportForumContent(ctx, req.(*ReportForumContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ForumService_ListForumReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListForumReportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ListForumReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ListForumReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ListForumReports(ctx, req.(*ListForumReportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ForumService_ResolveForumReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveForumReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ResolveForumReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ResolveForumReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ResolveForumReport(ctx, req.(*ResolveForumReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ForumService_ListForumThreads_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -421,6 +523,18 @@ var ForumService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.ForumService",
 	HandlerType: (*ForumServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ReportForumContent",
+			Handler:    _ForumService_ReportForumContent_Handler,
+		},
+		{
+			MethodName: "ListForumReports",
+			Handler:    _ForumService_ListForumReports_Handler,
+		},
+		{
+			MethodName: "ResolveForumReport",
+			Handler:    _ForumService_ResolveForumReport_Handler,
+		},
 		{
 			MethodName: "ListForumThreads",
 			Handler:    _ForumService_ListForumThreads_Handler,

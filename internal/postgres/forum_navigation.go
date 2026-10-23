@@ -45,6 +45,9 @@ func forumReadStates(ctx context.Context, tx pgx.Tx, threads []*pb.ForumThread) 
 		t.ReadSequence = sequence
 		t.UnreadCount = max(0, t.ReplyCount-sequence)
 	}
+	for _, t := range threads {
+		redactForumThread(t)
+	}
 	return rows.Err()
 }
 

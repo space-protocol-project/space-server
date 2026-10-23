@@ -326,6 +326,9 @@ var connectProcedures = map[string]bool{
 	rpc.ForumServiceCloseForumThreadProcedure:     true,
 	rpc.ForumServiceSetForumThreadPinnedProcedure: true,
 	rpc.ForumServiceMarkForumThreadReadProcedure:  true,
+	rpc.ForumServiceModerateForumThreadProcedure:  true,
+	rpc.ForumServiceModerateForumReplyProcedure:   true,
+	rpc.ForumServiceListForumModerationProcedure:  true,
 
 	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
 	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,

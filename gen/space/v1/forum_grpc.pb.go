@@ -26,6 +26,9 @@ const (
 	ForumService_SetForumThreadPinned_FullMethodName = "/space.v1.ForumService/SetForumThreadPinned"
 	ForumService_MarkForumThreadRead_FullMethodName  = "/space.v1.ForumService/MarkForumThreadRead"
 	ForumService_CloseForumThread_FullMethodName     = "/space.v1.ForumService/CloseForumThread"
+	ForumService_ModerateForumThread_FullMethodName  = "/space.v1.ForumService/ModerateForumThread"
+	ForumService_ModerateForumReply_FullMethodName   = "/space.v1.ForumService/ModerateForumReply"
+	ForumService_ListForumModeration_FullMethodName  = "/space.v1.ForumService/ListForumModeration"
 )
 
 // ForumServiceClient is the client API for ForumService service.
@@ -41,6 +44,9 @@ type ForumServiceClient interface {
 	SetForumThreadPinned(ctx context.Context, in *SetForumThreadPinnedRequest, opts ...grpc.CallOption) (*SetForumThreadPinnedResponse, error)
 	MarkForumThreadRead(ctx context.Context, in *MarkForumThreadReadRequest, opts ...grpc.CallOption) (*MarkForumThreadReadResponse, error)
 	CloseForumThread(ctx context.Context, in *CloseForumThreadRequest, opts ...grpc.CallOption) (*CloseForumThreadResponse, error)
+	ModerateForumThread(ctx context.Context, in *ModerateForumThreadRequest, opts ...grpc.CallOption) (*ModerateForumThreadResponse, error)
+	ModerateForumReply(ctx context.Context, in *ModerateForumReplyRequest, opts ...grpc.CallOption) (*ModerateForumReplyResponse, error)
+	ListForumModeration(ctx context.Context, in *ListForumModerationRequest, opts ...grpc.CallOption) (*ListForumModerationResponse, error)
 }
 
 type forumServiceClient struct {
@@ -121,6 +127,36 @@ func (c *forumServiceClient) CloseForumThread(ctx context.Context, in *CloseForu
 	return out, nil
 }
 
+func (c *forumServiceClient) ModerateForumThread(ctx context.Context, in *ModerateForumThreadRequest, opts ...grpc.CallOption) (*ModerateForumThreadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ModerateForumThreadResponse)
+	err := c.cc.Invoke(ctx, ForumService_ModerateForumThread_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *forumServiceClient) ModerateForumReply(ctx context.Context, in *ModerateForumReplyRequest, opts ...grpc.CallOption) (*ModerateForumReplyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ModerateForumReplyResponse)
+	err := c.cc.Invoke(ctx, ForumService_ModerateForumReply_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *forumServiceClient) ListForumModeration(ctx context.Context, in *ListForumModerationRequest, opts ...grpc.CallOption) (*ListForumModerationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListForumModerationResponse)
+	err := c.cc.Invoke(ctx, ForumService_ListForumModeration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ForumServiceServer is the server API for ForumService service.
 // All implementations must embed UnimplementedForumServiceServer
 // for forward compatibility.
@@ -134,6 +170,9 @@ type ForumServiceServer interface {
 	SetForumThreadPinned(context.Context, *SetForumThreadPinnedRequest) (*SetForumThreadPinnedResponse, error)
 	MarkForumThreadRead(context.Context, *MarkForumThreadReadRequest) (*MarkForumThreadReadResponse, error)
 	CloseForumThread(context.Context, *CloseForumThreadRequest) (*CloseForumThreadResponse, error)
+	ModerateForumThread(context.Context, *ModerateForumThreadRequest) (*ModerateForumThreadResponse, error)
+	ModerateForumReply(context.Context, *ModerateForumReplyRequest) (*ModerateForumReplyResponse, error)
+	ListForumModeration(context.Context, *ListForumModerationRequest) (*ListForumModerationResponse, error)
 	mustEmbedUnimplementedForumServiceServer()
 }
 
@@ -164,6 +203,15 @@ func (UnimplementedForumServiceServer) MarkForumThreadRead(context.Context, *Mar
 }
 func (UnimplementedForumServiceServer) CloseForumThread(context.Context, *CloseForumThreadRequest) (*CloseForumThreadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseForumThread not implemented")
+}
+func (UnimplementedForumServiceServer) ModerateForumThread(context.Context, *ModerateForumThreadRequest) (*ModerateForumThreadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ModerateForumThread not implemented")
+}
+func (UnimplementedForumServiceServer) ModerateForumReply(context.Context, *ModerateForumReplyRequest) (*ModerateForumReplyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ModerateForumReply not implemented")
+}
+func (UnimplementedForumServiceServer) ListForumModeration(context.Context, *ListForumModerationRequest) (*ListForumModerationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListForumModeration not implemented")
 }
 func (UnimplementedForumServiceServer) mustEmbedUnimplementedForumServiceServer() {}
 func (UnimplementedForumServiceServer) testEmbeddedByValue()                      {}
@@ -312,6 +360,60 @@ func _ForumService_CloseForumThread_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ForumService_ModerateForumThread_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModerateForumThreadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ModerateForumThread(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ModerateForumThread_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ModerateForumThread(ctx, req.(*ModerateForumThreadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ForumService_ModerateForumReply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModerateForumReplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ModerateForumReply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ModerateForumReply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ModerateForumReply(ctx, req.(*ModerateForumReplyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ForumService_ListForumModeration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListForumModerationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ForumServiceServer).ListForumModeration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ForumService_ListForumModeration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ForumServiceServer).ListForumModeration(ctx, req.(*ListForumModerationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ForumService_ServiceDesc is the grpc.ServiceDesc for ForumService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +448,18 @@ var ForumService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CloseForumThread",
 			Handler:    _ForumService_CloseForumThread_Handler,
+		},
+		{
+			MethodName: "ModerateForumThread",
+			Handler:    _ForumService_ModerateForumThread_Handler,
+		},
+		{
+			MethodName: "ModerateForumReply",
+			Handler:    _ForumService_ModerateForumReply_Handler,
+		},
+		{
+			MethodName: "ListForumModeration",
+			Handler:    _ForumService_ListForumModeration_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

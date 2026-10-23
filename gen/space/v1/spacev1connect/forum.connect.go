@@ -54,6 +54,15 @@ const (
 	// ForumServiceCloseForumThreadProcedure is the fully-qualified name of the ForumService's
 	// CloseForumThread RPC.
 	ForumServiceCloseForumThreadProcedure = "/space.v1.ForumService/CloseForumThread"
+	// ForumServiceModerateForumThreadProcedure is the fully-qualified name of the ForumService's
+	// ModerateForumThread RPC.
+	ForumServiceModerateForumThreadProcedure = "/space.v1.ForumService/ModerateForumThread"
+	// ForumServiceModerateForumReplyProcedure is the fully-qualified name of the ForumService's
+	// ModerateForumReply RPC.
+	ForumServiceModerateForumReplyProcedure = "/space.v1.ForumService/ModerateForumReply"
+	// ForumServiceListForumModerationProcedure is the fully-qualified name of the ForumService's
+	// ListForumModeration RPC.
+	ForumServiceListForumModerationProcedure = "/space.v1.ForumService/ListForumModeration"
 )
 
 // ForumServiceClient is a client for the space.v1.ForumService service.
@@ -65,6 +74,9 @@ type ForumServiceClient interface {
 	SetForumThreadPinned(context.Context, *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error)
 	MarkForumThreadRead(context.Context, *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error)
 	CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error)
+	ModerateForumThread(context.Context, *connect.Request[v1.ModerateForumThreadRequest]) (*connect.Response[v1.ModerateForumThreadResponse], error)
+	ModerateForumReply(context.Context, *connect.Request[v1.ModerateForumReplyRequest]) (*connect.Response[v1.ModerateForumReplyResponse], error)
+	ListForumModeration(context.Context, *connect.Request[v1.ListForumModerationRequest]) (*connect.Response[v1.ListForumModerationResponse], error)
 }
 
 // NewForumServiceClient constructs a client for the space.v1.ForumService service. By default, it
@@ -120,6 +132,24 @@ func NewForumServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(forumServiceMethods.ByName("CloseForumThread")),
 			connect.WithClientOptions(opts...),
 		),
+		moderateForumThread: connect.NewClient[v1.ModerateForumThreadRequest, v1.ModerateForumThreadResponse](
+			httpClient,
+			baseURL+ForumServiceModerateForumThreadProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ModerateForumThread")),
+			connect.WithClientOptions(opts...),
+		),
+		moderateForumReply: connect.NewClient[v1.ModerateForumReplyRequest, v1.ModerateForumReplyResponse](
+			httpClient,
+			baseURL+ForumServiceModerateForumReplyProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ModerateForumReply")),
+			connect.WithClientOptions(opts...),
+		),
+		listForumModeration: connect.NewClient[v1.ListForumModerationRequest, v1.ListForumModerationResponse](
+			httpClient,
+			baseURL+ForumServiceListForumModerationProcedure,
+			connect.WithSchema(forumServiceMethods.ByName("ListForumModeration")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -132,6 +162,9 @@ type forumServiceClient struct {
 	setForumThreadPinned *connect.Client[v1.SetForumThreadPinnedRequest, v1.SetForumThreadPinnedResponse]
 	markForumThreadRead  *connect.Client[v1.MarkForumThreadReadRequest, v1.MarkForumThreadReadResponse]
 	closeForumThread     *connect.Client[v1.CloseForumThreadRequest, v1.CloseForumThreadResponse]
+	moderateForumThread  *connect.Client[v1.ModerateForumThreadRequest, v1.ModerateForumThreadResponse]
+	moderateForumReply   *connect.Client[v1.ModerateForumReplyRequest, v1.ModerateForumReplyResponse]
+	listForumModeration  *connect.Client[v1.ListForumModerationRequest, v1.ListForumModerationResponse]
 }
 
 // ListForumThreads calls space.v1.ForumService.ListForumThreads.
@@ -169,6 +202,21 @@ func (c *forumServiceClient) CloseForumThread(ctx context.Context, req *connect.
 	return c.closeForumThread.CallUnary(ctx, req)
 }
 
+// ModerateForumThread calls space.v1.ForumService.ModerateForumThread.
+func (c *forumServiceClient) ModerateForumThread(ctx context.Context, req *connect.Request[v1.ModerateForumThreadRequest]) (*connect.Response[v1.ModerateForumThreadResponse], error) {
+	return c.moderateForumThread.CallUnary(ctx, req)
+}
+
+// ModerateForumReply calls space.v1.ForumService.ModerateForumReply.
+func (c *forumServiceClient) ModerateForumReply(ctx context.Context, req *connect.Request[v1.ModerateForumReplyRequest]) (*connect.Response[v1.ModerateForumReplyResponse], error) {
+	return c.moderateForumReply.CallUnary(ctx, req)
+}
+
+// ListForumModeration calls space.v1.ForumService.ListForumModeration.
+func (c *forumServiceClient) ListForumModeration(ctx context.Context, req *connect.Request[v1.ListForumModerationRequest]) (*connect.Response[v1.ListForumModerationResponse], error) {
+	return c.listForumModeration.CallUnary(ctx, req)
+}
+
 // ForumServiceHandler is an implementation of the space.v1.ForumService service.
 type ForumServiceHandler interface {
 	ListForumThreads(context.Context, *connect.Request[v1.ListForumThreadsRequest]) (*connect.Response[v1.ListForumThreadsResponse], error)
@@ -178,6 +226,9 @@ type ForumServiceHandler interface {
 	SetForumThreadPinned(context.Context, *connect.Request[v1.SetForumThreadPinnedRequest]) (*connect.Response[v1.SetForumThreadPinnedResponse], error)
 	MarkForumThreadRead(context.Context, *connect.Request[v1.MarkForumThreadReadRequest]) (*connect.Response[v1.MarkForumThreadReadResponse], error)
 	CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error)
+	ModerateForumThread(context.Context, *connect.Request[v1.ModerateForumThreadRequest]) (*connect.Response[v1.ModerateForumThreadResponse], error)
+	ModerateForumReply(context.Context, *connect.Request[v1.ModerateForumReplyRequest]) (*connect.Response[v1.ModerateForumReplyResponse], error)
+	ListForumModeration(context.Context, *connect.Request[v1.ListForumModerationRequest]) (*connect.Response[v1.ListForumModerationResponse], error)
 }
 
 // NewForumServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -229,6 +280,24 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(forumServiceMethods.ByName("CloseForumThread")),
 		connect.WithHandlerOptions(opts...),
 	)
+	forumServiceModerateForumThreadHandler := connect.NewUnaryHandler(
+		ForumServiceModerateForumThreadProcedure,
+		svc.ModerateForumThread,
+		connect.WithSchema(forumServiceMethods.ByName("ModerateForumThread")),
+		connect.WithHandlerOptions(opts...),
+	)
+	forumServiceModerateForumReplyHandler := connect.NewUnaryHandler(
+		ForumServiceModerateForumReplyProcedure,
+		svc.ModerateForumReply,
+		connect.WithSchema(forumServiceMethods.ByName("ModerateForumReply")),
+		connect.WithHandlerOptions(opts...),
+	)
+	forumServiceListForumModerationHandler := connect.NewUnaryHandler(
+		ForumServiceListForumModerationProcedure,
+		svc.ListForumModeration,
+		connect.WithSchema(forumServiceMethods.ByName("ListForumModeration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/space.v1.ForumService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ForumServiceListForumThreadsProcedure:
@@ -245,6 +314,12 @@ func NewForumServiceHandler(svc ForumServiceHandler, opts ...connect.HandlerOpti
 			forumServiceMarkForumThreadReadHandler.ServeHTTP(w, r)
 		case ForumServiceCloseForumThreadProcedure:
 			forumServiceCloseForumThreadHandler.ServeHTTP(w, r)
+		case ForumServiceModerateForumThreadProcedure:
+			forumServiceModerateForumThreadHandler.ServeHTTP(w, r)
+		case ForumServiceModerateForumReplyProcedure:
+			forumServiceModerateForumReplyHandler.ServeHTTP(w, r)
+		case ForumServiceListForumModerationProcedure:
+			forumServiceListForumModerationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -280,4 +355,16 @@ func (UnimplementedForumServiceHandler) MarkForumThreadRead(context.Context, *co
 
 func (UnimplementedForumServiceHandler) CloseForumThread(context.Context, *connect.Request[v1.CloseForumThreadRequest]) (*connect.Response[v1.CloseForumThreadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.CloseForumThread is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) ModerateForumThread(context.Context, *connect.Request[v1.ModerateForumThreadRequest]) (*connect.Response[v1.ModerateForumThreadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ModerateForumThread is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) ModerateForumReply(context.Context, *connect.Request[v1.ModerateForumReplyRequest]) (*connect.Response[v1.ModerateForumReplyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ModerateForumReply is not implemented"))
+}
+
+func (UnimplementedForumServiceHandler) ListForumModeration(context.Context, *connect.Request[v1.ListForumModerationRequest]) (*connect.Response[v1.ListForumModerationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ForumService.ListForumModeration is not implemented"))
 }

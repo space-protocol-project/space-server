@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments,pinned"
-const forumReplyColumns = "id,thread_id,author_id,author_name,body,created_at,sequence,attachments"
+const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments,pinned,hidden"
+const forumReplyColumns = "id,thread_id,author_id,author_name,body,created_at,sequence,attachments,hidden,revision"
 
 func scanForumThread(row pgx.Row) (*pb.ForumThread, error) {
 	t := new(pb.ForumThread)
 	var attachments []byte
-	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments, &t.Pinned)
+	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments, &t.Pinned, &t.Hidden)
 	if err == nil {
 		err = json.Unmarshal(attachments, &t.Attachments)
 	}
@@ -28,7 +28,7 @@ func scanForumThread(row pgx.Row) (*pb.ForumThread, error) {
 func scanForumReply(row pgx.Row) (*pb.ForumReply, error) {
 	r := new(pb.ForumReply)
 	var attachments []byte
-	err := row.Scan(&r.Id, &r.ThreadId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments)
+	err := row.Scan(&r.Id, &r.ThreadId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments, &r.Hidden, &r.Revision)
 	if err == nil {
 		err = json.Unmarshal(attachments, &r.Attachments)
 	}
@@ -168,6 +168,7 @@ func (s *Store) GetForumThread(ctx context.Context, req *pb.GetForumThreadReques
 			out.NextSequence = out.Replies[limit-1].Sequence
 			break
 		}
+		redactForumReply(r, t.Hidden)
 		out.Replies = append(out.Replies, r)
 	}
 	err = rows.Err()
@@ -252,10 +253,14 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 		if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
 			return nil, databaseError(ctx, err)
 		}
+		redactForumReply(old, t.Hidden)
 		return &pb.ReplyForumThreadResponse{Reply: old, Thread: t}, nil
 	}
 	if err != pgx.ErrNoRows {
 		return nil, databaseError(ctx, err)
+	}
+	if t.Hidden {
+		return nil, status.Error(codes.FailedPrecondition, "Тема скрыта")
 	}
 	if t.Closed {
 		return nil, status.Error(codes.FailedPrecondition, "Тема закрыта")

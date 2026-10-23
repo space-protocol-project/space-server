@@ -35,3 +35,15 @@ func (s connectForum) SetForumThreadPinned(ctx context.Context, req *connect.Req
 func (s connectForum) MarkForumThreadRead(ctx context.Context, req *connect.Request[pb.MarkForumThreadReadRequest]) (*connect.Response[pb.MarkForumThreadReadResponse], error) {
 	return bridgeUnary(ctx, req, s.client.MarkForumThreadRead)
 }
+
+func (s connectForum) ModerateForumThread(ctx context.Context, req *connect.Request[pb.ModerateForumThreadRequest]) (*connect.Response[pb.ModerateForumThreadResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ModerateForumThread)
+}
+
+func (s connectForum) ModerateForumReply(ctx context.Context, req *connect.Request[pb.ModerateForumReplyRequest]) (*connect.Response[pb.ModerateForumReplyResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ModerateForumReply)
+}
+
+func (s connectForum) ListForumModeration(ctx context.Context, req *connect.Request[pb.ListForumModerationRequest]) (*connect.Response[pb.ListForumModerationResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ListForumModeration)
+}

@@ -100,6 +100,11 @@ func (s *Store) BeginUpload(ctx context.Context, req *pb.BeginUploadRequest) (*p
 	}
 	previous, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id FROM assets WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3`, req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
+		if previous.forumThreadID != nil || previous.forumReplyID != nil {
+			if err = checkPublishedAsset(ctx, tx, previous); err != nil {
+				return nil, err
+			}
+		}
 		return replayAssetUpload(previous, req)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -147,6 +152,9 @@ func (s *Store) ownedAssetTransaction(ctx context.Context, id string) (pgx.Tx, *
 	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id FROM assets WHERE id=$1 FOR UPDATE`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = status.Error(codes.NotFound, "Файл не найден")
+	}
+	if err == nil && (a.forumThreadID != nil || a.forumReplyID != nil) {
+		err = checkPublishedAsset(ctx, tx, a)
 	}
 	if err == nil && a.asset.AuthorId != authn.Actor(ctx) {
 		err = status.Error(codes.PermissionDenied, "Изменять загрузку может только автор")

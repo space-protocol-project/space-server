@@ -3,6 +3,7 @@ package voice
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -38,7 +39,7 @@ func observeGroup(peer *webrtc.PeerConnection, listener int, packets chan<- grou
 	})
 }
 
-func publishGroup(ctx context.Context, track *webrtc.TrackLocalStaticRTP, marker byte) {
+func publishGroup(ctx context.Context, track *webrtc.TrackLocalStaticRTP, marker byte, phase *atomic.Uint32) {
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	var sequence uint16
@@ -48,7 +49,11 @@ func publishGroup(ctx context.Context, track *webrtc.TrackLocalStaticRTP, marker
 			return
 		case <-ticker.C:
 			sequence++
-			_ = track.WriteRTP(&rtp.Packet{Header: rtp.Header{Version: 2, SequenceNumber: sequence, Timestamp: uint32(sequence) * 960, SSRC: 27}, Payload: []byte{0xf8, 0xff, marker}})
+			current := marker
+			if phase != nil {
+				current += byte(phase.Load())
+			}
+			_ = track.WriteRTP(&rtp.Packet{Header: rtp.Header{Version: 2, SequenceNumber: sequence, Timestamp: uint32(sequence) * 960, SSRC: 27}, Payload: []byte{0xf8, 0xff, current}})
 		}
 	}
 }
@@ -111,8 +116,9 @@ func checkGroupSpeakers(t *testing.T, transport string, roomCapacity int) {
 	if _, err = service.reserve(outsider, identity, "room"); status.Code(err) != codes.ResourceExhausted {
 		t.Fatal("Девятый участник принят", err)
 	}
+	phase := &atomic.Uint32{}
 	for i, track := range tracks {
-		go publishGroup(ctx, track, byte(i+1))
+		go publishGroup(ctx, track, byte(i+1), phase)
 	}
 	seen := make(map[int]map[string]byte)
 	for {
@@ -140,7 +146,7 @@ func checkGroupSpeakers(t *testing.T, transport string, roomCapacity int) {
 			break
 		}
 	}
-	checkGroupMute(t, ctx, service, identities, joins, packets)
+	checkGroupMute(t, ctx, service, identities, joins, packets, phase)
 	// У оставшихся клиентов нет нового SDP: повторно используется ранее согласованная дорожка.
 	if _, err = service.LeaveVoiceRoom(identities[7], &pb.LeaveVoiceRoomRequest{ChannelId: "room", SessionId: joins[7].SessionId}); err != nil {
 		t.Fatal(err)
@@ -152,7 +158,7 @@ func checkGroupSpeakers(t *testing.T, transport string, roomCapacity int) {
 	if _, err = service.UpdateVoiceRoom(outsider, &pb.UpdateVoiceRoomRequest{ChannelId: "room", SessionId: joined.SessionId}); err != nil {
 		t.Fatal(err)
 	}
-	go publishGroup(ctx, replacementTrack, 255)
+	go publishGroup(ctx, replacementTrack, 255, nil)
 	received := make(map[int]bool)
 	for len(received) < roomCapacity-1 {
 		select {
@@ -172,7 +178,7 @@ func checkGroupSpeakers(t *testing.T, transport string, roomCapacity int) {
 	}
 }
 
-func checkGroupMute(t *testing.T, ctx context.Context, service *Service, identities []context.Context, joins []*pb.JoinVoiceRoomResponse, packets <-chan groupPacket) {
+func checkGroupMute(t *testing.T, ctx context.Context, service *Service, identities []context.Context, joins []*pb.JoinVoiceRoomResponse, packets <-chan groupPacket, phase *atomic.Uint32) {
 	t.Helper()
 	set := func(index int, muted, deafened bool) {
 		t.Helper()
@@ -183,27 +189,26 @@ func checkGroupMute(t *testing.T, ctx context.Context, service *Service, identit
 	}
 	set(0, true, false)
 	set(1, false, true)
-	flush := time.NewTimer(200 * time.Millisecond)
-	flushing := true
-	for flushing {
-		select {
-		case <-packets:
-		case <-flush.C:
-			flushing = false
-		case <-ctx.Done():
-			t.Fatal(ctx.Err())
-		}
-	}
+	// Новая метка появляется у отправителей только после подтверждения обеих
+	// команд. Старые пакеты могут задержаться в RTP и очереди наблюдателей.
+	phase.Store(64)
 	timer := time.NewTimer(300 * time.Millisecond)
+	timer.Stop()
 	defer timer.Stop()
 	count := 0
 	for {
 		select {
 		case packet := <-packets:
-			if packet.listener == 1 || packet.marker <= 2 {
+			if packet.marker < 64 {
+				continue
+			}
+			if packet.listener == 1 || packet.marker <= 66 {
 				t.Fatal("mute/deafen не остановил нужный поток", packet)
 			}
 			count++
+			if count == 1 {
+				timer.Reset(300 * time.Millisecond)
+			}
 		case <-timer.C:
 			if count == 0 {
 				t.Fatal("Остальные участники перестали говорить")

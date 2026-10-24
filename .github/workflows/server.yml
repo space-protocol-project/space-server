@@ -77,6 +77,10 @@ jobs:
       - name: Тесты с проверкой гонок
         working-directory: .
         run: go test -race ./...
+      - name: Повторение конкурентной остановки и смены фазы RTP
+        run: |
+          go test -race ./cmd/space-server -run 'Test(Drain|RPCDrain|CleanupTimeout)' -count=20
+          go test -race ./internal/voice -run '^TestThirtyTwoSimultaneousSpeakersAndSlotReuse$' -count=5
       - name: Статический анализ
         working-directory: .
         run: go vet ./...

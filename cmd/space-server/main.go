@@ -78,7 +78,7 @@ func runServer(options serverOptions) (result error) {
 		return err
 	}
 	if store != nil {
-		defer store.Close()
+		defer func() { result = errors.Join(result, boundedCleanup("PostgreSQL pool", store.Close)) }()
 	}
 	if handled, err := configureOwner(ctx, options, store); handled {
 		return err
@@ -118,19 +118,31 @@ func runServer(options serverOptions) (result error) {
 	defer localListener.Close()
 	go func() { failures <- httpServer.Serve(localListener) }()
 	defer httpServer.Close()
+	servers := []*http.Server{httpServer}
 	if homeMode {
 		publicServer, err := startPublicServer(ctx, homeConfig, connection, store, identity, failures)
 		if err != nil {
 			return err
 		}
-		defer publicServer.close()
+		defer func() { result = errors.Join(result, boundedCleanup("public HTTP resources", publicServer.close)) }()
+		servers = append(servers, publicServer.server)
 	}
 	log.Printf("Локальный прототип: http://%s; server_id=%s; demo=%t", options.port, identity.ServerID, options.demo)
 	if homeMode && !options.demo {
 		stopBackups := home.StartScheduledBackups(ctx, home.ScheduledBackupOptions{Data: options.homeData, Runtime: options.homeRuntime, Address: os.Getenv("SPACE_DATABASE_URL"), ServerID: identity.ServerID})
-		defer stopBackups()
+		defer func() { result = errors.Join(result, boundedCleanup("scheduled backups", stopBackups)) }()
 	}
-	return waitForServer(ctx, httpServer, failures)
+	select {
+	case result = <-failures:
+		if errors.Is(result, http.ErrServerClosed) {
+			result = nil
+		}
+	case <-ctx.Done():
+	}
+	cancel()
+	shutdown, done := context.WithTimeout(context.Background(), requestDrainTimeout)
+	defer done()
+	return errors.Join(result, drainServers(shutdown, bridge, servers...))
 }
 
 // При ошибке подготовки база закрывается здесь; после успеха её закрывает run.
@@ -503,10 +515,10 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 	return configuredRPCServer(service, store, serverID, origin, voiceService)
 }
 
-func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string, voiceService *voice.Service) *grpc.Server {
+func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string, voiceService *voice.Service, lifecycle ...grpc.StreamServerInterceptor) *grpc.Server {
 	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(transport.MaxRPCRequestBytes)}
 	unary := []grpc.UnaryServerInterceptor{transport.MessageSizeLimit}
-	streams := []grpc.StreamServerInterceptor{transport.StreamMessageSizeLimit}
+	streams := append(lifecycle, transport.StreamMessageSizeLimit)
 	if store != nil {
 		unary = append(unary, authn.Interceptor(store))
 		streams = append(streams, authn.StreamInterceptor(store))
@@ -546,6 +558,8 @@ type publicHTTPServer struct {
 }
 
 func (server *publicHTTPServer) close() {
+	_ = server.server.Close()
+	_ = server.listener.Close()
 	if server.autoStop != nil {
 		server.autoStop()
 	}
@@ -555,8 +569,6 @@ func (server *publicHTTPServer) close() {
 	if server.statePath != "" {
 		_ = os.Remove(server.statePath)
 	}
-	_ = server.server.Close()
-	_ = server.listener.Close()
 }
 
 func startPublicServer(ctx context.Context, config homeHTTPConfig, connection *grpc.ClientConn, store *postgres.Store, identity postgres.Identity, failures chan<- error) (*publicHTTPServer, error) {
@@ -649,17 +661,6 @@ func storeVerifier(store *postgres.Store) authn.Verifier {
 	return verifier
 }
 
-func waitForServer(ctx context.Context, httpServer *http.Server, failures <-chan error) error {
-	select {
-	case err := <-failures:
-		return err
-	case <-ctx.Done():
-		shutdown, done := context.WithTimeout(context.Background(), 5*time.Second)
-		defer done()
-		return httpServer.Shutdown(shutdown)
-	}
-}
-
 type rpcBridge struct {
 	listener   net.Listener
 	server     *grpc.Server
@@ -683,7 +684,7 @@ func startRPCBridge(ctx context.Context, options serverOptions, service *chat.Se
 	if err != nil {
 		return nil, err
 	}
-	server := configuredRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin), voiceService)
+	server := configuredRPCServer(service, store, identity.ServerID, authOrigin(origin, publicOrigin), voiceService, stopStreamsWith(ctx))
 	go func() {
 		if err := server.Serve(listener); err != nil {
 			log.Printf("gRPC: %v", err)

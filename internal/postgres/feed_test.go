@@ -292,7 +292,7 @@ func TestFeedUpgradeFrom30PreservesIdentityAndData(t *testing.T) {
 	if err = pool.QueryRow(ctx, "SELECT (SELECT max(version) FROM schema_migrations),voice_capacity FROM channels WHERE id='voice32'").Scan(&version, &capacity); err != nil {
 		t.Fatal(err)
 	}
-	if version != 31 || capacity != 32 {
+	if version != SchemaVersion() || capacity != 32 {
 		t.Fatal(version, capacity)
 	}
 	store.Close()

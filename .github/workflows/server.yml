@@ -173,7 +173,7 @@ jobs:
           done
           cd app-source/client
           flutter test test/live/attachments_server_test.dart --reporter expanded
-      - name: Лента, права и скрытие файла — совместимый клиент
+      - name: Лента, поиск, сводка и отзыв доступа — совместимый клиент
         env:
           SPACE_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_feed?sslmode=disable
           SPACE_FEED_TEST_ORIGIN: http://127.0.0.1:18085

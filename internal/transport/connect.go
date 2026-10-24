@@ -296,6 +296,10 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(forumPath, forumHandler)
 	feedPath, feedHandler := rpc.NewFeedServiceHandler(connectFeed{client: pb.NewFeedServiceClient(connection)}, connect.WithReadMaxBytes(64*1024), connect.WithSendMaxBytes(4*1024*1024))
 	mux.Handle(feedPath, feedHandler)
+	searchPath, searchHandler := rpc.NewCommunitySearchServiceHandler(connectCommunitySearch{client: pb.NewCommunitySearchServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(1024*1024))
+	mux.Handle(searchPath, searchHandler)
+	overviewPath, overviewHandler := rpc.NewCommunityOverviewServiceHandler(connectCommunityOverview{client: pb.NewCommunityOverviewServiceClient(connection)}, connect.WithReadMaxBytes(4096), connect.WithSendMaxBytes(1024*1024))
+	mux.Handle(overviewPath, overviewHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
 }
@@ -321,31 +325,33 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.FeedServiceListFeedPostsProcedure:         true,
-	rpc.FeedServiceGetFeedPostProcedure:           true,
-	rpc.FeedServiceCreateFeedPostProcedure:        true,
-	rpc.FeedServiceCommentFeedPostProcedure:       true,
-	rpc.FeedServiceGetFeedAccessProcedure:         true,
-	rpc.FeedServiceUpdateFeedAccessProcedure:      true,
-	rpc.FeedServiceModerateFeedPostProcedure:      true,
-	rpc.FeedServiceModerateFeedCommentProcedure:   true,
-	rpc.FeedServiceListFeedModerationProcedure:    true,
-	rpc.FeedServiceReportFeedContentProcedure:     true,
-	rpc.FeedServiceListFeedReportsProcedure:       true,
-	rpc.FeedServiceResolveFeedReportProcedure:     true,
-	rpc.ForumServiceListForumThreadsProcedure:     true,
-	rpc.ForumServiceGetForumThreadProcedure:       true,
-	rpc.ForumServiceCreateForumThreadProcedure:    true,
-	rpc.ForumServiceReplyForumThreadProcedure:     true,
-	rpc.ForumServiceCloseForumThreadProcedure:     true,
-	rpc.ForumServiceSetForumThreadPinnedProcedure: true,
-	rpc.ForumServiceMarkForumThreadReadProcedure:  true,
-	rpc.ForumServiceModerateForumThreadProcedure:  true,
-	rpc.ForumServiceModerateForumReplyProcedure:   true,
-	rpc.ForumServiceListForumModerationProcedure:  true,
-	rpc.ForumServiceReportForumContentProcedure:   true,
-	rpc.ForumServiceListForumReportsProcedure:     true,
-	rpc.ForumServiceResolveForumReportProcedure:   true,
+	rpc.CommunityOverviewServiceGetCommunityOverviewProcedure: true,
+	rpc.CommunitySearchServiceSearchCommunityContentProcedure: true,
+	rpc.FeedServiceListFeedPostsProcedure:                     true,
+	rpc.FeedServiceGetFeedPostProcedure:                       true,
+	rpc.FeedServiceCreateFeedPostProcedure:                    true,
+	rpc.FeedServiceCommentFeedPostProcedure:                   true,
+	rpc.FeedServiceGetFeedAccessProcedure:                     true,
+	rpc.FeedServiceUpdateFeedAccessProcedure:                  true,
+	rpc.FeedServiceModerateFeedPostProcedure:                  true,
+	rpc.FeedServiceModerateFeedCommentProcedure:               true,
+	rpc.FeedServiceListFeedModerationProcedure:                true,
+	rpc.FeedServiceReportFeedContentProcedure:                 true,
+	rpc.FeedServiceListFeedReportsProcedure:                   true,
+	rpc.FeedServiceResolveFeedReportProcedure:                 true,
+	rpc.ForumServiceListForumThreadsProcedure:                 true,
+	rpc.ForumServiceGetForumThreadProcedure:                   true,
+	rpc.ForumServiceCreateForumThreadProcedure:                true,
+	rpc.ForumServiceReplyForumThreadProcedure:                 true,
+	rpc.ForumServiceCloseForumThreadProcedure:                 true,
+	rpc.ForumServiceSetForumThreadPinnedProcedure:             true,
+	rpc.ForumServiceMarkForumThreadReadProcedure:              true,
+	rpc.ForumServiceModerateForumThreadProcedure:              true,
+	rpc.ForumServiceModerateForumReplyProcedure:               true,
+	rpc.ForumServiceListForumModerationProcedure:              true,
+	rpc.ForumServiceReportForumContentProcedure:               true,
+	rpc.ForumServiceListForumReportsProcedure:                 true,
+	rpc.ForumServiceResolveForumReportProcedure:               true,
 
 	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
 	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,

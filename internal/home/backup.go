@@ -310,5 +310,5 @@ func publishDirectory(destination string, prepare func(string) error) error {
 	if err := prepare(staging); err != nil {
 		return err
 	}
-	return os.Rename(staging, destination)
+	return renamePublishedDirectory(staging, destination)
 }

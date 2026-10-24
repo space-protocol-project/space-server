@@ -12,7 +12,12 @@ import (
 func TestSearchAndHistory100000(t *testing.T) {
 	f := newChannelFixtureTimeout(t, 3*time.Minute)
 	// Только изолированная тестовая схема: готовим исходное состояние версии 20.
-	_, err := f.store.pool.Exec(f.ctx, `DROP INDEX contents_search_terms_v1;
+	_, err := f.store.pool.Exec(f.ctx, `ALTER TABLE forum_threads DROP COLUMN search_text;
+ ALTER TABLE forum_replies DROP COLUMN search_text;
+ ALTER TABLE feed_posts DROP COLUMN search_text;
+ ALTER TABLE feed_comments DROP COLUMN search_text;
+ DELETE FROM schema_migrations WHERE version=32;
+ DROP INDEX contents_search_terms_v1;
  ALTER TABLE contents DROP COLUMN search_text;
  DROP FUNCTION space_search_terms_v1(text,int,int); DROP FUNCTION space_search_fold_v1(text);
  DELETE FROM schema_migrations WHERE version=21;`)

@@ -96,7 +96,7 @@ func runServer(options serverOptions) (result error) {
 	if err != nil {
 		return err
 	}
-	defer bridge.close()
+	defer func() { result = errors.Join(result, boundedCleanup("gRPC bridge", bridge.close)) }()
 	listener, connection := bridge.listener, bridge.connection
 	homeConfig := homeHTTPConfig{
 		address: options.httpsAddress, certificate: certificate, data: options.homeData,

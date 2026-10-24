@@ -55,7 +55,9 @@ func drainRPC(ctx context.Context, server *grpc.Server) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		server.Stop()
+		// GracefulStop может держать mutex, ожидая обработчик без реакции на
+		// отмену. Stop запускается отдельно: срок не зависит от этого mutex.
+		go server.Stop()
 		return ctx.Err()
 	}
 }

@@ -1,10 +1,12 @@
 # Space Server
 
-Опубликован [runtime **v0.7.14**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.14), совместимый с [клиентом **v0.7.17**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.17); прежний клиент v0.7.16 совместим. Go 1.27.3, PostgreSQL 17.11, обновлённые Connect/gRPC/pgx/WebRTC. Схема **30** и голосовой профиль **3** сохранены, новых миграций нет. [Изменения](Changelog.md), [отчёт обновления](docs/DEPENDENCY_UPDATES.md).
+Опубликован [runtime **v0.7.14**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.14), совместимый с [клиентом **v0.7.18**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.18); прежние клиенты v0.7.17 и v0.7.16 совместимы. Go 1.27.3, PostgreSQL 17.11, обновлённые Connect/gRPC/pgx/WebRTC. Схема **30** и голосовой профиль **3** сохранены, новых миграций нет. [Изменения](Changelog.md), [отчёт обновления](docs/DEPENDENCY_UPDATES.md).
 
 [Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40019247321) прошёл на Windows x64, Linux x64 и macOS arm64: TLS, обновление с сохранением данных, перенос и восстановление MLS. Три runtime-архива, три JSON-дескриптора и SHA256SUMS.txt полностью скачаны; размеры и SHA-256 совпадают с GitHub API и контрольными суммами. Выпуск Latest, не draft и не prerelease. [Настоящий опубликованный Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40022024509) прошёл проверку SHA-256, запуска PostgreSQL, TLS pin и настройки владельца.
 
 Перед обновлением сохраните резервную копию пространства и ключей MLS. Установленные данные не заменяются комплектом runtime.
+
+В текущих исходниках готовится runtime **v0.7.15** для клиента **v0.7.19**: первый срез ленты, `FeedService`, capability `core.feed.v1` и миграция 31, отдельные права публикации/комментирования, файлы, жалобы и атомарная модерация. Новая пара ещё не опубликована; опубликованный runtime v0.7.14 выше остаётся на схеме 30. [Подготовка совместимого выпуска](../space-app/docs/FEED-RELEASE.md), [возможности и результаты проверки](../space-app/docs/FEED.md), [контракт ADR-046](../space-protocol/docs/adr/046-feed.md).
 
 Предыдущий [runtime v0.7.10](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.10): форум с темами, ответами, серверной модерацией и вложениями до пяти файлов по 20 МиБ. Схема PostgreSQL 27; требуется клиент v0.7.13. Перед миграцией сохраните резервную копию. Форум не использует MLS/E2EE.
 

@@ -15,7 +15,7 @@ func (s *Store) ListChannelAssets(ctx context.Context, req *pb.ListChannelAssets
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	rows, err := tx.Query(ctx, `SELECT DISTINCT a.author_id,COALESCE(m.nickname,'') FROM assets a LEFT JOIN memberships m ON m.principal_id=a.author_id WHERE `+visibleForumAssetSQL("a")+` AND a.channel_id=$1 AND a.ready AND (a.forum_thread_id IS NOT NULL OR a.forum_reply_id IS NOT NULL OR (a.content_id IS NOT NULL AND EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=a.channel_id AND c.id=a.content_id AND NOT c.deleted))) ORDER BY a.author_id`, req.ChannelId)
+	rows, err := tx.Query(ctx, `SELECT DISTINCT a.author_id,COALESCE(m.nickname,'') FROM assets a LEFT JOIN memberships m ON m.principal_id=a.author_id WHERE `+visibleAssetContentSQL("a")+` AND a.channel_id=$1 AND a.ready AND (a.forum_thread_id IS NOT NULL OR a.forum_reply_id IS NOT NULL OR a.feed_post_id IS NOT NULL OR a.feed_comment_id IS NOT NULL OR (a.content_id IS NOT NULL AND EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=a.channel_id AND c.id=a.content_id AND NOT c.deleted))) ORDER BY a.author_id`, req.ChannelId)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

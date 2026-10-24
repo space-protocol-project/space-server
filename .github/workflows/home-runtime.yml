@@ -2,6 +2,10 @@ name: Домашний сервер без Docker
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: Версия кандидата без публикации, например v0.7.15
+        type: string
+        default: ''
       app_ref:
         description: Коммит приложения для проверки обновления и восстановления
         type: string
@@ -26,9 +30,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: python3 packaging/check-release.py "$GITHUB_REF_NAME"
   verify-release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
     needs: validate
     uses: ./.github/workflows/server.yml
+    with:
+      app_ref: ${{ inputs.app_ref || '' }}
   runtime:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: validate
@@ -47,6 +53,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Сервер и PostgreSQL, проверка перезапуска
+        env:
+          SPACE_RUNTIME_CANDIDATE_VERSION: ${{ inputs.version || '' }}
         run: python packaging/build-home-runtime.py
       - uses: subosito/flutter-action@v2
         with:

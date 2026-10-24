@@ -39,7 +39,7 @@ func checkPublishedAsset(ctx context.Context, tx pgx.Tx, a *storedAsset) error {
 	if !a.ready {
 		return status.Error(codes.NotFound, "Файл не опубликован")
 	}
-	if a.forumThreadID != nil || a.forumReplyID != nil {
+	if a.forumThreadID != nil || a.forumReplyID != nil || a.feedPostID != nil || a.feedCommentID != nil {
 		return checkForumAssetVisible(ctx, tx, a.asset.Id)
 	}
 	if a.mlsSequence != nil {

@@ -35,6 +35,18 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ChannelServiceListChannelsProcedure,
 		rpc.ChannelServiceWatchChannelsProcedure,
 		rpc.ContentServiceCreateContentProcedure,
+		rpc.FeedServiceListFeedPostsProcedure,
+		rpc.FeedServiceGetFeedPostProcedure,
+		rpc.FeedServiceCreateFeedPostProcedure,
+		rpc.FeedServiceCommentFeedPostProcedure,
+		rpc.FeedServiceGetFeedAccessProcedure,
+		rpc.FeedServiceUpdateFeedAccessProcedure,
+		rpc.FeedServiceModerateFeedPostProcedure,
+		rpc.FeedServiceModerateFeedCommentProcedure,
+		rpc.FeedServiceListFeedModerationProcedure,
+		rpc.FeedServiceReportFeedContentProcedure,
+		rpc.FeedServiceListFeedReportsProcedure,
+		rpc.FeedServiceResolveFeedReportProcedure,
 		rpc.ForumServiceCreateForumThreadProcedure,
 		rpc.ForumServiceReplyForumThreadProcedure,
 		rpc.ForumServiceCloseForumThreadProcedure,
@@ -88,7 +100,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
 	expected := 0
-	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto}
+	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto, pb.File_space_v1_feed_proto}
 	for _, file := range files {
 		services := file.Services()
 		for i := 0; i < services.Len(); i++ {

@@ -11,9 +11,18 @@ import tempfile
 import urllib.request
 import zipfile
 
-VERSION = os.environ.get("GITHUB_REF_NAME", "v0.1.0")
-if not VERSION.startswith("v"):
-    VERSION = "v0.1.0"
+def build_version(environment):
+    candidate = environment.get("SPACE_RUNTIME_CANDIDATE_VERSION", "")
+    tagged = environment.get("GITHUB_REF", "").startswith("refs/tags/")
+    if tagged and candidate:
+        raise ValueError("Версию тега нельзя заменить версией кандидата")
+    version = environment["GITHUB_REF_NAME"] if tagged else candidate or "v0.1.0"
+    helpers = runpy.run_path(str(Path(__file__).with_name("release-notes.py")))
+    helpers["tag_info"](version)
+    return version
+
+
+VERSION = build_version(os.environ)
 PG_VERSION = "17.11"
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
@@ -41,7 +50,8 @@ def build():
     changelog = (ROOT / "Changelog.md").read_text(encoding="utf-8")
     tagged = os.environ.get("GITHUB_REF", "").startswith("refs/tags/")
     read_notes = runpy.run_path(str(ROOT / "packaging/release-notes.py"))["release_notes"]
-    notes = read_notes(changelog, VERSION if tagged else "Unreleased", allow_unreleased=not tagged)
+    named = tagged or bool(os.environ.get("SPACE_RUNTIME_CANDIDATE_VERSION"))
+    notes = read_notes(changelog, VERSION if named else "Unreleased", allow_unreleased=not named)
     if len(notes.encode("utf-8")) > 8192:
         raise ValueError("Описание выпуска превышает 8 КиБ")
     DIST.mkdir(exist_ok=True)

@@ -541,7 +541,7 @@ func channelLockClause(lock bool, action string) string {
 	if lock {
 		clause = "FOR SHARE"
 	}
-	if lock && (action == "write" || action == "manage") {
+	if lock && (action == "write" || action == "manage" || strings.HasPrefix(action, "feed.")) {
 		clause = "FOR UPDATE"
 	}
 	return clause
@@ -627,7 +627,7 @@ func validateChannelUpdate(req *pb.UpdateChannelRequest, c *pb.Channel, m *pb.Me
 	if err := validateVoiceCapacity(req.VoiceCapacity, c.Views[0].Type); err != nil {
 		return err
 	}
-	if (len(c.MlsGroupId) > 0 || c.Views[0].Type == "forum") && req.PublicPreview {
+	if (len(c.MlsGroupId) > 0 || c.Views[0].Type == "forum" || c.Views[0].Type == "feed") && req.PublicPreview {
 		return status.Error(codes.InvalidArgument, "Закрытый канал не может иметь публичное превью")
 	}
 
@@ -644,14 +644,14 @@ func validateChannelCreation(req *pb.CreateChannelRequest) error {
 	if err := validateVoiceCapacity(req.VoiceCapacity, req.ViewType); err != nil {
 		return err
 	}
-	if (req.ViewType == "voice_room" || req.ViewType == "forum") && (len(req.MlsGroupId) > 0 || req.PublicPreview) {
+	if (req.ViewType == "voice_room" || req.ViewType == "forum" || req.ViewType == "feed") && (len(req.MlsGroupId) > 0 || req.PublicPreview) {
 		return status.Error(codes.InvalidArgument, "Этот раздел не поддерживает MLS или публичный предпросмотр")
 	}
 	if err := validateMlsChannelRequest(req); err != nil {
 		return err
 	}
-	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || (req.ViewType != "chat" && req.ViewType != "voice_room" && req.ViewType != "forum") {
-		return status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat, forum или voice_room")
+	if !channelIDPattern.MatchString(req.ChannelId) || !validChannelMetadata(req.Title, req.Position) || (req.ViewType != "chat" && req.ViewType != "voice_room" && req.ViewType != "forum" && req.ViewType != "feed") {
+		return status.Error(codes.InvalidArgument, "Нужны id [a-z][a-z0-9_-] до 64 символов, название до 320 байт, position 0–100000 и view_type chat, forum, feed или voice_room")
 	}
 
 	return nil

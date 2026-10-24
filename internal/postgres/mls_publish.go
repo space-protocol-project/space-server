@@ -161,7 +161,7 @@ func bindMlsAssets(ctx context.Context, tx pgx.Tx, req *pb.PublishMlsRequest, au
 			return status.Error(codes.InvalidArgument, "Повтор вложения")
 		}
 		seen[id] = true
-		result, err := tx.Exec(ctx, `UPDATE assets SET mls_sequence=$4 WHERE id=$1 AND channel_id=$2 AND author_id=$3 AND ready AND content_id IS NULL AND mls_sequence IS NULL AND forum_thread_id IS NULL AND forum_reply_id IS NULL AND name='encrypted-file'`, id, req.ChannelId, author, sequence)
+		result, err := tx.Exec(ctx, `UPDATE assets SET mls_sequence=$4 WHERE id=$1 AND channel_id=$2 AND author_id=$3 AND ready AND content_id IS NULL AND mls_sequence IS NULL AND forum_thread_id IS NULL AND forum_reply_id IS NULL AND feed_post_id IS NULL AND feed_comment_id IS NULL AND name='encrypted-file'`, id, req.ChannelId, author, sequence)
 		if err != nil {
 			return databaseError(ctx, err)
 		}

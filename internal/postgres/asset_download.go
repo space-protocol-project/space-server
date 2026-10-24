@@ -25,7 +25,7 @@ func (s *Store) DownloadChunk(ctx context.Context, req *pb.DownloadChunkRequest)
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id FROM assets WHERE id=$1 FOR SHARE`, req.AssetId))
+	a, err := readStoredAsset(tx.QueryRow(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id,feed_post_id,feed_comment_id FROM assets WHERE id=$1 FOR SHARE`, req.AssetId))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.NotFound, "Файл не найден")
 	}
@@ -61,7 +61,7 @@ func (s *Store) listAssets(ctx context.Context, channel, after, author string) (
 	var beforeDate int64 = 1<<63 - 1
 	beforeID := ""
 	if after != "" {
-		err = tx.QueryRow(ctx, `SELECT created_at_unix_ms,id FROM assets WHERE `+visibleForumAssetSQL("assets")+` AND id=$1 AND channel_id=$2 AND ($3='' OR author_id=$3) AND (content_id IS NOT NULL OR forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL)`, after, channel, author).Scan(&beforeDate, &beforeID)
+		err = tx.QueryRow(ctx, `SELECT created_at_unix_ms,id FROM assets WHERE `+visibleAssetContentSQL("assets")+` AND id=$1 AND channel_id=$2 AND ($3='' OR author_id=$3) AND (content_id IS NOT NULL OR forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL OR feed_post_id IS NOT NULL OR feed_comment_id IS NOT NULL)`, after, channel, author).Scan(&beforeDate, &beforeID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Error(codes.InvalidArgument, "Указатель списка файлов устарел")
 		}
@@ -69,7 +69,7 @@ func (s *Store) listAssets(ctx context.Context, channel, after, author string) (
 			return nil, databaseError(ctx, err)
 		}
 	}
-	rows, err := tx.Query(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id FROM assets WHERE `+visibleForumAssetSQL("assets")+` AND channel_id=$1 AND ($2='' OR author_id=$2) AND ready AND (content_id IS NOT NULL OR forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL) AND (created_at_unix_ms,id)<($3,$4) AND (forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL OR EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=assets.channel_id AND c.id=assets.content_id AND NOT c.deleted)) ORDER BY created_at_unix_ms DESC,id DESC LIMIT 51`, channel, author, beforeDate, beforeID)
+	rows, err := tx.Query(ctx, `SELECT `+assetColumns+`,received_bytes,ready,content_id,mls_sequence,forum_thread_id,forum_reply_id,feed_post_id,feed_comment_id FROM assets WHERE `+visibleAssetContentSQL("assets")+` AND channel_id=$1 AND ($2='' OR author_id=$2) AND ready AND (content_id IS NOT NULL OR forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL OR feed_post_id IS NOT NULL OR feed_comment_id IS NOT NULL) AND (created_at_unix_ms,id)<($3,$4) AND (forum_thread_id IS NOT NULL OR forum_reply_id IS NOT NULL OR feed_post_id IS NOT NULL OR feed_comment_id IS NOT NULL OR EXISTS(SELECT 1 FROM contents c WHERE c.channel_id=assets.channel_id AND c.id=assets.content_id AND NOT c.deleted)) ORDER BY created_at_unix_ms DESC,id DESC LIMIT 51`, channel, author, beforeDate, beforeID)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}

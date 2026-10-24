@@ -294,6 +294,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(voicePath, voiceHandler)
 	forumPath, forumHandler := rpc.NewForumServiceHandler(connectForum{client: pb.NewForumServiceClient(connection)}, connect.WithReadMaxBytes(64*1024), connect.WithSendMaxBytes(4*1024*1024))
 	mux.Handle(forumPath, forumHandler)
+	feedPath, feedHandler := rpc.NewFeedServiceHandler(connectFeed{client: pb.NewFeedServiceClient(connection)}, connect.WithReadMaxBytes(64*1024), connect.WithSendMaxBytes(4*1024*1024))
+	mux.Handle(feedPath, feedHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
 }
@@ -319,6 +321,18 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.FeedServiceListFeedPostsProcedure:         true,
+	rpc.FeedServiceGetFeedPostProcedure:           true,
+	rpc.FeedServiceCreateFeedPostProcedure:        true,
+	rpc.FeedServiceCommentFeedPostProcedure:       true,
+	rpc.FeedServiceGetFeedAccessProcedure:         true,
+	rpc.FeedServiceUpdateFeedAccessProcedure:      true,
+	rpc.FeedServiceModerateFeedPostProcedure:      true,
+	rpc.FeedServiceModerateFeedCommentProcedure:   true,
+	rpc.FeedServiceListFeedModerationProcedure:    true,
+	rpc.FeedServiceReportFeedContentProcedure:     true,
+	rpc.FeedServiceListFeedReportsProcedure:       true,
+	rpc.FeedServiceResolveFeedReportProcedure:     true,
 	rpc.ForumServiceListForumThreadsProcedure:     true,
 	rpc.ForumServiceGetForumThreadProcedure:       true,
 	rpc.ForumServiceCreateForumThreadProcedure:    true,

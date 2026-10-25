@@ -19,8 +19,11 @@ const overviewForumRows = `SELECT t.id,t.title,t.body,t.author_id,t.author_name,
  FROM forum_threads t LEFT JOIN forum_read_state s ON s.thread_id=t.id AND s.principal_id=$2
  WHERE t.channel_id=$1 AND NOT t.hidden`
 
-const overviewFeedRows = `SELECT id,'' AS title,body,author_id,author_name,created_at,sequence,0::bigint,0::bigint,0::bigint
- FROM feed_posts WHERE channel_id=$1 AND NOT hidden ORDER BY sequence DESC LIMIT $2`
+const overviewFeedRows = `SELECT p.id,'' AS title,p.body,p.author_id,p.author_name,p.created_at,p.sequence,
+ (CASE WHEN s.post_id IS NULL THEN 1 ELSE 0 END)+
+ (SELECT count(*) FROM feed_comments c WHERE c.post_id=p.id AND NOT c.hidden AND c.sequence>COALESCE(s.read_sequence,0)),0::bigint,0::bigint
+ FROM feed_posts p LEFT JOIN feed_read_state s ON s.post_id=p.id AND s.principal_id=$2
+ WHERE p.channel_id=$1 AND NOT p.hidden ORDER BY p.sequence DESC LIMIT $3`
 
 func overviewEntries(ctx context.Context, tx pgx.Tx, channel, kind string, limit int, replies bool) ([]*pb.CommunityOverviewEntry, error) {
 	query := overviewForumRows + ` ORDER BY t.sequence DESC LIMIT $3`
@@ -32,7 +35,6 @@ func overviewEntries(ctx context.Context, tx pgx.Tx, channel, kind string, limit
 	}
 	if kind == "feed" {
 		query = overviewFeedRows
-		args = []any{channel, limit}
 		contentKind = pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FEED_POST
 	}
 	rows, err := tx.Query(ctx, query, args...)
@@ -42,7 +44,7 @@ func overviewEntries(ctx context.Context, tx pgx.Tx, channel, kind string, limit
 	defer rows.Close()
 	entries := []*pb.CommunityOverviewEntry{}
 	for rows.Next() {
-		entry := &pb.CommunityOverviewEntry{Content: &pb.CommunitySearchResult{Kind: contentKind}, ReadStateSupported: kind == "forum"}
+		entry := &pb.CommunityOverviewEntry{Content: &pb.CommunitySearchResult{Kind: contentKind}, ReadStateSupported: true}
 		item := entry.Content
 		var body string
 		err = rows.Scan(&item.Id, &item.Title, &body, &item.AuthorId, &item.AuthorName, &item.CreatedAtUnix, &item.Sequence, &entry.UnreadCount, &entry.UnreadRepliesToYou, &entry.FirstUnreadReplySequence)

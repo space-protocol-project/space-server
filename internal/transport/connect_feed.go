@@ -12,6 +12,10 @@ type connectFeed struct {
 	client pb.FeedServiceClient
 }
 
+func (s connectFeed) MarkFeedPostRead(ctx context.Context, req *connect.Request[pb.MarkFeedPostReadRequest]) (*connect.Response[pb.MarkFeedPostReadResponse], error) {
+	return bridgeUnary(ctx, req, s.client.MarkFeedPostRead)
+}
+
 func (s connectFeed) ListFeedPosts(ctx context.Context, req *connect.Request[pb.ListFeedPostsRequest]) (*connect.Response[pb.ListFeedPostsResponse], error) {
 	return bridgeUnary(ctx, req, s.client.ListFeedPosts)
 }

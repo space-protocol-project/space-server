@@ -62,6 +62,9 @@ func (s *Store) ModerateFeedComment(ctx context.Context, req *pb.ModerateFeedCom
 	}
 	redactFeedComment(r, t.Hidden)
 	redactFeedPosts([]*pb.FeedPost{t})
+	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
 	return &pb.ModerateFeedCommentResponse{Comment: r, Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
 
@@ -129,5 +132,8 @@ func (s *Store) ModerateFeedPost(ctx context.Context, req *pb.ModerateFeedPostRe
 		return nil, err
 	}
 	redactFeedPost(t)
+	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
 	return &pb.ModerateFeedPostResponse{Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }

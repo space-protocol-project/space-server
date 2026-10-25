@@ -31,6 +31,7 @@ const (
 	FeedService_ReportFeedContent_FullMethodName   = "/space.v1.FeedService/ReportFeedContent"
 	FeedService_ListFeedReports_FullMethodName     = "/space.v1.FeedService/ListFeedReports"
 	FeedService_ResolveFeedReport_FullMethodName   = "/space.v1.FeedService/ResolveFeedReport"
+	FeedService_MarkFeedPostRead_FullMethodName    = "/space.v1.FeedService/MarkFeedPostRead"
 )
 
 // FeedServiceClient is the client API for FeedService service.
@@ -51,6 +52,8 @@ type FeedServiceClient interface {
 	ReportFeedContent(ctx context.Context, in *ReportFeedContentRequest, opts ...grpc.CallOption) (*ReportFeedContentResponse, error)
 	ListFeedReports(ctx context.Context, in *ListFeedReportsRequest, opts ...grpc.CallOption) (*ListFeedReportsResponse, error)
 	ResolveFeedReport(ctx context.Context, in *ResolveFeedReportRequest, opts ...grpc.CallOption) (*ResolveFeedReportResponse, error)
+	// core.feed.read.v1: персональная монотонная отметка, общая для устройств.
+	MarkFeedPostRead(ctx context.Context, in *MarkFeedPostReadRequest, opts ...grpc.CallOption) (*MarkFeedPostReadResponse, error)
 }
 
 type feedServiceClient struct {
@@ -181,6 +184,16 @@ func (c *feedServiceClient) ResolveFeedReport(ctx context.Context, in *ResolveFe
 	return out, nil
 }
 
+func (c *feedServiceClient) MarkFeedPostRead(ctx context.Context, in *MarkFeedPostReadRequest, opts ...grpc.CallOption) (*MarkFeedPostReadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkFeedPostReadResponse)
+	err := c.cc.Invoke(ctx, FeedService_MarkFeedPostRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FeedServiceServer is the server API for FeedService service.
 // All implementations must embed UnimplementedFeedServiceServer
 // for forward compatibility.
@@ -199,6 +212,8 @@ type FeedServiceServer interface {
 	ReportFeedContent(context.Context, *ReportFeedContentRequest) (*ReportFeedContentResponse, error)
 	ListFeedReports(context.Context, *ListFeedReportsRequest) (*ListFeedReportsResponse, error)
 	ResolveFeedReport(context.Context, *ResolveFeedReportRequest) (*ResolveFeedReportResponse, error)
+	// core.feed.read.v1: персональная монотонная отметка, общая для устройств.
+	MarkFeedPostRead(context.Context, *MarkFeedPostReadRequest) (*MarkFeedPostReadResponse, error)
 	mustEmbedUnimplementedFeedServiceServer()
 }
 
@@ -244,6 +259,9 @@ func (UnimplementedFeedServiceServer) ListFeedReports(context.Context, *ListFeed
 }
 func (UnimplementedFeedServiceServer) ResolveFeedReport(context.Context, *ResolveFeedReportRequest) (*ResolveFeedReportResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveFeedReport not implemented")
+}
+func (UnimplementedFeedServiceServer) MarkFeedPostRead(context.Context, *MarkFeedPostReadRequest) (*MarkFeedPostReadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarkFeedPostRead not implemented")
 }
 func (UnimplementedFeedServiceServer) mustEmbedUnimplementedFeedServiceServer() {}
 func (UnimplementedFeedServiceServer) testEmbeddedByValue()                     {}
@@ -482,6 +500,24 @@ func _FeedService_ResolveFeedReport_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FeedService_MarkFeedPostRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkFeedPostReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FeedServiceServer).MarkFeedPostRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FeedService_MarkFeedPostRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FeedServiceServer).MarkFeedPostRead(ctx, req.(*MarkFeedPostReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FeedService_ServiceDesc is the grpc.ServiceDesc for FeedService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -536,6 +572,10 @@ var FeedService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveFeedReport",
 			Handler:    _FeedService_ResolveFeedReport_Handler,
+		},
+		{
+			MethodName: "MarkFeedPostRead",
+			Handler:    _FeedService_MarkFeedPostRead_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

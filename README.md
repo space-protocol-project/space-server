@@ -10,6 +10,8 @@ Runtime **v0.7.15** включает `FeedService`, capability `core.feed.v1` и
 
 Runtime v0.7.16 включает `CommunitySearchService`, capability `core.community.search.v1` и миграцию 31→32. Поиск тем, ответов, публикаций и комментариев ограничен выбранным разделом и повторно проверяет серверные права на каждой странице. [Контракт ADR-047](../space-protocol/docs/adr/047-community-search.md), [поведение клиента](../space-app/docs/COMMUNITY-SEARCH.md).
 
+В исходниках следующего среза добавлены `core.feed.read.v1` и миграция 32→33: персональные монотонные отметки публикаций и комментариев ленты, общие для устройств principal. Списки и сводка учитывают только видимое непрочитанное; каждый запрос проверяет доступ. Опубликованная пара остаётся v0.7.20 / v0.7.16, схема 32. [Контракт ADR-049](../space-protocol/docs/adr/049-feed-read.md), [поведение и проверки клиента](../space-app/docs/FEED-READ.md).
+
 
 В v0.7.16 также входит персональная сводка `CommunityOverviewService` с capability `core.community.overview.v1`: свежие темы и публикации, непрочитанные ответы в собственных темах и число жалоб для модератора. Каждый запрос проверяет доступ к выбранному разделу. Новая миграция сверх схемы 32 не требуется. [Контракт ADR-048](../space-protocol/docs/adr/048-community-overview.md), [поведение сводки](../space-app/docs/DASHBOARD.md).
 

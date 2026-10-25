@@ -26,7 +26,7 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql", "020_content_replies.sql", "021_content_search_index.sql", "022_private_push.sql", "023_voice_rooms.sql", "024_attachment_default.sql", "025_voice_capacity.sql", "026_forum.sql", "027_forum_attachments.sql", "028_forum_navigation.sql", "029_forum_moderation.sql", "030_forum_reports.sql", "031_feed.sql", "032_community_search.sql"}
+var migrationFiles = []string{"001_initial.sql", "002_events_auth.sql", "003_space_settings.sql", "004_membership.sql", "005_recovery.sql", "006_pairing.sql", "007_root_rotation.sql", "008_channels.sql", "009_first_owner.sql", "010_message_time.sql", "011_server_icon.sql", "012_content_changes.sql", "013_assets.sql", "014_attachment_policy.sql", "015_mls.sql", "016_mls_management.sql", "017_root_retention.sql", "018_reactions.sql", "019_content_mutations.sql", "020_content_replies.sql", "021_content_search_index.sql", "022_private_push.sql", "023_voice_rooms.sql", "024_attachment_default.sql", "025_voice_capacity.sql", "026_forum.sql", "027_forum_attachments.sql", "028_forum_navigation.sql", "029_forum_moderation.sql", "030_forum_reports.sql", "031_feed.sql", "032_community_search.sql", "033_feed_read.sql"}
 
 func SchemaVersion() int { return len(migrationFiles) }
 

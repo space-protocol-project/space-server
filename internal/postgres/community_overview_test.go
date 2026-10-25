@@ -98,7 +98,7 @@ func TestCommunityOverviewFeedConnectAndAccessRevocation(t *testing.T) {
 		return page.Msg, nil
 	}
 	page, err := read()
-	if err != nil || len(page.GetRecent()) != 1 || page.Recent[0].Content.Id != second.Id || page.Recent[0].ReadStateSupported || len(page.RepliesToYou) != 0 {
+	if err != nil || len(page.GetRecent()) != 1 || page.Recent[0].Content.Id != second.Id || !page.Recent[0].ReadStateSupported || page.Recent[0].UnreadCount != 1 || len(page.RepliesToYou) != 0 {
 		t.Fatal(page, err)
 	}
 	_, err = pb.NewFeedServiceClient(f.conn).ModerateFeedPost(f.owner, &pb.ModerateFeedPostRequest{ChannelId: section.Id, PostId: second.Id, ExpectedRevision: second.Revision, Hidden: true, Reason: "Проверка"})

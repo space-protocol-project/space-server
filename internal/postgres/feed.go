@@ -77,6 +77,7 @@ func (s *Store) ListFeedPosts(ctx context.Context, req *pb.ListFeedPostsRequest)
 	rows.Close()
 	if err == nil {
 		redactFeedPosts(out.Posts)
+		err = feedReadStates(ctx, tx, out.Posts)
 	}
 	if err == nil {
 		out.Permissions, err = feedPermissions(ctx, tx, req.ChannelId)
@@ -126,6 +127,7 @@ func (s *Store) GetFeedPost(ctx context.Context, req *pb.GetFeedPostRequest) (*p
 	rows.Close()
 	if err == nil {
 		redactFeedPost(t)
+		err = feedReadStates(ctx, tx, []*pb.FeedPost{t})
 	}
 	if err == nil {
 		out.Permissions, err = feedPermissions(ctx, tx, req.ChannelId)
@@ -148,6 +150,9 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 			return nil, forumKeyConflict()
 		}
 		redactFeedPosts([]*pb.FeedPost{old})
+		if err = feedReadStates(ctx, tx, []*pb.FeedPost{old}); err != nil {
+			return nil, err
+		}
 		return &pb.CreateFeedPostResponse{Post: old}, nil
 	}
 	if err != pgx.ErrNoRows {
@@ -178,6 +183,9 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 		return nil, err
 	}
 	redactFeedPosts([]*pb.FeedPost{t})
+	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
 	return &pb.CreateFeedPostResponse{Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
 
@@ -200,6 +208,9 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 			return nil, forumKeyConflict()
 		}
 		redactFeedPosts([]*pb.FeedPost{t})
+		if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+			return nil, err
+		}
 		redactFeedComment(old, t.Hidden)
 		return &pb.CommentFeedPostResponse{Comment: old, Post: t}, nil
 	}
@@ -234,6 +245,9 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 		return nil, err
 	}
 	redactFeedPosts([]*pb.FeedPost{t})
+	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
 	return &pb.CommentFeedPostResponse{Comment: r, Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
 
@@ -265,6 +279,8 @@ func redactFeedPost(t *pb.FeedPost) {
 		t.AuthorName = ""
 		t.Attachments = nil
 		t.CommentCount = 0
+		t.ReadStateSupported, t.Seen = false, false
+		t.ReadSequence, t.UnreadCount = 0, 0
 	}
 }
 func redactFeedComment(r *pb.FeedComment, parent bool) {

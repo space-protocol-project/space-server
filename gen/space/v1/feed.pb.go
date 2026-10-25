@@ -87,7 +87,12 @@ type FeedPost struct {
 	CommentCount  int64                  `protobuf:"varint,9,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
 	Attachments   []*Asset               `protobuf:"bytes,10,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	// Скрытая запись не содержит автора, текста, файлов и числа комментариев.
-	Hidden        bool `protobuf:"varint,11,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	Hidden             bool  `protobuf:"varint,11,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	ReadStateSupported bool  `protobuf:"varint,12,opt,name=read_state_supported,json=readStateSupported,proto3" json:"read_state_supported,omitempty"`
+	Seen               bool  `protobuf:"varint,13,opt,name=seen,proto3" json:"seen,omitempty"`
+	ReadSequence       int64 `protobuf:"varint,14,opt,name=read_sequence,json=readSequence,proto3" json:"read_sequence,omitempty"`
+	// Невидимая ещё публикация плюс видимые комментарии после read_sequence.
+	UnreadCount   int64 `protobuf:"varint,15,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,6 +204,140 @@ func (x *FeedPost) GetHidden() bool {
 	return false
 }
 
+func (x *FeedPost) GetReadStateSupported() bool {
+	if x != nil {
+		return x.ReadStateSupported
+	}
+	return false
+}
+
+func (x *FeedPost) GetSeen() bool {
+	if x != nil {
+		return x.Seen
+	}
+	return false
+}
+
+func (x *FeedPost) GetReadSequence() int64 {
+	if x != nil {
+		return x.ReadSequence
+	}
+	return 0
+}
+
+func (x *FeedPost) GetUnreadCount() int64 {
+	if x != nil {
+		return x.UnreadCount
+	}
+	return 0
+}
+
+type MarkFeedPostReadRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	PostId    string                 `protobuf:"bytes,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	// 0 подтверждает публикацию; положительное значение — комментарии до курсора.
+	// Не больше последнего видимого комментария либо уже сохранённого курсора.
+	ThroughSequence int64 `protobuf:"varint,3,opt,name=through_sequence,json=throughSequence,proto3" json:"through_sequence,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MarkFeedPostReadRequest) Reset() {
+	*x = MarkFeedPostReadRequest{}
+	mi := &file_space_v1_feed_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkFeedPostReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkFeedPostReadRequest) ProtoMessage() {}
+
+func (x *MarkFeedPostReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_feed_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkFeedPostReadRequest.ProtoReflect.Descriptor instead.
+func (*MarkFeedPostReadRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *MarkFeedPostReadRequest) GetChannelId() string {
+	if x != nil {
+		return x.ChannelId
+	}
+	return ""
+}
+
+func (x *MarkFeedPostReadRequest) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
+}
+
+func (x *MarkFeedPostReadRequest) GetThroughSequence() int64 {
+	if x != nil {
+		return x.ThroughSequence
+	}
+	return 0
+}
+
+type MarkFeedPostReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Post          *FeedPost              `protobuf:"bytes,1,opt,name=post,proto3" json:"post,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkFeedPostReadResponse) Reset() {
+	*x = MarkFeedPostReadResponse{}
+	mi := &file_space_v1_feed_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkFeedPostReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkFeedPostReadResponse) ProtoMessage() {}
+
+func (x *MarkFeedPostReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_feed_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkFeedPostReadResponse.ProtoReflect.Descriptor instead.
+func (*MarkFeedPostReadResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *MarkFeedPostReadResponse) GetPost() *FeedPost {
+	if x != nil {
+		return x.Post
+	}
+	return nil
+}
+
 type FeedComment struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -217,7 +356,7 @@ type FeedComment struct {
 
 func (x *FeedComment) Reset() {
 	*x = FeedComment{}
-	mi := &file_space_v1_feed_proto_msgTypes[2]
+	mi := &file_space_v1_feed_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +368,7 @@ func (x *FeedComment) String() string {
 func (*FeedComment) ProtoMessage() {}
 
 func (x *FeedComment) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[2]
+	mi := &file_space_v1_feed_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +381,7 @@ func (x *FeedComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedComment.ProtoReflect.Descriptor instead.
 func (*FeedComment) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{2}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *FeedComment) GetId() string {
@@ -327,7 +466,7 @@ type ListFeedPostsRequest struct {
 
 func (x *ListFeedPostsRequest) Reset() {
 	*x = ListFeedPostsRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[3]
+	mi := &file_space_v1_feed_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -339,7 +478,7 @@ func (x *ListFeedPostsRequest) String() string {
 func (*ListFeedPostsRequest) ProtoMessage() {}
 
 func (x *ListFeedPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[3]
+	mi := &file_space_v1_feed_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,7 +491,7 @@ func (x *ListFeedPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedPostsRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedPostsRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{3}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListFeedPostsRequest) GetChannelId() string {
@@ -387,7 +526,7 @@ type ListFeedPostsResponse struct {
 
 func (x *ListFeedPostsResponse) Reset() {
 	*x = ListFeedPostsResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[4]
+	mi := &file_space_v1_feed_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +538,7 @@ func (x *ListFeedPostsResponse) String() string {
 func (*ListFeedPostsResponse) ProtoMessage() {}
 
 func (x *ListFeedPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[4]
+	mi := &file_space_v1_feed_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +551,7 @@ func (x *ListFeedPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedPostsResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedPostsResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{4}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListFeedPostsResponse) GetPosts() []*FeedPost {
@@ -449,7 +588,7 @@ type GetFeedPostRequest struct {
 
 func (x *GetFeedPostRequest) Reset() {
 	*x = GetFeedPostRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[5]
+	mi := &file_space_v1_feed_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -461,7 +600,7 @@ func (x *GetFeedPostRequest) String() string {
 func (*GetFeedPostRequest) ProtoMessage() {}
 
 func (x *GetFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[5]
+	mi := &file_space_v1_feed_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -474,7 +613,7 @@ func (x *GetFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*GetFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{5}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetFeedPostRequest) GetChannelId() string {
@@ -517,7 +656,7 @@ type GetFeedPostResponse struct {
 
 func (x *GetFeedPostResponse) Reset() {
 	*x = GetFeedPostResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[6]
+	mi := &file_space_v1_feed_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -529,7 +668,7 @@ func (x *GetFeedPostResponse) String() string {
 func (*GetFeedPostResponse) ProtoMessage() {}
 
 func (x *GetFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[6]
+	mi := &file_space_v1_feed_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -542,7 +681,7 @@ func (x *GetFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*GetFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{6}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetFeedPostResponse) GetPost() *FeedPost {
@@ -587,7 +726,7 @@ type CreateFeedPostRequest struct {
 
 func (x *CreateFeedPostRequest) Reset() {
 	*x = CreateFeedPostRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[7]
+	mi := &file_space_v1_feed_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -599,7 +738,7 @@ func (x *CreateFeedPostRequest) String() string {
 func (*CreateFeedPostRequest) ProtoMessage() {}
 
 func (x *CreateFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[7]
+	mi := &file_space_v1_feed_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -612,7 +751,7 @@ func (x *CreateFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*CreateFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{7}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateFeedPostRequest) GetChannelId() string {
@@ -652,7 +791,7 @@ type CreateFeedPostResponse struct {
 
 func (x *CreateFeedPostResponse) Reset() {
 	*x = CreateFeedPostResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[8]
+	mi := &file_space_v1_feed_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -664,7 +803,7 @@ func (x *CreateFeedPostResponse) String() string {
 func (*CreateFeedPostResponse) ProtoMessage() {}
 
 func (x *CreateFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[8]
+	mi := &file_space_v1_feed_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -677,7 +816,7 @@ func (x *CreateFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*CreateFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{8}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateFeedPostResponse) GetPost() *FeedPost {
@@ -700,7 +839,7 @@ type CommentFeedPostRequest struct {
 
 func (x *CommentFeedPostRequest) Reset() {
 	*x = CommentFeedPostRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[9]
+	mi := &file_space_v1_feed_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -712,7 +851,7 @@ func (x *CommentFeedPostRequest) String() string {
 func (*CommentFeedPostRequest) ProtoMessage() {}
 
 func (x *CommentFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[9]
+	mi := &file_space_v1_feed_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -725,7 +864,7 @@ func (x *CommentFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommentFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*CommentFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{9}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CommentFeedPostRequest) GetChannelId() string {
@@ -773,7 +912,7 @@ type CommentFeedPostResponse struct {
 
 func (x *CommentFeedPostResponse) Reset() {
 	*x = CommentFeedPostResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[10]
+	mi := &file_space_v1_feed_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -785,7 +924,7 @@ func (x *CommentFeedPostResponse) String() string {
 func (*CommentFeedPostResponse) ProtoMessage() {}
 
 func (x *CommentFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[10]
+	mi := &file_space_v1_feed_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +937,7 @@ func (x *CommentFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommentFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*CommentFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{10}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CommentFeedPostResponse) GetComment() *FeedComment {
@@ -828,7 +967,7 @@ type FeedAccessRule struct {
 
 func (x *FeedAccessRule) Reset() {
 	*x = FeedAccessRule{}
-	mi := &file_space_v1_feed_proto_msgTypes[11]
+	mi := &file_space_v1_feed_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -840,7 +979,7 @@ func (x *FeedAccessRule) String() string {
 func (*FeedAccessRule) ProtoMessage() {}
 
 func (x *FeedAccessRule) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[11]
+	mi := &file_space_v1_feed_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -853,7 +992,7 @@ func (x *FeedAccessRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedAccessRule.ProtoReflect.Descriptor instead.
 func (*FeedAccessRule) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{11}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *FeedAccessRule) GetRole() string {
@@ -887,7 +1026,7 @@ type GetFeedAccessRequest struct {
 
 func (x *GetFeedAccessRequest) Reset() {
 	*x = GetFeedAccessRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[12]
+	mi := &file_space_v1_feed_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -899,7 +1038,7 @@ func (x *GetFeedAccessRequest) String() string {
 func (*GetFeedAccessRequest) ProtoMessage() {}
 
 func (x *GetFeedAccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[12]
+	mi := &file_space_v1_feed_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -912,7 +1051,7 @@ func (x *GetFeedAccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeedAccessRequest.ProtoReflect.Descriptor instead.
 func (*GetFeedAccessRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{12}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetFeedAccessRequest) GetChannelId() string {
@@ -933,7 +1072,7 @@ type GetFeedAccessResponse struct {
 
 func (x *GetFeedAccessResponse) Reset() {
 	*x = GetFeedAccessResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[13]
+	mi := &file_space_v1_feed_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -945,7 +1084,7 @@ func (x *GetFeedAccessResponse) String() string {
 func (*GetFeedAccessResponse) ProtoMessage() {}
 
 func (x *GetFeedAccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[13]
+	mi := &file_space_v1_feed_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -958,7 +1097,7 @@ func (x *GetFeedAccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFeedAccessResponse.ProtoReflect.Descriptor instead.
 func (*GetFeedAccessResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{13}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetFeedAccessResponse) GetChannelId() string {
@@ -993,7 +1132,7 @@ type UpdateFeedAccessRequest struct {
 
 func (x *UpdateFeedAccessRequest) Reset() {
 	*x = UpdateFeedAccessRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[14]
+	mi := &file_space_v1_feed_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1005,7 +1144,7 @@ func (x *UpdateFeedAccessRequest) String() string {
 func (*UpdateFeedAccessRequest) ProtoMessage() {}
 
 func (x *UpdateFeedAccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[14]
+	mi := &file_space_v1_feed_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1018,7 +1157,7 @@ func (x *UpdateFeedAccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateFeedAccessRequest.ProtoReflect.Descriptor instead.
 func (*UpdateFeedAccessRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{14}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateFeedAccessRequest) GetChannelId() string {
@@ -1053,7 +1192,7 @@ type UpdateFeedAccessResponse struct {
 
 func (x *UpdateFeedAccessResponse) Reset() {
 	*x = UpdateFeedAccessResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[15]
+	mi := &file_space_v1_feed_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1204,7 @@ func (x *UpdateFeedAccessResponse) String() string {
 func (*UpdateFeedAccessResponse) ProtoMessage() {}
 
 func (x *UpdateFeedAccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[15]
+	mi := &file_space_v1_feed_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1217,7 @@ func (x *UpdateFeedAccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateFeedAccessResponse.ProtoReflect.Descriptor instead.
 func (*UpdateFeedAccessResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{15}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateFeedAccessResponse) GetChannelId() string {
@@ -1116,7 +1255,7 @@ type ModerateFeedPostRequest struct {
 
 func (x *ModerateFeedPostRequest) Reset() {
 	*x = ModerateFeedPostRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[16]
+	mi := &file_space_v1_feed_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1128,7 +1267,7 @@ func (x *ModerateFeedPostRequest) String() string {
 func (*ModerateFeedPostRequest) ProtoMessage() {}
 
 func (x *ModerateFeedPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[16]
+	mi := &file_space_v1_feed_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1141,7 +1280,7 @@ func (x *ModerateFeedPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*ModerateFeedPostRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{16}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ModerateFeedPostRequest) GetChannelId() string {
@@ -1188,7 +1327,7 @@ type ModerateFeedPostResponse struct {
 
 func (x *ModerateFeedPostResponse) Reset() {
 	*x = ModerateFeedPostResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[17]
+	mi := &file_space_v1_feed_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1200,7 +1339,7 @@ func (x *ModerateFeedPostResponse) String() string {
 func (*ModerateFeedPostResponse) ProtoMessage() {}
 
 func (x *ModerateFeedPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[17]
+	mi := &file_space_v1_feed_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1213,7 +1352,7 @@ func (x *ModerateFeedPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateFeedPostResponse.ProtoReflect.Descriptor instead.
 func (*ModerateFeedPostResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{17}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ModerateFeedPostResponse) GetPost() *FeedPost {
@@ -1237,7 +1376,7 @@ type ModerateFeedCommentRequest struct {
 
 func (x *ModerateFeedCommentRequest) Reset() {
 	*x = ModerateFeedCommentRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[18]
+	mi := &file_space_v1_feed_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1249,7 +1388,7 @@ func (x *ModerateFeedCommentRequest) String() string {
 func (*ModerateFeedCommentRequest) ProtoMessage() {}
 
 func (x *ModerateFeedCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[18]
+	mi := &file_space_v1_feed_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1262,7 +1401,7 @@ func (x *ModerateFeedCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateFeedCommentRequest.ProtoReflect.Descriptor instead.
 func (*ModerateFeedCommentRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{18}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ModerateFeedCommentRequest) GetChannelId() string {
@@ -1317,7 +1456,7 @@ type ModerateFeedCommentResponse struct {
 
 func (x *ModerateFeedCommentResponse) Reset() {
 	*x = ModerateFeedCommentResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[19]
+	mi := &file_space_v1_feed_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1329,7 +1468,7 @@ func (x *ModerateFeedCommentResponse) String() string {
 func (*ModerateFeedCommentResponse) ProtoMessage() {}
 
 func (x *ModerateFeedCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[19]
+	mi := &file_space_v1_feed_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1342,7 +1481,7 @@ func (x *ModerateFeedCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateFeedCommentResponse.ProtoReflect.Descriptor instead.
 func (*ModerateFeedCommentResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{19}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ModerateFeedCommentResponse) GetComment() *FeedComment {
@@ -1372,7 +1511,7 @@ type ListFeedModerationRequest struct {
 
 func (x *ListFeedModerationRequest) Reset() {
 	*x = ListFeedModerationRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[20]
+	mi := &file_space_v1_feed_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1384,7 +1523,7 @@ func (x *ListFeedModerationRequest) String() string {
 func (*ListFeedModerationRequest) ProtoMessage() {}
 
 func (x *ListFeedModerationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[20]
+	mi := &file_space_v1_feed_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1397,7 +1536,7 @@ func (x *ListFeedModerationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedModerationRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedModerationRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{20}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListFeedModerationRequest) GetChannelId() string {
@@ -1445,7 +1584,7 @@ type FeedModerationEvent struct {
 
 func (x *FeedModerationEvent) Reset() {
 	*x = FeedModerationEvent{}
-	mi := &file_space_v1_feed_proto_msgTypes[21]
+	mi := &file_space_v1_feed_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1457,7 +1596,7 @@ func (x *FeedModerationEvent) String() string {
 func (*FeedModerationEvent) ProtoMessage() {}
 
 func (x *FeedModerationEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[21]
+	mi := &file_space_v1_feed_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1470,7 +1609,7 @@ func (x *FeedModerationEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedModerationEvent.ProtoReflect.Descriptor instead.
 func (*FeedModerationEvent) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{21}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *FeedModerationEvent) GetId() int64 {
@@ -1546,7 +1685,7 @@ type ListFeedModerationResponse struct {
 
 func (x *ListFeedModerationResponse) Reset() {
 	*x = ListFeedModerationResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[22]
+	mi := &file_space_v1_feed_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1558,7 +1697,7 @@ func (x *ListFeedModerationResponse) String() string {
 func (*ListFeedModerationResponse) ProtoMessage() {}
 
 func (x *ListFeedModerationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[22]
+	mi := &file_space_v1_feed_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1571,7 +1710,7 @@ func (x *ListFeedModerationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedModerationResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedModerationResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{22}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListFeedModerationResponse) GetEvents() []*FeedModerationEvent {
@@ -1606,7 +1745,7 @@ type FeedReport struct {
 
 func (x *FeedReport) Reset() {
 	*x = FeedReport{}
-	mi := &file_space_v1_feed_proto_msgTypes[23]
+	mi := &file_space_v1_feed_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1618,7 +1757,7 @@ func (x *FeedReport) String() string {
 func (*FeedReport) ProtoMessage() {}
 
 func (x *FeedReport) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[23]
+	mi := &file_space_v1_feed_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1631,7 +1770,7 @@ func (x *FeedReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedReport.ProtoReflect.Descriptor instead.
 func (*FeedReport) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{23}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *FeedReport) GetId() int64 {
@@ -1710,7 +1849,7 @@ type ReportFeedContentRequest struct {
 
 func (x *ReportFeedContentRequest) Reset() {
 	*x = ReportFeedContentRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[24]
+	mi := &file_space_v1_feed_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1722,7 +1861,7 @@ func (x *ReportFeedContentRequest) String() string {
 func (*ReportFeedContentRequest) ProtoMessage() {}
 
 func (x *ReportFeedContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[24]
+	mi := &file_space_v1_feed_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1735,7 +1874,7 @@ func (x *ReportFeedContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportFeedContentRequest.ProtoReflect.Descriptor instead.
 func (*ReportFeedContentRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{24}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReportFeedContentRequest) GetChannelId() string {
@@ -1774,7 +1913,7 @@ type ReportFeedContentResponse struct {
 
 func (x *ReportFeedContentResponse) Reset() {
 	*x = ReportFeedContentResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[25]
+	mi := &file_space_v1_feed_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1786,7 +1925,7 @@ func (x *ReportFeedContentResponse) String() string {
 func (*ReportFeedContentResponse) ProtoMessage() {}
 
 func (x *ReportFeedContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[25]
+	mi := &file_space_v1_feed_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1799,7 +1938,7 @@ func (x *ReportFeedContentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportFeedContentResponse.ProtoReflect.Descriptor instead.
 func (*ReportFeedContentResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{25}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{27}
 }
 
 type ListFeedReportsRequest struct {
@@ -1814,7 +1953,7 @@ type ListFeedReportsRequest struct {
 
 func (x *ListFeedReportsRequest) Reset() {
 	*x = ListFeedReportsRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[26]
+	mi := &file_space_v1_feed_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1826,7 +1965,7 @@ func (x *ListFeedReportsRequest) String() string {
 func (*ListFeedReportsRequest) ProtoMessage() {}
 
 func (x *ListFeedReportsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[26]
+	mi := &file_space_v1_feed_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1839,7 +1978,7 @@ func (x *ListFeedReportsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedReportsRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedReportsRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{26}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListFeedReportsRequest) GetChannelId() string {
@@ -1880,7 +2019,7 @@ type ListFeedReportsResponse struct {
 
 func (x *ListFeedReportsResponse) Reset() {
 	*x = ListFeedReportsResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[27]
+	mi := &file_space_v1_feed_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1892,7 +2031,7 @@ func (x *ListFeedReportsResponse) String() string {
 func (*ListFeedReportsResponse) ProtoMessage() {}
 
 func (x *ListFeedReportsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[27]
+	mi := &file_space_v1_feed_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1905,7 +2044,7 @@ func (x *ListFeedReportsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedReportsResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedReportsResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{27}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListFeedReportsResponse) GetReports() []*FeedReport {
@@ -1935,7 +2074,7 @@ type ResolveFeedReportRequest struct {
 
 func (x *ResolveFeedReportRequest) Reset() {
 	*x = ResolveFeedReportRequest{}
-	mi := &file_space_v1_feed_proto_msgTypes[28]
+	mi := &file_space_v1_feed_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1947,7 +2086,7 @@ func (x *ResolveFeedReportRequest) String() string {
 func (*ResolveFeedReportRequest) ProtoMessage() {}
 
 func (x *ResolveFeedReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[28]
+	mi := &file_space_v1_feed_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1960,7 +2099,7 @@ func (x *ResolveFeedReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveFeedReportRequest.ProtoReflect.Descriptor instead.
 func (*ResolveFeedReportRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{28}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ResolveFeedReportRequest) GetChannelId() string {
@@ -2007,7 +2146,7 @@ type ResolveFeedReportResponse struct {
 
 func (x *ResolveFeedReportResponse) Reset() {
 	*x = ResolveFeedReportResponse{}
-	mi := &file_space_v1_feed_proto_msgTypes[29]
+	mi := &file_space_v1_feed_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2019,7 +2158,7 @@ func (x *ResolveFeedReportResponse) String() string {
 func (*ResolveFeedReportResponse) ProtoMessage() {}
 
 func (x *ResolveFeedReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_feed_proto_msgTypes[29]
+	mi := &file_space_v1_feed_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2032,7 +2171,7 @@ func (x *ResolveFeedReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveFeedReportResponse.ProtoReflect.Descriptor instead.
 func (*ResolveFeedReportResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_feed_proto_rawDescGZIP(), []int{29}
+	return file_space_v1_feed_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ResolveFeedReportResponse) GetReport() *FeedReport {
@@ -2049,7 +2188,7 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\x13space/v1/feed.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\"E\n" +
 	"\x0fFeedPermissions\x12\x18\n" +
 	"\apublish\x18\x01 \x01(\bR\apublish\x12\x18\n" +
-	"\acomment\x18\x02 \x01(\bR\acomment\"\xdb\x02\n" +
+	"\acomment\x18\x02 \x01(\bR\acomment\"\xe9\x03\n" +
 	"\bFeedPost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -2064,7 +2203,18 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\rcomment_count\x18\t \x01(\x03R\fcommentCount\x121\n" +
 	"\vattachments\x18\n" +
 	" \x03(\v2\x0f.space.v1.AssetR\vattachments\x12\x16\n" +
-	"\x06hidden\x18\v \x01(\bR\x06hidden\"\xb3\x02\n" +
+	"\x06hidden\x18\v \x01(\bR\x06hidden\x120\n" +
+	"\x14read_state_supported\x18\f \x01(\bR\x12readStateSupported\x12\x12\n" +
+	"\x04seen\x18\r \x01(\bR\x04seen\x12#\n" +
+	"\rread_sequence\x18\x0e \x01(\x03R\freadSequence\x12!\n" +
+	"\funread_count\x18\x0f \x01(\x03R\vunreadCount\"|\n" +
+	"\x17MarkFeedPostReadRequest\x12\x1d\n" +
+	"\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
+	"\apost_id\x18\x02 \x01(\tR\x06postId\x12)\n" +
+	"\x10through_sequence\x18\x03 \x01(\x03R\x0fthroughSequence\"B\n" +
+	"\x18MarkFeedPostReadResponse\x12&\n" +
+	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\"\xb3\x02\n" +
 	"\vFeedComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -2216,7 +2366,7 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12+\n" +
 	"\x11expected_revision\x18\x05 \x01(\x03R\x10expectedRevision\"I\n" +
 	"\x19ResolveFeedReportResponse\x12,\n" +
-	"\x06report\x18\x01 \x01(\v2\x14.space.v1.FeedReportR\x06report2\xb9\b\n" +
+	"\x06report\x18\x01 \x01(\v2\x14.space.v1.FeedReportR\x06report2\x94\t\n" +
 	"\vFeedService\x12P\n" +
 	"\rListFeedPosts\x12\x1e.space.v1.ListFeedPostsRequest\x1a\x1f.space.v1.ListFeedPostsResponse\x12J\n" +
 	"\vGetFeedPost\x12\x1c.space.v1.GetFeedPostRequest\x1a\x1d.space.v1.GetFeedPostResponse\x12S\n" +
@@ -2229,7 +2379,8 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\x12ListFeedModeration\x12#.space.v1.ListFeedModerationRequest\x1a$.space.v1.ListFeedModerationResponse\x12\\\n" +
 	"\x11ReportFeedContent\x12\".space.v1.ReportFeedContentRequest\x1a#.space.v1.ReportFeedContentResponse\x12V\n" +
 	"\x0fListFeedReports\x12 .space.v1.ListFeedReportsRequest\x1a!.space.v1.ListFeedReportsResponse\x12\\\n" +
-	"\x11ResolveFeedReport\x12\".space.v1.ResolveFeedReportRequest\x1a#.space.v1.ResolveFeedReportResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
+	"\x11ResolveFeedReport\x12\".space.v1.ResolveFeedReportRequest\x1a#.space.v1.ResolveFeedReportResponse\x12Y\n" +
+	"\x10MarkFeedPostRead\x12!.space.v1.MarkFeedPostReadRequest\x1a\".space.v1.MarkFeedPostReadResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_feed_proto_rawDescOnce sync.Once
@@ -2243,90 +2394,95 @@ func file_space_v1_feed_proto_rawDescGZIP() []byte {
 	return file_space_v1_feed_proto_rawDescData
 }
 
-var file_space_v1_feed_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_space_v1_feed_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_space_v1_feed_proto_goTypes = []any{
 	(*FeedPermissions)(nil),             // 0: space.v1.FeedPermissions
 	(*FeedPost)(nil),                    // 1: space.v1.FeedPost
-	(*FeedComment)(nil),                 // 2: space.v1.FeedComment
-	(*ListFeedPostsRequest)(nil),        // 3: space.v1.ListFeedPostsRequest
-	(*ListFeedPostsResponse)(nil),       // 4: space.v1.ListFeedPostsResponse
-	(*GetFeedPostRequest)(nil),          // 5: space.v1.GetFeedPostRequest
-	(*GetFeedPostResponse)(nil),         // 6: space.v1.GetFeedPostResponse
-	(*CreateFeedPostRequest)(nil),       // 7: space.v1.CreateFeedPostRequest
-	(*CreateFeedPostResponse)(nil),      // 8: space.v1.CreateFeedPostResponse
-	(*CommentFeedPostRequest)(nil),      // 9: space.v1.CommentFeedPostRequest
-	(*CommentFeedPostResponse)(nil),     // 10: space.v1.CommentFeedPostResponse
-	(*FeedAccessRule)(nil),              // 11: space.v1.FeedAccessRule
-	(*GetFeedAccessRequest)(nil),        // 12: space.v1.GetFeedAccessRequest
-	(*GetFeedAccessResponse)(nil),       // 13: space.v1.GetFeedAccessResponse
-	(*UpdateFeedAccessRequest)(nil),     // 14: space.v1.UpdateFeedAccessRequest
-	(*UpdateFeedAccessResponse)(nil),    // 15: space.v1.UpdateFeedAccessResponse
-	(*ModerateFeedPostRequest)(nil),     // 16: space.v1.ModerateFeedPostRequest
-	(*ModerateFeedPostResponse)(nil),    // 17: space.v1.ModerateFeedPostResponse
-	(*ModerateFeedCommentRequest)(nil),  // 18: space.v1.ModerateFeedCommentRequest
-	(*ModerateFeedCommentResponse)(nil), // 19: space.v1.ModerateFeedCommentResponse
-	(*ListFeedModerationRequest)(nil),   // 20: space.v1.ListFeedModerationRequest
-	(*FeedModerationEvent)(nil),         // 21: space.v1.FeedModerationEvent
-	(*ListFeedModerationResponse)(nil),  // 22: space.v1.ListFeedModerationResponse
-	(*FeedReport)(nil),                  // 23: space.v1.FeedReport
-	(*ReportFeedContentRequest)(nil),    // 24: space.v1.ReportFeedContentRequest
-	(*ReportFeedContentResponse)(nil),   // 25: space.v1.ReportFeedContentResponse
-	(*ListFeedReportsRequest)(nil),      // 26: space.v1.ListFeedReportsRequest
-	(*ListFeedReportsResponse)(nil),     // 27: space.v1.ListFeedReportsResponse
-	(*ResolveFeedReportRequest)(nil),    // 28: space.v1.ResolveFeedReportRequest
-	(*ResolveFeedReportResponse)(nil),   // 29: space.v1.ResolveFeedReportResponse
-	(*Asset)(nil),                       // 30: space.v1.Asset
+	(*MarkFeedPostReadRequest)(nil),     // 2: space.v1.MarkFeedPostReadRequest
+	(*MarkFeedPostReadResponse)(nil),    // 3: space.v1.MarkFeedPostReadResponse
+	(*FeedComment)(nil),                 // 4: space.v1.FeedComment
+	(*ListFeedPostsRequest)(nil),        // 5: space.v1.ListFeedPostsRequest
+	(*ListFeedPostsResponse)(nil),       // 6: space.v1.ListFeedPostsResponse
+	(*GetFeedPostRequest)(nil),          // 7: space.v1.GetFeedPostRequest
+	(*GetFeedPostResponse)(nil),         // 8: space.v1.GetFeedPostResponse
+	(*CreateFeedPostRequest)(nil),       // 9: space.v1.CreateFeedPostRequest
+	(*CreateFeedPostResponse)(nil),      // 10: space.v1.CreateFeedPostResponse
+	(*CommentFeedPostRequest)(nil),      // 11: space.v1.CommentFeedPostRequest
+	(*CommentFeedPostResponse)(nil),     // 12: space.v1.CommentFeedPostResponse
+	(*FeedAccessRule)(nil),              // 13: space.v1.FeedAccessRule
+	(*GetFeedAccessRequest)(nil),        // 14: space.v1.GetFeedAccessRequest
+	(*GetFeedAccessResponse)(nil),       // 15: space.v1.GetFeedAccessResponse
+	(*UpdateFeedAccessRequest)(nil),     // 16: space.v1.UpdateFeedAccessRequest
+	(*UpdateFeedAccessResponse)(nil),    // 17: space.v1.UpdateFeedAccessResponse
+	(*ModerateFeedPostRequest)(nil),     // 18: space.v1.ModerateFeedPostRequest
+	(*ModerateFeedPostResponse)(nil),    // 19: space.v1.ModerateFeedPostResponse
+	(*ModerateFeedCommentRequest)(nil),  // 20: space.v1.ModerateFeedCommentRequest
+	(*ModerateFeedCommentResponse)(nil), // 21: space.v1.ModerateFeedCommentResponse
+	(*ListFeedModerationRequest)(nil),   // 22: space.v1.ListFeedModerationRequest
+	(*FeedModerationEvent)(nil),         // 23: space.v1.FeedModerationEvent
+	(*ListFeedModerationResponse)(nil),  // 24: space.v1.ListFeedModerationResponse
+	(*FeedReport)(nil),                  // 25: space.v1.FeedReport
+	(*ReportFeedContentRequest)(nil),    // 26: space.v1.ReportFeedContentRequest
+	(*ReportFeedContentResponse)(nil),   // 27: space.v1.ReportFeedContentResponse
+	(*ListFeedReportsRequest)(nil),      // 28: space.v1.ListFeedReportsRequest
+	(*ListFeedReportsResponse)(nil),     // 29: space.v1.ListFeedReportsResponse
+	(*ResolveFeedReportRequest)(nil),    // 30: space.v1.ResolveFeedReportRequest
+	(*ResolveFeedReportResponse)(nil),   // 31: space.v1.ResolveFeedReportResponse
+	(*Asset)(nil),                       // 32: space.v1.Asset
 }
 var file_space_v1_feed_proto_depIdxs = []int32{
-	30, // 0: space.v1.FeedPost.attachments:type_name -> space.v1.Asset
-	30, // 1: space.v1.FeedComment.attachments:type_name -> space.v1.Asset
-	1,  // 2: space.v1.ListFeedPostsResponse.posts:type_name -> space.v1.FeedPost
-	0,  // 3: space.v1.ListFeedPostsResponse.permissions:type_name -> space.v1.FeedPermissions
-	1,  // 4: space.v1.GetFeedPostResponse.post:type_name -> space.v1.FeedPost
-	2,  // 5: space.v1.GetFeedPostResponse.comments:type_name -> space.v1.FeedComment
-	0,  // 6: space.v1.GetFeedPostResponse.permissions:type_name -> space.v1.FeedPermissions
-	1,  // 7: space.v1.CreateFeedPostResponse.post:type_name -> space.v1.FeedPost
-	2,  // 8: space.v1.CommentFeedPostResponse.comment:type_name -> space.v1.FeedComment
-	1,  // 9: space.v1.CommentFeedPostResponse.post:type_name -> space.v1.FeedPost
-	0,  // 10: space.v1.FeedAccessRule.permissions:type_name -> space.v1.FeedPermissions
-	11, // 11: space.v1.GetFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
-	11, // 12: space.v1.UpdateFeedAccessRequest.rules:type_name -> space.v1.FeedAccessRule
-	11, // 13: space.v1.UpdateFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
-	1,  // 14: space.v1.ModerateFeedPostResponse.post:type_name -> space.v1.FeedPost
-	2,  // 15: space.v1.ModerateFeedCommentResponse.comment:type_name -> space.v1.FeedComment
-	1,  // 16: space.v1.ModerateFeedCommentResponse.post:type_name -> space.v1.FeedPost
-	21, // 17: space.v1.ListFeedModerationResponse.events:type_name -> space.v1.FeedModerationEvent
-	23, // 18: space.v1.ListFeedReportsResponse.reports:type_name -> space.v1.FeedReport
-	23, // 19: space.v1.ResolveFeedReportResponse.report:type_name -> space.v1.FeedReport
-	3,  // 20: space.v1.FeedService.ListFeedPosts:input_type -> space.v1.ListFeedPostsRequest
-	5,  // 21: space.v1.FeedService.GetFeedPost:input_type -> space.v1.GetFeedPostRequest
-	7,  // 22: space.v1.FeedService.CreateFeedPost:input_type -> space.v1.CreateFeedPostRequest
-	9,  // 23: space.v1.FeedService.CommentFeedPost:input_type -> space.v1.CommentFeedPostRequest
-	12, // 24: space.v1.FeedService.GetFeedAccess:input_type -> space.v1.GetFeedAccessRequest
-	14, // 25: space.v1.FeedService.UpdateFeedAccess:input_type -> space.v1.UpdateFeedAccessRequest
-	16, // 26: space.v1.FeedService.ModerateFeedPost:input_type -> space.v1.ModerateFeedPostRequest
-	18, // 27: space.v1.FeedService.ModerateFeedComment:input_type -> space.v1.ModerateFeedCommentRequest
-	20, // 28: space.v1.FeedService.ListFeedModeration:input_type -> space.v1.ListFeedModerationRequest
-	24, // 29: space.v1.FeedService.ReportFeedContent:input_type -> space.v1.ReportFeedContentRequest
-	26, // 30: space.v1.FeedService.ListFeedReports:input_type -> space.v1.ListFeedReportsRequest
-	28, // 31: space.v1.FeedService.ResolveFeedReport:input_type -> space.v1.ResolveFeedReportRequest
-	4,  // 32: space.v1.FeedService.ListFeedPosts:output_type -> space.v1.ListFeedPostsResponse
-	6,  // 33: space.v1.FeedService.GetFeedPost:output_type -> space.v1.GetFeedPostResponse
-	8,  // 34: space.v1.FeedService.CreateFeedPost:output_type -> space.v1.CreateFeedPostResponse
-	10, // 35: space.v1.FeedService.CommentFeedPost:output_type -> space.v1.CommentFeedPostResponse
-	13, // 36: space.v1.FeedService.GetFeedAccess:output_type -> space.v1.GetFeedAccessResponse
-	15, // 37: space.v1.FeedService.UpdateFeedAccess:output_type -> space.v1.UpdateFeedAccessResponse
-	17, // 38: space.v1.FeedService.ModerateFeedPost:output_type -> space.v1.ModerateFeedPostResponse
-	19, // 39: space.v1.FeedService.ModerateFeedComment:output_type -> space.v1.ModerateFeedCommentResponse
-	22, // 40: space.v1.FeedService.ListFeedModeration:output_type -> space.v1.ListFeedModerationResponse
-	25, // 41: space.v1.FeedService.ReportFeedContent:output_type -> space.v1.ReportFeedContentResponse
-	27, // 42: space.v1.FeedService.ListFeedReports:output_type -> space.v1.ListFeedReportsResponse
-	29, // 43: space.v1.FeedService.ResolveFeedReport:output_type -> space.v1.ResolveFeedReportResponse
-	32, // [32:44] is the sub-list for method output_type
-	20, // [20:32] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	32, // 0: space.v1.FeedPost.attachments:type_name -> space.v1.Asset
+	1,  // 1: space.v1.MarkFeedPostReadResponse.post:type_name -> space.v1.FeedPost
+	32, // 2: space.v1.FeedComment.attachments:type_name -> space.v1.Asset
+	1,  // 3: space.v1.ListFeedPostsResponse.posts:type_name -> space.v1.FeedPost
+	0,  // 4: space.v1.ListFeedPostsResponse.permissions:type_name -> space.v1.FeedPermissions
+	1,  // 5: space.v1.GetFeedPostResponse.post:type_name -> space.v1.FeedPost
+	4,  // 6: space.v1.GetFeedPostResponse.comments:type_name -> space.v1.FeedComment
+	0,  // 7: space.v1.GetFeedPostResponse.permissions:type_name -> space.v1.FeedPermissions
+	1,  // 8: space.v1.CreateFeedPostResponse.post:type_name -> space.v1.FeedPost
+	4,  // 9: space.v1.CommentFeedPostResponse.comment:type_name -> space.v1.FeedComment
+	1,  // 10: space.v1.CommentFeedPostResponse.post:type_name -> space.v1.FeedPost
+	0,  // 11: space.v1.FeedAccessRule.permissions:type_name -> space.v1.FeedPermissions
+	13, // 12: space.v1.GetFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
+	13, // 13: space.v1.UpdateFeedAccessRequest.rules:type_name -> space.v1.FeedAccessRule
+	13, // 14: space.v1.UpdateFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
+	1,  // 15: space.v1.ModerateFeedPostResponse.post:type_name -> space.v1.FeedPost
+	4,  // 16: space.v1.ModerateFeedCommentResponse.comment:type_name -> space.v1.FeedComment
+	1,  // 17: space.v1.ModerateFeedCommentResponse.post:type_name -> space.v1.FeedPost
+	23, // 18: space.v1.ListFeedModerationResponse.events:type_name -> space.v1.FeedModerationEvent
+	25, // 19: space.v1.ListFeedReportsResponse.reports:type_name -> space.v1.FeedReport
+	25, // 20: space.v1.ResolveFeedReportResponse.report:type_name -> space.v1.FeedReport
+	5,  // 21: space.v1.FeedService.ListFeedPosts:input_type -> space.v1.ListFeedPostsRequest
+	7,  // 22: space.v1.FeedService.GetFeedPost:input_type -> space.v1.GetFeedPostRequest
+	9,  // 23: space.v1.FeedService.CreateFeedPost:input_type -> space.v1.CreateFeedPostRequest
+	11, // 24: space.v1.FeedService.CommentFeedPost:input_type -> space.v1.CommentFeedPostRequest
+	14, // 25: space.v1.FeedService.GetFeedAccess:input_type -> space.v1.GetFeedAccessRequest
+	16, // 26: space.v1.FeedService.UpdateFeedAccess:input_type -> space.v1.UpdateFeedAccessRequest
+	18, // 27: space.v1.FeedService.ModerateFeedPost:input_type -> space.v1.ModerateFeedPostRequest
+	20, // 28: space.v1.FeedService.ModerateFeedComment:input_type -> space.v1.ModerateFeedCommentRequest
+	22, // 29: space.v1.FeedService.ListFeedModeration:input_type -> space.v1.ListFeedModerationRequest
+	26, // 30: space.v1.FeedService.ReportFeedContent:input_type -> space.v1.ReportFeedContentRequest
+	28, // 31: space.v1.FeedService.ListFeedReports:input_type -> space.v1.ListFeedReportsRequest
+	30, // 32: space.v1.FeedService.ResolveFeedReport:input_type -> space.v1.ResolveFeedReportRequest
+	2,  // 33: space.v1.FeedService.MarkFeedPostRead:input_type -> space.v1.MarkFeedPostReadRequest
+	6,  // 34: space.v1.FeedService.ListFeedPosts:output_type -> space.v1.ListFeedPostsResponse
+	8,  // 35: space.v1.FeedService.GetFeedPost:output_type -> space.v1.GetFeedPostResponse
+	10, // 36: space.v1.FeedService.CreateFeedPost:output_type -> space.v1.CreateFeedPostResponse
+	12, // 37: space.v1.FeedService.CommentFeedPost:output_type -> space.v1.CommentFeedPostResponse
+	15, // 38: space.v1.FeedService.GetFeedAccess:output_type -> space.v1.GetFeedAccessResponse
+	17, // 39: space.v1.FeedService.UpdateFeedAccess:output_type -> space.v1.UpdateFeedAccessResponse
+	19, // 40: space.v1.FeedService.ModerateFeedPost:output_type -> space.v1.ModerateFeedPostResponse
+	21, // 41: space.v1.FeedService.ModerateFeedComment:output_type -> space.v1.ModerateFeedCommentResponse
+	24, // 42: space.v1.FeedService.ListFeedModeration:output_type -> space.v1.ListFeedModerationResponse
+	27, // 43: space.v1.FeedService.ReportFeedContent:output_type -> space.v1.ReportFeedContentResponse
+	29, // 44: space.v1.FeedService.ListFeedReports:output_type -> space.v1.ListFeedReportsResponse
+	31, // 45: space.v1.FeedService.ResolveFeedReport:output_type -> space.v1.ResolveFeedReportResponse
+	3,  // 46: space.v1.FeedService.MarkFeedPostRead:output_type -> space.v1.MarkFeedPostReadResponse
+	34, // [34:47] is the sub-list for method output_type
+	21, // [21:34] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_feed_proto_init() }
@@ -2341,7 +2497,7 @@ func file_space_v1_feed_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_feed_proto_rawDesc), len(file_space_v1_feed_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   30,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -339,6 +339,7 @@ var connectProcedures = map[string]bool{
 	rpc.FeedServiceReportFeedContentProcedure:                 true,
 	rpc.FeedServiceListFeedReportsProcedure:                   true,
 	rpc.FeedServiceResolveFeedReportProcedure:                 true,
+	rpc.FeedServiceMarkFeedPostReadProcedure:                  true,
 	rpc.ForumServiceListForumThreadsProcedure:                 true,
 	rpc.ForumServiceGetForumThreadProcedure:                   true,
 	rpc.ForumServiceCreateForumThreadProcedure:                true,

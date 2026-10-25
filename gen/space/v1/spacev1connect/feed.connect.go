@@ -68,6 +68,9 @@ const (
 	// FeedServiceResolveFeedReportProcedure is the fully-qualified name of the FeedService's
 	// ResolveFeedReport RPC.
 	FeedServiceResolveFeedReportProcedure = "/space.v1.FeedService/ResolveFeedReport"
+	// FeedServiceMarkFeedPostReadProcedure is the fully-qualified name of the FeedService's
+	// MarkFeedPostRead RPC.
+	FeedServiceMarkFeedPostReadProcedure = "/space.v1.FeedService/MarkFeedPostRead"
 )
 
 // FeedServiceClient is a client for the space.v1.FeedService service.
@@ -84,6 +87,8 @@ type FeedServiceClient interface {
 	ReportFeedContent(context.Context, *connect.Request[v1.ReportFeedContentRequest]) (*connect.Response[v1.ReportFeedContentResponse], error)
 	ListFeedReports(context.Context, *connect.Request[v1.ListFeedReportsRequest]) (*connect.Response[v1.ListFeedReportsResponse], error)
 	ResolveFeedReport(context.Context, *connect.Request[v1.ResolveFeedReportRequest]) (*connect.Response[v1.ResolveFeedReportResponse], error)
+	// core.feed.read.v1: персональная монотонная отметка, общая для устройств.
+	MarkFeedPostRead(context.Context, *connect.Request[v1.MarkFeedPostReadRequest]) (*connect.Response[v1.MarkFeedPostReadResponse], error)
 }
 
 // NewFeedServiceClient constructs a client for the space.v1.FeedService service. By default, it
@@ -169,6 +174,12 @@ func NewFeedServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(feedServiceMethods.ByName("ResolveFeedReport")),
 			connect.WithClientOptions(opts...),
 		),
+		markFeedPostRead: connect.NewClient[v1.MarkFeedPostReadRequest, v1.MarkFeedPostReadResponse](
+			httpClient,
+			baseURL+FeedServiceMarkFeedPostReadProcedure,
+			connect.WithSchema(feedServiceMethods.ByName("MarkFeedPostRead")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -186,6 +197,7 @@ type feedServiceClient struct {
 	reportFeedContent   *connect.Client[v1.ReportFeedContentRequest, v1.ReportFeedContentResponse]
 	listFeedReports     *connect.Client[v1.ListFeedReportsRequest, v1.ListFeedReportsResponse]
 	resolveFeedReport   *connect.Client[v1.ResolveFeedReportRequest, v1.ResolveFeedReportResponse]
+	markFeedPostRead    *connect.Client[v1.MarkFeedPostReadRequest, v1.MarkFeedPostReadResponse]
 }
 
 // ListFeedPosts calls space.v1.FeedService.ListFeedPosts.
@@ -248,6 +260,11 @@ func (c *feedServiceClient) ResolveFeedReport(ctx context.Context, req *connect.
 	return c.resolveFeedReport.CallUnary(ctx, req)
 }
 
+// MarkFeedPostRead calls space.v1.FeedService.MarkFeedPostRead.
+func (c *feedServiceClient) MarkFeedPostRead(ctx context.Context, req *connect.Request[v1.MarkFeedPostReadRequest]) (*connect.Response[v1.MarkFeedPostReadResponse], error) {
+	return c.markFeedPostRead.CallUnary(ctx, req)
+}
+
 // FeedServiceHandler is an implementation of the space.v1.FeedService service.
 type FeedServiceHandler interface {
 	ListFeedPosts(context.Context, *connect.Request[v1.ListFeedPostsRequest]) (*connect.Response[v1.ListFeedPostsResponse], error)
@@ -262,6 +279,8 @@ type FeedServiceHandler interface {
 	ReportFeedContent(context.Context, *connect.Request[v1.ReportFeedContentRequest]) (*connect.Response[v1.ReportFeedContentResponse], error)
 	ListFeedReports(context.Context, *connect.Request[v1.ListFeedReportsRequest]) (*connect.Response[v1.ListFeedReportsResponse], error)
 	ResolveFeedReport(context.Context, *connect.Request[v1.ResolveFeedReportRequest]) (*connect.Response[v1.ResolveFeedReportResponse], error)
+	// core.feed.read.v1: персональная монотонная отметка, общая для устройств.
+	MarkFeedPostRead(context.Context, *connect.Request[v1.MarkFeedPostReadRequest]) (*connect.Response[v1.MarkFeedPostReadResponse], error)
 }
 
 // NewFeedServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -343,6 +362,12 @@ func NewFeedServiceHandler(svc FeedServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(feedServiceMethods.ByName("ResolveFeedReport")),
 		connect.WithHandlerOptions(opts...),
 	)
+	feedServiceMarkFeedPostReadHandler := connect.NewUnaryHandler(
+		FeedServiceMarkFeedPostReadProcedure,
+		svc.MarkFeedPostRead,
+		connect.WithSchema(feedServiceMethods.ByName("MarkFeedPostRead")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/space.v1.FeedService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FeedServiceListFeedPostsProcedure:
@@ -369,6 +394,8 @@ func NewFeedServiceHandler(svc FeedServiceHandler, opts ...connect.HandlerOption
 			feedServiceListFeedReportsHandler.ServeHTTP(w, r)
 		case FeedServiceResolveFeedReportProcedure:
 			feedServiceResolveFeedReportHandler.ServeHTTP(w, r)
+		case FeedServiceMarkFeedPostReadProcedure:
+			feedServiceMarkFeedPostReadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -424,4 +451,8 @@ func (UnimplementedFeedServiceHandler) ListFeedReports(context.Context, *connect
 
 func (UnimplementedFeedServiceHandler) ResolveFeedReport(context.Context, *connect.Request[v1.ResolveFeedReportRequest]) (*connect.Response[v1.ResolveFeedReportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.FeedService.ResolveFeedReport is not implemented"))
+}
+
+func (UnimplementedFeedServiceHandler) MarkFeedPostRead(context.Context, *connect.Request[v1.MarkFeedPostReadRequest]) (*connect.Response[v1.MarkFeedPostReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.FeedService.MarkFeedPostRead is not implemented"))
 }

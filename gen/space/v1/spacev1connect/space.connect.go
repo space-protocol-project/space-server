@@ -182,9 +182,15 @@ const (
 	// AdminServiceUpdateSettingsProcedure is the fully-qualified name of the AdminService's
 	// UpdateSettings RPC.
 	AdminServiceUpdateSettingsProcedure = "/space.v1.AdminService/UpdateSettings"
-	// MembershipServiceUpdateProfileProcedure is the fully-qualified name of the MembershipService's
-	// UpdateProfile RPC.
-	MembershipServiceUpdateProfileProcedure = "/space.v1.MembershipService/UpdateProfile"
+	// MembershipServiceGetParticipantProfileProcedure is the fully-qualified name of the
+	// MembershipService's GetParticipantProfile RPC.
+	MembershipServiceGetParticipantProfileProcedure = "/space.v1.MembershipService/GetParticipantProfile"
+	// MembershipServiceUpdateParticipantProfileProcedure is the fully-qualified name of the
+	// MembershipService's UpdateParticipantProfile RPC.
+	MembershipServiceUpdateParticipantProfileProcedure = "/space.v1.MembershipService/UpdateParticipantProfile"
+	// MembershipServiceListParticipantProfilesProcedure is the fully-qualified name of the
+	// MembershipService's ListParticipantProfiles RPC.
+	MembershipServiceListParticipantProfilesProcedure = "/space.v1.MembershipService/ListParticipantProfiles"
 	// MembershipServicePreviewInviteProcedure is the fully-qualified name of the MembershipService's
 	// PreviewInvite RPC.
 	MembershipServicePreviewInviteProcedure = "/space.v1.MembershipService/PreviewInvite"
@@ -1704,7 +1710,9 @@ func (UnimplementedAdminServiceHandler) UpdateSettings(context.Context, *connect
 
 // MembershipServiceClient is a client for the space.v1.MembershipService service.
 type MembershipServiceClient interface {
-	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	GetParticipantProfile(context.Context, *connect.Request[v1.GetParticipantProfileRequest]) (*connect.Response[v1.GetParticipantProfileResponse], error)
+	UpdateParticipantProfile(context.Context, *connect.Request[v1.UpdateParticipantProfileRequest]) (*connect.Response[v1.UpdateParticipantProfileResponse], error)
+	ListParticipantProfiles(context.Context, *connect.Request[v1.ListParticipantProfilesRequest]) (*connect.Response[v1.ListParticipantProfilesResponse], error)
 	PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	GetMembership(context.Context, *connect.Request[v1.GetMembershipRequest]) (*connect.Response[v1.GetMembershipResponse], error)
@@ -1721,10 +1729,22 @@ func NewMembershipServiceClient(httpClient connect.HTTPClient, baseURL string, o
 	baseURL = strings.TrimRight(baseURL, "/")
 	membershipServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MembershipService").Methods()
 	return &membershipServiceClient{
-		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
+		getParticipantProfile: connect.NewClient[v1.GetParticipantProfileRequest, v1.GetParticipantProfileResponse](
 			httpClient,
-			baseURL+MembershipServiceUpdateProfileProcedure,
-			connect.WithSchema(membershipServiceMethods.ByName("UpdateProfile")),
+			baseURL+MembershipServiceGetParticipantProfileProcedure,
+			connect.WithSchema(membershipServiceMethods.ByName("GetParticipantProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		updateParticipantProfile: connect.NewClient[v1.UpdateParticipantProfileRequest, v1.UpdateParticipantProfileResponse](
+			httpClient,
+			baseURL+MembershipServiceUpdateParticipantProfileProcedure,
+			connect.WithSchema(membershipServiceMethods.ByName("UpdateParticipantProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		listParticipantProfiles: connect.NewClient[v1.ListParticipantProfilesRequest, v1.ListParticipantProfilesResponse](
+			httpClient,
+			baseURL+MembershipServiceListParticipantProfilesProcedure,
+			connect.WithSchema(membershipServiceMethods.ByName("ListParticipantProfiles")),
 			connect.WithClientOptions(opts...),
 		),
 		previewInvite: connect.NewClient[v1.PreviewInviteRequest, v1.PreviewInviteResponse](
@@ -1750,15 +1770,27 @@ func NewMembershipServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // membershipServiceClient implements MembershipServiceClient.
 type membershipServiceClient struct {
-	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
-	previewInvite *connect.Client[v1.PreviewInviteRequest, v1.PreviewInviteResponse]
-	acceptInvite  *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
-	getMembership *connect.Client[v1.GetMembershipRequest, v1.GetMembershipResponse]
+	getParticipantProfile    *connect.Client[v1.GetParticipantProfileRequest, v1.GetParticipantProfileResponse]
+	updateParticipantProfile *connect.Client[v1.UpdateParticipantProfileRequest, v1.UpdateParticipantProfileResponse]
+	listParticipantProfiles  *connect.Client[v1.ListParticipantProfilesRequest, v1.ListParticipantProfilesResponse]
+	previewInvite            *connect.Client[v1.PreviewInviteRequest, v1.PreviewInviteResponse]
+	acceptInvite             *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
+	getMembership            *connect.Client[v1.GetMembershipRequest, v1.GetMembershipResponse]
 }
 
-// UpdateProfile calls space.v1.MembershipService.UpdateProfile.
-func (c *membershipServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
-	return c.updateProfile.CallUnary(ctx, req)
+// GetParticipantProfile calls space.v1.MembershipService.GetParticipantProfile.
+func (c *membershipServiceClient) GetParticipantProfile(ctx context.Context, req *connect.Request[v1.GetParticipantProfileRequest]) (*connect.Response[v1.GetParticipantProfileResponse], error) {
+	return c.getParticipantProfile.CallUnary(ctx, req)
+}
+
+// UpdateParticipantProfile calls space.v1.MembershipService.UpdateParticipantProfile.
+func (c *membershipServiceClient) UpdateParticipantProfile(ctx context.Context, req *connect.Request[v1.UpdateParticipantProfileRequest]) (*connect.Response[v1.UpdateParticipantProfileResponse], error) {
+	return c.updateParticipantProfile.CallUnary(ctx, req)
+}
+
+// ListParticipantProfiles calls space.v1.MembershipService.ListParticipantProfiles.
+func (c *membershipServiceClient) ListParticipantProfiles(ctx context.Context, req *connect.Request[v1.ListParticipantProfilesRequest]) (*connect.Response[v1.ListParticipantProfilesResponse], error) {
+	return c.listParticipantProfiles.CallUnary(ctx, req)
 }
 
 // PreviewInvite calls space.v1.MembershipService.PreviewInvite.
@@ -1778,7 +1810,9 @@ func (c *membershipServiceClient) GetMembership(ctx context.Context, req *connec
 
 // MembershipServiceHandler is an implementation of the space.v1.MembershipService service.
 type MembershipServiceHandler interface {
-	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	GetParticipantProfile(context.Context, *connect.Request[v1.GetParticipantProfileRequest]) (*connect.Response[v1.GetParticipantProfileResponse], error)
+	UpdateParticipantProfile(context.Context, *connect.Request[v1.UpdateParticipantProfileRequest]) (*connect.Response[v1.UpdateParticipantProfileResponse], error)
+	ListParticipantProfiles(context.Context, *connect.Request[v1.ListParticipantProfilesRequest]) (*connect.Response[v1.ListParticipantProfilesResponse], error)
 	PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error)
 	AcceptInvite(context.Context, *connect.Request[v1.AcceptInviteRequest]) (*connect.Response[v1.AcceptInviteResponse], error)
 	GetMembership(context.Context, *connect.Request[v1.GetMembershipRequest]) (*connect.Response[v1.GetMembershipResponse], error)
@@ -1791,10 +1825,22 @@ type MembershipServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	membershipServiceMethods := v1.File_space_v1_space_proto.Services().ByName("MembershipService").Methods()
-	membershipServiceUpdateProfileHandler := connect.NewUnaryHandler(
-		MembershipServiceUpdateProfileProcedure,
-		svc.UpdateProfile,
-		connect.WithSchema(membershipServiceMethods.ByName("UpdateProfile")),
+	membershipServiceGetParticipantProfileHandler := connect.NewUnaryHandler(
+		MembershipServiceGetParticipantProfileProcedure,
+		svc.GetParticipantProfile,
+		connect.WithSchema(membershipServiceMethods.ByName("GetParticipantProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	membershipServiceUpdateParticipantProfileHandler := connect.NewUnaryHandler(
+		MembershipServiceUpdateParticipantProfileProcedure,
+		svc.UpdateParticipantProfile,
+		connect.WithSchema(membershipServiceMethods.ByName("UpdateParticipantProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	membershipServiceListParticipantProfilesHandler := connect.NewUnaryHandler(
+		MembershipServiceListParticipantProfilesProcedure,
+		svc.ListParticipantProfiles,
+		connect.WithSchema(membershipServiceMethods.ByName("ListParticipantProfiles")),
 		connect.WithHandlerOptions(opts...),
 	)
 	membershipServicePreviewInviteHandler := connect.NewUnaryHandler(
@@ -1817,8 +1863,12 @@ func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.H
 	)
 	return "/space.v1.MembershipService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case MembershipServiceUpdateProfileProcedure:
-			membershipServiceUpdateProfileHandler.ServeHTTP(w, r)
+		case MembershipServiceGetParticipantProfileProcedure:
+			membershipServiceGetParticipantProfileHandler.ServeHTTP(w, r)
+		case MembershipServiceUpdateParticipantProfileProcedure:
+			membershipServiceUpdateParticipantProfileHandler.ServeHTTP(w, r)
+		case MembershipServiceListParticipantProfilesProcedure:
+			membershipServiceListParticipantProfilesHandler.ServeHTTP(w, r)
 		case MembershipServicePreviewInviteProcedure:
 			membershipServicePreviewInviteHandler.ServeHTTP(w, r)
 		case MembershipServiceAcceptInviteProcedure:
@@ -1834,8 +1884,16 @@ func NewMembershipServiceHandler(svc MembershipServiceHandler, opts ...connect.H
 // UnimplementedMembershipServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMembershipServiceHandler struct{}
 
-func (UnimplementedMembershipServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.UpdateProfile is not implemented"))
+func (UnimplementedMembershipServiceHandler) GetParticipantProfile(context.Context, *connect.Request[v1.GetParticipantProfileRequest]) (*connect.Response[v1.GetParticipantProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.GetParticipantProfile is not implemented"))
+}
+
+func (UnimplementedMembershipServiceHandler) UpdateParticipantProfile(context.Context, *connect.Request[v1.UpdateParticipantProfileRequest]) (*connect.Response[v1.UpdateParticipantProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.UpdateParticipantProfile is not implemented"))
+}
+
+func (UnimplementedMembershipServiceHandler) ListParticipantProfiles(context.Context, *connect.Request[v1.ListParticipantProfilesRequest]) (*connect.Response[v1.ListParticipantProfilesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.MembershipService.ListParticipantProfiles is not implemented"))
 }
 
 func (UnimplementedMembershipServiceHandler) PreviewInvite(context.Context, *connect.Request[v1.PreviewInviteRequest]) (*connect.Response[v1.PreviewInviteResponse], error) {

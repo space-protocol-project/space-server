@@ -52,7 +52,7 @@ func legacySnapshot(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[s
 	tables := map[string]string{
 		"server_state": "ARRAY[]::text[]", "principals": "ARRAY[]::text[]", "channels": "ARRAY['mls_group_id','voice_capacity']",
 		"contents": "ARRAY['attachments','reactions','reply_to_id','search_text','mentions']", "events": "ARRAY[]::text[]", "channel_access": "ARRAY[]::text[]",
-		"memberships": "ARRAY['nickname','storage_limit_bytes']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
+		"memberships": "ARRAY['nickname','storage_limit_bytes','profile_avatar','profile_revision']", "space_settings": "ARRAY['storage_limit_bytes','member_storage_limit_bytes','attachments_enabled']",
 	}
 	result := map[string]string{}
 	for table, excluded := range tables {

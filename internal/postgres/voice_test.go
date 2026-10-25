@@ -12,7 +12,7 @@ import (
 
 func TestVoiceRoomChannelPermissionsAndPlaintextIsolation(t *testing.T) {
 	f := newChannelFixture(t)
-	if _, err := pb.NewMembershipServiceClient(f.conn).UpdateProfile(f.owner, &pb.UpdateProfileRequest{Nickname: "Алиса"}); err != nil {
+	if _, err := pb.NewMembershipServiceClient(f.conn).UpdateParticipantProfile(f.owner, &pb.UpdateParticipantProfileRequest{DisplayName: "Алиса"}); err != nil {
 		t.Fatal(err)
 	}
 	verified, err := authn.AuthorizeCall(metadata.NewIncomingContext(f.ctx, metadata.Pairs("authorization", "Bearer "+fixtureToken(f.owner))), f.store, "/space.v1.VoiceService/GetVoiceRoom")

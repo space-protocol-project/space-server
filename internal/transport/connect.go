@@ -254,16 +254,24 @@ type connectMembership struct {
 	client pb.MembershipServiceClient
 }
 
+func (s connectMembership) GetParticipantProfile(ctx context.Context, req *connect.Request[pb.GetParticipantProfileRequest]) (*connect.Response[pb.GetParticipantProfileResponse], error) {
+	return bridgeUnary(ctx, req, s.client.GetParticipantProfile)
+}
+
+func (s connectMembership) UpdateParticipantProfile(ctx context.Context, req *connect.Request[pb.UpdateParticipantProfileRequest]) (*connect.Response[pb.UpdateParticipantProfileResponse], error) {
+	return bridgeUnary(ctx, req, s.client.UpdateParticipantProfile)
+}
+
+func (s connectMembership) ListParticipantProfiles(ctx context.Context, req *connect.Request[pb.ListParticipantProfilesRequest]) (*connect.Response[pb.ListParticipantProfilesResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ListParticipantProfiles)
+}
+
 func (s connectMembership) PreviewInvite(ctx context.Context, req *connect.Request[pb.PreviewInviteRequest]) (*connect.Response[pb.PreviewInviteResponse], error) {
 	return bridgeUnary(ctx, req, s.client.PreviewInvite)
 }
 
 func (s connectMembership) AcceptInvite(ctx context.Context, req *connect.Request[pb.AcceptInviteRequest]) (*connect.Response[pb.AcceptInviteResponse], error) {
 	return bridgeUnary(ctx, req, s.client.AcceptInvite)
-}
-
-func (s connectMembership) UpdateProfile(ctx context.Context, req *connect.Request[pb.UpdateProfileRequest]) (*connect.Response[pb.UpdateProfileResponse], error) {
-	return bridgeUnary(ctx, req, s.client.UpdateProfile)
 }
 
 func (s connectMembership) GetMembership(ctx context.Context, req *connect.Request[pb.GetMembershipRequest]) (*connect.Response[pb.GetMembershipResponse], error) {
@@ -282,9 +290,9 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(pathAuthService, handlerAuthService)
 	pathSyncService, handlerSyncService := rpc.NewSyncServiceHandler(connectSync{client: pb.NewSyncServiceClient(connection)}, options...)
 	mux.Handle(pathSyncService, handlerSyncService)
-	pathAdminService, handlerAdminService := rpc.NewAdminServiceHandler(connectAdmin{client: pb.NewAdminServiceClient(connection)}, options...)
+	pathAdminService, handlerAdminService := rpc.NewAdminServiceHandler(connectAdmin{client: pb.NewAdminServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(2*1024*1024))
 	mux.Handle(pathAdminService, handlerAdminService)
-	pathMembershipService, handlerMembershipService := rpc.NewMembershipServiceHandler(connectMembership{client: pb.NewMembershipServiceClient(connection)}, options...)
+	pathMembershipService, handlerMembershipService := rpc.NewMembershipServiceHandler(connectMembership{client: pb.NewMembershipServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(2*1024*1024))
 	mux.Handle(pathMembershipService, handlerMembershipService)
 	mlsPath, mlsHandler := rpc.NewMlsServiceHandler(connectMls{client: pb.NewMlsServiceClient(connection)}, connect.WithReadMaxBytes(1024*1024), connect.WithSendMaxBytes(8*1024*1024))
 	mux.Handle(mlsPath, mlsHandler)
@@ -362,25 +370,27 @@ var connectProcedures = map[string]bool{
 	rpc.ForumServiceListForumReportsProcedure:                             true,
 	rpc.ForumServiceResolveForumReportProcedure:                           true,
 
-	rpc.VoiceServiceJoinVoiceRoomProcedure:          true,
-	rpc.VoiceServiceUpdateVoiceRoomProcedure:        true,
-	rpc.VoiceServiceLeaveVoiceRoomProcedure:         true,
-	rpc.VoiceServiceGetVoiceRoomProcedure:           true,
-	rpc.VoiceServiceGetVoiceConfigurationProcedure:  true,
-	rpc.ContentServiceApplyContentMutationProcedure: true,
-	rpc.MlsServiceRegisterMlsDeviceProcedure:        true,
-	rpc.MlsServiceListMlsDevicesProcedure:           true,
-	rpc.MlsServiceGetMlsChannelProcedure:            true,
-	rpc.MlsServicePublishMlsProcedure:               true,
-	rpc.MlsServiceListMlsEnvelopesProcedure:         true,
-	rpc.MembershipServiceUpdateProfileProcedure:     true,
-	rpc.AssetServiceBeginUploadProcedure:            true,
-	rpc.AssetServiceUploadChunkProcedure:            true,
-	rpc.AssetServiceCompleteUploadProcedure:         true,
-	rpc.AssetServiceCancelUploadProcedure:           true,
-	rpc.AssetServiceDownloadChunkProcedure:          true,
-	rpc.AssetServiceListMyAssetsProcedure:           true,
-	rpc.AssetServiceListChannelAssetsProcedure:      true,
+	rpc.VoiceServiceJoinVoiceRoomProcedure:                 true,
+	rpc.VoiceServiceUpdateVoiceRoomProcedure:               true,
+	rpc.VoiceServiceLeaveVoiceRoomProcedure:                true,
+	rpc.VoiceServiceGetVoiceRoomProcedure:                  true,
+	rpc.VoiceServiceGetVoiceConfigurationProcedure:         true,
+	rpc.ContentServiceApplyContentMutationProcedure:        true,
+	rpc.MlsServiceRegisterMlsDeviceProcedure:               true,
+	rpc.MlsServiceListMlsDevicesProcedure:                  true,
+	rpc.MlsServiceGetMlsChannelProcedure:                   true,
+	rpc.MlsServicePublishMlsProcedure:                      true,
+	rpc.MlsServiceListMlsEnvelopesProcedure:                true,
+	rpc.MembershipServiceGetParticipantProfileProcedure:    true,
+	rpc.MembershipServiceUpdateParticipantProfileProcedure: true,
+	rpc.MembershipServiceListParticipantProfilesProcedure:  true,
+	rpc.AssetServiceBeginUploadProcedure:                   true,
+	rpc.AssetServiceUploadChunkProcedure:                   true,
+	rpc.AssetServiceCompleteUploadProcedure:                true,
+	rpc.AssetServiceCancelUploadProcedure:                  true,
+	rpc.AssetServiceDownloadChunkProcedure:                 true,
+	rpc.AssetServiceListMyAssetsProcedure:                  true,
+	rpc.AssetServiceListChannelAssetsProcedure:             true,
 
 	rpc.ChannelServiceListChannelsProcedure:        true,
 	rpc.ChannelServiceCreateChannelProcedure:       true,

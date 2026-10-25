@@ -72,7 +72,9 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.SyncServiceSubscribeProcedure,
 		rpc.AdminServiceUpdateSettingsProcedure,
 		rpc.MembershipServiceGetMembershipProcedure,
-		rpc.MembershipServiceUpdateProfileProcedure,
+		rpc.MembershipServiceGetParticipantProfileProcedure,
+		rpc.MembershipServiceUpdateParticipantProfileProcedure,
+		rpc.MembershipServiceListParticipantProfilesProcedure,
 		rpc.AssetServiceBeginUploadProcedure,
 		rpc.AssetServiceUploadChunkProcedure,
 		rpc.AssetServiceCompleteUploadProcedure,
@@ -216,5 +218,41 @@ func TestConnectKeepsInternalAuthAndCancelsStream(t *testing.T) {
 	case <-backend.cancelled:
 	case <-ctx.Done():
 		t.Fatal("Отмена не достигла gRPC")
+	}
+}
+
+type profileListBackend struct {
+	pb.UnimplementedAdminServiceServer
+}
+
+func (profileListBackend) ListMembers(context.Context, *pb.ListMembersRequest) (*pb.ListMembersResponse, error) {
+	response := new(pb.ListMembersResponse)
+	for range 100 {
+		response.Members = append(response.Members, &pb.Member{PrincipalId: "u_test", AvatarPng: make([]byte, 8192)})
+	}
+	return response, nil
+}
+func TestConnectMemberAvatarsFitJsonResponse(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := grpc.NewServer(grpc.UnaryInterceptor(authn.Interceptor(connectVerifier{})))
+	pb.RegisterAdminServiceServer(server, profileListBackend{})
+	go server.Serve(listener)
+	defer server.Stop()
+	connection, err := grpc.NewClient(listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	web := httptest.NewServer(WithConnect(http.NotFoundHandler(), connection, connectVerifier{}))
+	defer web.Close()
+	client := rpc.NewAdminServiceClient(web.Client(), web.URL, connect.WithProtoJSON())
+	request := connect.NewRequest(&pb.ListMembersRequest{})
+	request.Header().Set("Authorization", "Bearer valid-token")
+	response, err := client.ListMembers(context.Background(), request)
+	if err != nil || len(response.Msg.Members) != 100 {
+		t.Fatal("Аватары не помещаются в страницу JSON", err)
 	}
 }

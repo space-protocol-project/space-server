@@ -2211,17 +2211,21 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	MembershipService_UpdateProfile_FullMethodName = "/space.v1.MembershipService/UpdateProfile"
-	MembershipService_PreviewInvite_FullMethodName = "/space.v1.MembershipService/PreviewInvite"
-	MembershipService_AcceptInvite_FullMethodName  = "/space.v1.MembershipService/AcceptInvite"
-	MembershipService_GetMembership_FullMethodName = "/space.v1.MembershipService/GetMembership"
+	MembershipService_GetParticipantProfile_FullMethodName    = "/space.v1.MembershipService/GetParticipantProfile"
+	MembershipService_UpdateParticipantProfile_FullMethodName = "/space.v1.MembershipService/UpdateParticipantProfile"
+	MembershipService_ListParticipantProfiles_FullMethodName  = "/space.v1.MembershipService/ListParticipantProfiles"
+	MembershipService_PreviewInvite_FullMethodName            = "/space.v1.MembershipService/PreviewInvite"
+	MembershipService_AcceptInvite_FullMethodName             = "/space.v1.MembershipService/AcceptInvite"
+	MembershipService_GetMembership_FullMethodName            = "/space.v1.MembershipService/GetMembership"
 )
 
 // MembershipServiceClient is the client API for MembershipService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MembershipServiceClient interface {
-	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
+	GetParticipantProfile(ctx context.Context, in *GetParticipantProfileRequest, opts ...grpc.CallOption) (*GetParticipantProfileResponse, error)
+	UpdateParticipantProfile(ctx context.Context, in *UpdateParticipantProfileRequest, opts ...grpc.CallOption) (*UpdateParticipantProfileResponse, error)
+	ListParticipantProfiles(ctx context.Context, in *ListParticipantProfilesRequest, opts ...grpc.CallOption) (*ListParticipantProfilesResponse, error)
 	PreviewInvite(ctx context.Context, in *PreviewInviteRequest, opts ...grpc.CallOption) (*PreviewInviteResponse, error)
 	AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*AcceptInviteResponse, error)
 	GetMembership(ctx context.Context, in *GetMembershipRequest, opts ...grpc.CallOption) (*GetMembershipResponse, error)
@@ -2235,10 +2239,30 @@ func NewMembershipServiceClient(cc grpc.ClientConnInterface) MembershipServiceCl
 	return &membershipServiceClient{cc}
 }
 
-func (c *membershipServiceClient) UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error) {
+func (c *membershipServiceClient) GetParticipantProfile(ctx context.Context, in *GetParticipantProfileRequest, opts ...grpc.CallOption) (*GetParticipantProfileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateProfileResponse)
-	err := c.cc.Invoke(ctx, MembershipService_UpdateProfile_FullMethodName, in, out, cOpts...)
+	out := new(GetParticipantProfileResponse)
+	err := c.cc.Invoke(ctx, MembershipService_GetParticipantProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *membershipServiceClient) UpdateParticipantProfile(ctx context.Context, in *UpdateParticipantProfileRequest, opts ...grpc.CallOption) (*UpdateParticipantProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateParticipantProfileResponse)
+	err := c.cc.Invoke(ctx, MembershipService_UpdateParticipantProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *membershipServiceClient) ListParticipantProfiles(ctx context.Context, in *ListParticipantProfilesRequest, opts ...grpc.CallOption) (*ListParticipantProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListParticipantProfilesResponse)
+	err := c.cc.Invoke(ctx, MembershipService_ListParticipantProfiles_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2279,7 +2303,9 @@ func (c *membershipServiceClient) GetMembership(ctx context.Context, in *GetMemb
 // All implementations must embed UnimplementedMembershipServiceServer
 // for forward compatibility.
 type MembershipServiceServer interface {
-	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
+	GetParticipantProfile(context.Context, *GetParticipantProfileRequest) (*GetParticipantProfileResponse, error)
+	UpdateParticipantProfile(context.Context, *UpdateParticipantProfileRequest) (*UpdateParticipantProfileResponse, error)
+	ListParticipantProfiles(context.Context, *ListParticipantProfilesRequest) (*ListParticipantProfilesResponse, error)
 	PreviewInvite(context.Context, *PreviewInviteRequest) (*PreviewInviteResponse, error)
 	AcceptInvite(context.Context, *AcceptInviteRequest) (*AcceptInviteResponse, error)
 	GetMembership(context.Context, *GetMembershipRequest) (*GetMembershipResponse, error)
@@ -2293,8 +2319,14 @@ type MembershipServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMembershipServiceServer struct{}
 
-func (UnimplementedMembershipServiceServer) UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateProfile not implemented")
+func (UnimplementedMembershipServiceServer) GetParticipantProfile(context.Context, *GetParticipantProfileRequest) (*GetParticipantProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetParticipantProfile not implemented")
+}
+func (UnimplementedMembershipServiceServer) UpdateParticipantProfile(context.Context, *UpdateParticipantProfileRequest) (*UpdateParticipantProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateParticipantProfile not implemented")
+}
+func (UnimplementedMembershipServiceServer) ListParticipantProfiles(context.Context, *ListParticipantProfilesRequest) (*ListParticipantProfilesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListParticipantProfiles not implemented")
 }
 func (UnimplementedMembershipServiceServer) PreviewInvite(context.Context, *PreviewInviteRequest) (*PreviewInviteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PreviewInvite not implemented")
@@ -2326,20 +2358,56 @@ func RegisterMembershipServiceServer(s grpc.ServiceRegistrar, srv MembershipServ
 	s.RegisterService(&MembershipService_ServiceDesc, srv)
 }
 
-func _MembershipService_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateProfileRequest)
+func _MembershipService_GetParticipantProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetParticipantProfileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MembershipServiceServer).UpdateProfile(ctx, in)
+		return srv.(MembershipServiceServer).GetParticipantProfile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MembershipService_UpdateProfile_FullMethodName,
+		FullMethod: MembershipService_GetParticipantProfile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MembershipServiceServer).UpdateProfile(ctx, req.(*UpdateProfileRequest))
+		return srv.(MembershipServiceServer).GetParticipantProfile(ctx, req.(*GetParticipantProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MembershipService_UpdateParticipantProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateParticipantProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MembershipServiceServer).UpdateParticipantProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MembershipService_UpdateParticipantProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MembershipServiceServer).UpdateParticipantProfile(ctx, req.(*UpdateParticipantProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MembershipService_ListParticipantProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListParticipantProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MembershipServiceServer).ListParticipantProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MembershipService_ListParticipantProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MembershipServiceServer).ListParticipantProfiles(ctx, req.(*ListParticipantProfilesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2406,8 +2474,16 @@ var MembershipService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MembershipServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpdateProfile",
-			Handler:    _MembershipService_UpdateProfile_Handler,
+			MethodName: "GetParticipantProfile",
+			Handler:    _MembershipService_GetParticipantProfile_Handler,
+		},
+		{
+			MethodName: "UpdateParticipantProfile",
+			Handler:    _MembershipService_UpdateParticipantProfile_Handler,
+		},
+		{
+			MethodName: "ListParticipantProfiles",
+			Handler:    _MembershipService_ListParticipantProfiles_Handler,
 		},
 		{
 			MethodName: "PreviewInvite",

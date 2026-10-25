@@ -93,7 +93,7 @@ func (s *Store) ListMembers(ctx context.Context, req *pb.ListMembersRequest) (*p
 		return nil, err
 	}
 	rows, err := tx.Query(ctx, `SELECT p.id,CASE WHEN s.owner_id=p.id THEN 'owner' ELSE m.role END,
- CASE WHEN s.owner_id=p.id THEN false ELSE m.blocked END,m.revision,m.storage_limit_bytes,m.nickname
+ CASE WHEN s.owner_id=p.id THEN false ELSE m.blocked END,m.revision,m.storage_limit_bytes,m.nickname,m.profile_avatar
  FROM memberships m JOIN principals p ON p.id=m.principal_id CROSS JOIN space_settings s
  WHERE p.id>$1 ORDER BY p.id LIMIT 101`, req.After)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Store) ListMembers(ctx context.Context, req *pb.ListMembersRequest) (*p
 	result := new(pb.ListMembersResponse)
 	for rows.Next() {
 		m := new(pb.Member)
-		if err = rows.Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision, &m.StorageLimitBytes, &m.Nickname); err != nil {
+		if err = rows.Scan(&m.PrincipalId, &m.Role, &m.Blocked, &m.Revision, &m.StorageLimitBytes, &m.Nickname, &m.AvatarPng); err != nil {
 			return nil, databaseError(ctx, err)
 		}
 		result.Members = append(result.Members, m)

@@ -58,7 +58,7 @@ func (s *Store) GetManifest(ctx context.Context, _ *pb.GetManifestRequest) (*pb.
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title, Icon: icon, AttachmentsEnabled: attachmentsEnabled, MlsSupported: true, OrdinaryRepliesSupported: true, Capabilities: []string{"core.forum.v1", "core.forum.attachments.v1", "core.forum.navigation.v1", "core.forum.moderation.v1", "core.forum.reports.v1", "core.feed.v1", "core.feed.read.v1", "core.community.search.v1", "core.community.overview.v1", "core.community.mentions.v1", "core.chat.mentions.v1"}}
+	response := &pb.GetManifestResponse{ProtocolVersion: "0.1-experimental", ServerId: serverID, Title: title, Icon: icon, AttachmentsEnabled: attachmentsEnabled, MlsSupported: true, OrdinaryRepliesSupported: true, Capabilities: []string{"core.forum.v1", "core.forum.attachments.v1", "core.forum.navigation.v1", "core.forum.moderation.v1", "core.forum.reports.v1", "core.feed.v1", "core.feed.read.v1", "core.community.search.v1", "core.community.overview.v1", "core.community.mentions.v1", "core.chat.mentions.v1", "core.personal.notifications.v1"}}
 	response.Channels, err = s.channelList(ctx, tx, false, publicOnly, false)
 	return response, err
 }

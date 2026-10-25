@@ -82,6 +82,9 @@ func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateConte
 	if err != nil {
 		return err
 	}
+	if err = checkChatMentionBudget(ctx, tx, req.ChannelId, content.Id, req.Mentions); err != nil {
+		return err
+	}
 	content.Attachments = attachments
 	metadata, err := json.Marshal(attachments)
 	if err != nil {

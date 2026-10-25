@@ -128,7 +128,7 @@ func recordCommunityMentions(ctx context.Context, tx pgx.Tx, channel, id string,
 		return databaseError(ctx, err)
 	}
 	var recent int
-	if err := tx.QueryRow(ctx, "SELECT count(*) FROM community_mentions WHERE author_id=$1 AND created_at>=extract(epoch FROM now())::bigint-3600", authn.Actor(ctx)).Scan(&recent); err != nil {
+	if err := tx.QueryRow(ctx, recentMentionCount, authn.Actor(ctx)).Scan(&recent); err != nil {
 		return databaseError(ctx, err)
 	}
 	if recent+len(recipients) > 100 {

@@ -22,7 +22,7 @@ import (
 )
 
 // При имитации старой схемы удаляем зависимые объекты новой миграции явно.
-const dropCommunityMentionsSchema = `DROP VIEW community_mention_content; DROP TABLE community_mentions;
+const dropCommunityMentionsSchema = dropPersonalNotificationsSchema + `DROP VIEW community_mention_content; DROP TABLE community_mentions;
  ALTER TABLE forum_threads DROP COLUMN mentions; ALTER TABLE forum_replies DROP COLUMN mentions;
  ALTER TABLE feed_posts DROP COLUMN mentions; ALTER TABLE feed_comments DROP COLUMN mentions;
  DELETE FROM schema_migrations WHERE version=34;`

@@ -46,7 +46,7 @@ func TestChatMentionsPersistEditReplayAndDelete(t *testing.T) {
 	if err != nil || replay.Content.Id != created.Content.Id || len(replay.Content.Mentions) != 1 {
 		t.Fatal(replay, err)
 	}
-	conflict := pb.CreateContentRequest{ChannelId:req.ChannelId,Text:req.Text,IdempotencyKey:req.IdempotencyKey}
+	conflict := pb.CreateContentRequest{ChannelId: req.ChannelId, Text: req.Text, IdempotencyKey: req.IdempotencyKey}
 	_, err = f.contents.CreateContent(f.owner, &conflict)
 	requireCode(t, err, codes.AlreadyExists)
 	edit := &pb.UpdateContentRequest{ChannelId: "general", Id: created.Content.Id, Text: "@Маша новый текст", ExpectedRevision: 1, IdempotencyKey: "edit", Mentions: []*pb.CommunityMention{m}}
@@ -114,7 +114,7 @@ func TestChatMentionsUpgradeFrom34(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = f.store.pool.Exec(f.ctx, "ALTER TABLE contents DROP COLUMN mentions; DELETE FROM schema_migrations WHERE version=35")
+	_, err = f.store.pool.Exec(f.ctx, dropPersonalNotificationsSchema+"ALTER TABLE contents DROP COLUMN mentions; DELETE FROM schema_migrations WHERE version=35")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -95,6 +95,9 @@ func (s *Store) changeContent(ctx context.Context, m *contentMutation, deleted b
 			return nil, err
 		}
 	}
+	if err = checkChatMentionBudget(ctx, tx, m.channel, m.id, m.mentions); err != nil {
+		return nil, err
+	}
 	content.Mentions = m.mentions
 	if deleted {
 		if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE channel_id=$1 AND content_id=$2", m.channel, m.id); err != nil {

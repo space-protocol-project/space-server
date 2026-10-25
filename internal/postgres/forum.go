@@ -13,24 +13,30 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments,pinned,hidden"
-const forumReplyColumns = "id,thread_id,author_id,author_name,body,created_at,sequence,attachments,hidden,revision"
+const forumThreadColumns = "id,channel_id,author_id,author_name,title,body,created_at,sequence,revision,closed,reply_count,attachments,pinned,hidden,mentions"
+const forumReplyColumns = "id,thread_id,author_id,author_name,body,created_at,sequence,attachments,hidden,revision,mentions"
 
 func scanForumThread(row pgx.Row) (*pb.ForumThread, error) {
 	t := new(pb.ForumThread)
-	var attachments []byte
-	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments, &t.Pinned, &t.Hidden)
+	var attachments, mentions []byte
+	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Title, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.Closed, &t.ReplyCount, &attachments, &t.Pinned, &t.Hidden, &mentions)
 	if err == nil {
 		err = json.Unmarshal(attachments, &t.Attachments)
+	}
+	if err == nil {
+		err = json.Unmarshal(mentions, &t.Mentions)
 	}
 	return t, err
 }
 func scanForumReply(row pgx.Row) (*pb.ForumReply, error) {
 	r := new(pb.ForumReply)
-	var attachments []byte
-	err := row.Scan(&r.Id, &r.ThreadId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments, &r.Hidden, &r.Revision)
+	var attachments, mentions []byte
+	err := row.Scan(&r.Id, &r.ThreadId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments, &r.Hidden, &r.Revision, &mentions)
 	if err == nil {
 		err = json.Unmarshal(attachments, &r.Attachments)
+	}
+	if err == nil {
+		err = json.Unmarshal(mentions, &r.Mentions)
 	}
 	return r, err
 }
@@ -192,7 +198,7 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	defer tx.Rollback(ctx)
 	old, err := scanForumThread(tx.QueryRow(ctx, "SELECT "+forumThreadColumns+" FROM forum_threads WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
-		if old.Title != req.Title || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
+		if old.Title != req.Title || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) || !sameCommunityMentions(old.Mentions, req.Mentions) {
 			return nil, forumKeyConflict()
 		}
 		if err = forumReadStates(ctx, tx, []*pb.ForumThread{old}); err != nil {
@@ -202,6 +208,10 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	}
 	if err != pgx.ErrNoRows {
 		return nil, databaseError(ctx, err)
+	}
+	mentions, err := validateCommunityMentions(ctx, tx, req.ChannelId, req.Text, req.Mentions)
+	if err != nil {
+		return nil, err
 	}
 	assets, err := contentAssets(ctx, tx, &pb.CreateContentRequest{ChannelId: req.ChannelId, AttachmentIds: req.AttachmentIds})
 	if err != nil {
@@ -220,7 +230,7 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	if err = tx.QueryRow(ctx, "UPDATE channels SET next_sequence=next_sequence+1 WHERE id=$1 RETURNING next_sequence-1", req.ChannelId).Scan(&sequence); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	t, err := scanForumThread(tx.QueryRow(ctx, "INSERT INTO forum_threads(id,channel_id,author_id,author_name,title,body,sequence,idempotency_key,attachments) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "+forumThreadColumns, id, req.ChannelId, authn.Actor(ctx), name, req.Title, req.Text, sequence, req.IdempotencyKey, encoded))
+	t, err := scanForumThread(tx.QueryRow(ctx, "INSERT INTO forum_threads(id,channel_id,author_id,author_name,title,body,sequence,idempotency_key,attachments,mentions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "+forumThreadColumns, id, req.ChannelId, authn.Actor(ctx), name, req.Title, req.Text, sequence, req.IdempotencyKey, encoded, mentions))
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -229,6 +239,9 @@ func (s *Store) CreateForumThread(ctx context.Context, req *pb.CreateForumThread
 	}
 	if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err = recordCommunityMentions(ctx, tx, req.ChannelId, t.Id, pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FORUM_THREAD, req.Mentions); err != nil {
+		return nil, err
 	}
 	return &pb.CreateForumThreadResponse{Thread: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }
@@ -247,7 +260,7 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	}
 	old, err := scanForumReply(tx.QueryRow(ctx, "SELECT "+forumReplyColumns+" FROM forum_replies WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
-		if old.ThreadId != req.ThreadId || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
+		if old.ThreadId != req.ThreadId || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) || !sameCommunityMentions(old.Mentions, req.Mentions) {
 			return nil, forumKeyConflict()
 		}
 		if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
@@ -265,6 +278,10 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	if t.Closed {
 		return nil, status.Error(codes.FailedPrecondition, "Тема закрыта")
 	}
+	mentions, err := validateCommunityMentions(ctx, tx, req.ChannelId, req.Text, req.Mentions)
+	if err != nil {
+		return nil, err
+	}
 	assets, err := contentAssets(ctx, tx, &pb.CreateContentRequest{ChannelId: req.ChannelId, AttachmentIds: req.AttachmentIds})
 	if err != nil {
 		return nil, err
@@ -278,7 +295,7 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	if err != nil {
 		return nil, err
 	}
-	r, err := scanForumReply(tx.QueryRow(ctx, "INSERT INTO forum_replies(id,channel_id,thread_id,author_id,author_name,body,sequence,idempotency_key,attachments) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "+forumReplyColumns, id, req.ChannelId, t.Id, authn.Actor(ctx), name, req.Text, t.ReplyCount+1, req.IdempotencyKey, encoded))
+	r, err := scanForumReply(tx.QueryRow(ctx, "INSERT INTO forum_replies(id,channel_id,thread_id,author_id,author_name,body,sequence,idempotency_key,attachments,mentions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "+forumReplyColumns, id, req.ChannelId, t.Id, authn.Actor(ctx), name, req.Text, t.ReplyCount+1, req.IdempotencyKey, encoded, mentions))
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -291,6 +308,9 @@ func (s *Store) ReplyForumThread(ctx context.Context, req *pb.ReplyForumThreadRe
 	}
 	if err = forumReadStates(ctx, tx, []*pb.ForumThread{t}); err != nil {
 		return nil, databaseError(ctx, err)
+	}
+	if err = recordCommunityMentions(ctx, tx, req.ChannelId, r.Id, pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FORUM_REPLY, req.Mentions); err != nil {
+		return nil, err
 	}
 	return &pb.ReplyForumThreadResponse{Reply: r, Thread: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
 }

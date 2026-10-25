@@ -10,25 +10,31 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const feedPostColumns = "id,channel_id,author_id,author_name,body,created_at,sequence,revision,comment_count,attachments,hidden"
-const feedCommentColumns = "id,post_id,author_id,author_name,body,created_at,sequence,attachments,hidden,revision"
+const feedPostColumns = "id,channel_id,author_id,author_name,body,created_at,sequence,revision,comment_count,attachments,hidden,mentions"
+const feedCommentColumns = "id,post_id,author_id,author_name,body,created_at,sequence,attachments,hidden,revision,mentions"
 
 func scanFeedPost(row pgx.Row) (*pb.FeedPost, error) {
 	t := new(pb.FeedPost)
-	var attachments []byte
-	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.CommentCount, &attachments, &t.Hidden)
+	var attachments, mentions []byte
+	err := row.Scan(&t.Id, &t.ChannelId, &t.AuthorId, &t.AuthorName, &t.Text, &t.CreatedAtUnix, &t.Sequence, &t.Revision, &t.CommentCount, &attachments, &t.Hidden, &mentions)
 	if err == nil {
 		err = json.Unmarshal(attachments, &t.Attachments)
+	}
+	if err == nil {
+		err = json.Unmarshal(mentions, &t.Mentions)
 	}
 	return t, err
 }
 
 func scanFeedComment(row pgx.Row) (*pb.FeedComment, error) {
 	r := new(pb.FeedComment)
-	var attachments []byte
-	err := row.Scan(&r.Id, &r.PostId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments, &r.Hidden, &r.Revision)
+	var attachments, mentions []byte
+	err := row.Scan(&r.Id, &r.PostId, &r.AuthorId, &r.AuthorName, &r.Text, &r.CreatedAtUnix, &r.Sequence, &attachments, &r.Hidden, &r.Revision, &mentions)
 	if err == nil {
 		err = json.Unmarshal(attachments, &r.Attachments)
+	}
+	if err == nil {
+		err = json.Unmarshal(mentions, &r.Mentions)
 	}
 	return r, err
 }
@@ -146,7 +152,7 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 	defer tx.Rollback(ctx)
 	old, err := scanFeedPost(tx.QueryRow(ctx, "SELECT "+feedPostColumns+" FROM feed_posts WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
-		if old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
+		if old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) || !sameCommunityMentions(old.Mentions, req.Mentions) {
 			return nil, forumKeyConflict()
 		}
 		redactFeedPosts([]*pb.FeedPost{old})
@@ -157,6 +163,10 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 	}
 	if err != pgx.ErrNoRows {
 		return nil, databaseError(ctx, err)
+	}
+	mentions, err := validateCommunityMentions(ctx, tx, req.ChannelId, req.Text, req.Mentions)
+	if err != nil {
+		return nil, err
 	}
 	assets, err := contentAssets(ctx, tx, &pb.CreateContentRequest{ChannelId: req.ChannelId, AttachmentIds: req.AttachmentIds})
 	if err != nil {
@@ -175,7 +185,7 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 	if err = tx.QueryRow(ctx, "UPDATE channels SET next_sequence=next_sequence+1 WHERE id=$1 RETURNING next_sequence-1", req.ChannelId).Scan(&sequence); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	t, err := scanFeedPost(tx.QueryRow(ctx, "INSERT INTO feed_posts(id,channel_id,author_id,author_name,body,sequence,idempotency_key,attachments) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING "+feedPostColumns, id, req.ChannelId, authn.Actor(ctx), name, req.Text, sequence, req.IdempotencyKey, encoded))
+	t, err := scanFeedPost(tx.QueryRow(ctx, "INSERT INTO feed_posts(id,channel_id,author_id,author_name,body,sequence,idempotency_key,attachments,mentions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "+feedPostColumns, id, req.ChannelId, authn.Actor(ctx), name, req.Text, sequence, req.IdempotencyKey, encoded, mentions))
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -184,6 +194,9 @@ func (s *Store) CreateFeedPost(ctx context.Context, req *pb.CreateFeedPostReques
 	}
 	redactFeedPosts([]*pb.FeedPost{t})
 	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
+	if err = recordCommunityMentions(ctx, tx, req.ChannelId, t.Id, pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FEED_POST, req.Mentions); err != nil {
 		return nil, err
 	}
 	return &pb.CreateFeedPostResponse{Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
@@ -204,7 +217,7 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 	}
 	old, err := scanFeedComment(tx.QueryRow(ctx, "SELECT "+feedCommentColumns+" FROM feed_comments WHERE channel_id=$1 AND author_id=$2 AND idempotency_key=$3", req.ChannelId, authn.Actor(ctx), req.IdempotencyKey))
 	if err == nil {
-		if old.PostId != req.PostId || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) {
+		if old.PostId != req.PostId || old.Text != req.Text || !forumSameAssets(old.Attachments, req.AttachmentIds) || !sameCommunityMentions(old.Mentions, req.Mentions) {
 			return nil, forumKeyConflict()
 		}
 		redactFeedPosts([]*pb.FeedPost{t})
@@ -220,6 +233,10 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 	if t.Hidden {
 		return nil, status.Error(codes.FailedPrecondition, "Публикация скрыта")
 	}
+	mentions, err := validateCommunityMentions(ctx, tx, req.ChannelId, req.Text, req.Mentions)
+	if err != nil {
+		return nil, err
+	}
 	assets, err := contentAssets(ctx, tx, &pb.CreateContentRequest{ChannelId: req.ChannelId, AttachmentIds: req.AttachmentIds})
 	if err != nil {
 		return nil, err
@@ -233,7 +250,7 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 	if err != nil {
 		return nil, err
 	}
-	r, err := scanFeedComment(tx.QueryRow(ctx, "INSERT INTO feed_comments(id,channel_id,post_id,author_id,author_name,body,sequence,idempotency_key,attachments) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "+feedCommentColumns, id, req.ChannelId, t.Id, authn.Actor(ctx), name, req.Text, t.CommentCount+1, req.IdempotencyKey, encoded))
+	r, err := scanFeedComment(tx.QueryRow(ctx, "INSERT INTO feed_comments(id,channel_id,post_id,author_id,author_name,body,sequence,idempotency_key,attachments,mentions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "+feedCommentColumns, id, req.ChannelId, t.Id, authn.Actor(ctx), name, req.Text, t.CommentCount+1, req.IdempotencyKey, encoded, mentions))
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -246,6 +263,9 @@ func (s *Store) CommentFeedPost(ctx context.Context, req *pb.CommentFeedPostRequ
 	}
 	redactFeedPosts([]*pb.FeedPost{t})
 	if err = feedReadStates(ctx, tx, []*pb.FeedPost{t}); err != nil {
+		return nil, err
+	}
+	if err = recordCommunityMentions(ctx, tx, req.ChannelId, r.Id, pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FEED_COMMENT, req.Mentions); err != nil {
 		return nil, err
 	}
 	return &pb.CommentFeedPostResponse{Comment: r, Post: t}, databaseErrorOrNil(ctx, tx.Commit(ctx))
@@ -275,6 +295,7 @@ func redactFeedPosts(posts []*pb.FeedPost) {
 func redactFeedPost(t *pb.FeedPost) {
 	if t.Hidden {
 		t.Text = ""
+		t.Mentions = nil
 		t.AuthorId = ""
 		t.AuthorName = ""
 		t.Attachments = nil
@@ -286,6 +307,7 @@ func redactFeedPost(t *pb.FeedPost) {
 func redactFeedComment(r *pb.FeedComment, parent bool) {
 	if r.Hidden || parent {
 		r.Text = ""
+		r.Mentions = nil
 		r.AuthorId = ""
 		r.AuthorName = ""
 		r.Attachments = nil

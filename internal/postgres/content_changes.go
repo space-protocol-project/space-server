@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Store) Update(ctx context.Context, req *pb.UpdateContentRequest) (*pb.UpdateContentResponse, error) {
-	m := &contentMutation{kind: "update", channel: req.ChannelId, id: req.Id, revision: req.ExpectedRevision, text: req.Text, key: req.IdempotencyKey}
+	m := &contentMutation{kind: "update", mentions: req.Mentions, channel: req.ChannelId, id: req.Id, revision: req.ExpectedRevision, text: req.Text, key: req.IdempotencyKey}
 	content, err := s.changeContent(ctx, m, false)
 	return &pb.UpdateContentResponse{Content: content, IdempotencyKey: m.key, AppliedRevision: m.applied}, err
 }
@@ -90,6 +90,12 @@ func (s *Store) changeContent(ctx context.Context, m *contentMutation, deleted b
 	if !deleted && strings.TrimSpace(m.text) == "" && len(content.Attachments) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Сообщение должно содержать текст или файл")
 	}
+	if !deleted {
+		if _, err = validateCommunityMentions(ctx, tx, m.channel, m.text, m.mentions); err != nil {
+			return nil, err
+		}
+	}
+	content.Mentions = m.mentions
 	if deleted {
 		if _, err = tx.Exec(ctx, "DELETE FROM assets WHERE channel_id=$1 AND content_id=$2", m.channel, m.id); err != nil {
 			return nil, databaseError(ctx, err)
@@ -120,8 +126,8 @@ func saveContentChange(ctx context.Context, tx pgx.Tx, content *pb.Content) erro
 	if content.Reactions == nil {
 		reactions = []byte("[]")
 	}
-	_, err = tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6,attachments=CASE WHEN $6 THEN '[]'::jsonb ELSE attachments END,reactions=$7
- WHERE channel_id=$1 AND id=$2`, content.ChannelId, content.Id, content.Text, content.Revision, content.UpdatedAtUnixMs, content.Deleted, reactions)
+	_, err = tx.Exec(ctx, `UPDATE contents SET text=$3,revision=$4,updated_at_unix_ms=$5,deleted=$6,attachments=CASE WHEN $6 THEN '[]'::jsonb ELSE attachments END,reactions=$7,mentions=$8
+ WHERE channel_id=$1 AND id=$2`, content.ChannelId, content.Id, content.Text, content.Revision, content.UpdatedAtUnixMs, content.Deleted, reactions, mentionJSON(content.Mentions))
 	if err != nil {
 		return databaseError(ctx, err)
 	}

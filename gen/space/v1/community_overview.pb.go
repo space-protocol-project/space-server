@@ -151,7 +151,9 @@ func (x *CommunityOverviewEntry) GetFirstUnreadReplySequence() int64 {
 }
 
 type GetCommunityOverviewResponse struct {
-	state          protoimpl.MessageState    `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Непросмотренные упоминания текущего principal; не включает скрытые объекты.
+	Mentions       []*CommunityOverviewEntry `protobuf:"bytes,5,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	Recent         []*CommunityOverviewEntry `protobuf:"bytes,1,rep,name=recent,proto3" json:"recent,omitempty"`
 	RepliesToYou   []*CommunityOverviewEntry `protobuf:"bytes,2,rep,name=replies_to_you,json=repliesToYou,proto3" json:"replies_to_you,omitempty"`
 	PendingReports int64                     `protobuf:"varint,3,opt,name=pending_reports,json=pendingReports,proto3" json:"pending_reports,omitempty"`
@@ -188,6 +190,13 @@ func (x *GetCommunityOverviewResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetCommunityOverviewResponse.ProtoReflect.Descriptor instead.
 func (*GetCommunityOverviewResponse) Descriptor() ([]byte, []int) {
 	return file_space_v1_community_overview_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GetCommunityOverviewResponse) GetMentions() []*CommunityOverviewEntry {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *GetCommunityOverviewResponse) GetRecent() []*CommunityOverviewEntry {
@@ -232,8 +241,9 @@ const file_space_v1_community_overview_proto_rawDesc = "" +
 	"\funread_count\x18\x02 \x01(\x03R\vunreadCount\x120\n" +
 	"\x14read_state_supported\x18\x03 \x01(\bR\x12readStateSupported\x121\n" +
 	"\x15unread_replies_to_you\x18\x04 \x01(\x03R\x12unreadRepliesToYou\x12=\n" +
-	"\x1bfirst_unread_reply_sequence\x18\x05 \x01(\x03R\x18firstUnreadReplySequence\"\xec\x01\n" +
-	"\x1cGetCommunityOverviewResponse\x128\n" +
+	"\x1bfirst_unread_reply_sequence\x18\x05 \x01(\x03R\x18firstUnreadReplySequence\"\xaa\x02\n" +
+	"\x1cGetCommunityOverviewResponse\x12<\n" +
+	"\bmentions\x18\x05 \x03(\v2 .space.v1.CommunityOverviewEntryR\bmentions\x128\n" +
 	"\x06recent\x18\x01 \x03(\v2 .space.v1.CommunityOverviewEntryR\x06recent\x12F\n" +
 	"\x0ereplies_to_you\x18\x02 \x03(\v2 .space.v1.CommunityOverviewEntryR\frepliesToYou\x12'\n" +
 	"\x0fpending_reports\x18\x03 \x01(\x03R\x0ependingReports\x12!\n" +
@@ -262,15 +272,16 @@ var file_space_v1_community_overview_proto_goTypes = []any{
 }
 var file_space_v1_community_overview_proto_depIdxs = []int32{
 	3, // 0: space.v1.CommunityOverviewEntry.content:type_name -> space.v1.CommunitySearchResult
-	1, // 1: space.v1.GetCommunityOverviewResponse.recent:type_name -> space.v1.CommunityOverviewEntry
-	1, // 2: space.v1.GetCommunityOverviewResponse.replies_to_you:type_name -> space.v1.CommunityOverviewEntry
-	0, // 3: space.v1.CommunityOverviewService.GetCommunityOverview:input_type -> space.v1.GetCommunityOverviewRequest
-	2, // 4: space.v1.CommunityOverviewService.GetCommunityOverview:output_type -> space.v1.GetCommunityOverviewResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 1: space.v1.GetCommunityOverviewResponse.mentions:type_name -> space.v1.CommunityOverviewEntry
+	1, // 2: space.v1.GetCommunityOverviewResponse.recent:type_name -> space.v1.CommunityOverviewEntry
+	1, // 3: space.v1.GetCommunityOverviewResponse.replies_to_you:type_name -> space.v1.CommunityOverviewEntry
+	0, // 4: space.v1.CommunityOverviewService.GetCommunityOverview:input_type -> space.v1.GetCommunityOverviewRequest
+	2, // 5: space.v1.CommunityOverviewService.GetCommunityOverview:output_type -> space.v1.GetCommunityOverviewResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_community_overview_proto_init() }

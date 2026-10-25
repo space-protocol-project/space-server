@@ -286,7 +286,7 @@ func TestForumModerationUpgradeFrom28(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = f.store.pool.Exec(f.ctx, "DROP TABLE forum_moderation; ALTER TABLE forum_threads DROP COLUMN hidden; ALTER TABLE forum_replies DROP COLUMN hidden, DROP COLUMN revision; DELETE FROM schema_migrations WHERE version=29"); err != nil {
+	if _, err = f.store.pool.Exec(f.ctx, dropCommunityMentionsSchema+"DROP TABLE forum_moderation; ALTER TABLE forum_threads DROP COLUMN hidden; ALTER TABLE forum_replies DROP COLUMN hidden, DROP COLUMN revision; DELETE FROM schema_migrations WHERE version=29"); err != nil {
 		t.Fatal(err)
 	}
 	upgraded, _, err := Open(f.ctx, f.url)

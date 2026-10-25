@@ -14,6 +14,10 @@ import (
 )
 
 func contentRequestHash(req *pb.CreateContentRequest) [32]byte {
+	if len(req.Mentions) > 0 {
+		data, _ := json.Marshal([]any{req.Text, req.AttachmentIds, req.ReplyToId, req.Mentions})
+		return sha256.Sum256(data)
+	}
 	if len(req.AttachmentIds) == 0 && req.ReplyToId == "" {
 		return sha256.Sum256([]byte(req.Text))
 	}
@@ -68,6 +72,11 @@ func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateConte
 	if err := validateReplyTarget(ctx, tx, req.ChannelId, req.ReplyToId); err != nil {
 		return err
 	}
+	mentions, err := validateCommunityMentions(ctx, tx, req.ChannelId, req.Text, req.Mentions)
+	if err != nil {
+		return err
+	}
+	content.Mentions = req.Mentions
 	content.ReplyToId = req.ReplyToId
 	attachments, err := contentAssets(ctx, tx, req)
 	if err != nil {
@@ -78,7 +87,7 @@ func insertContentWithAssets(ctx context.Context, tx pgx.Tx, req *pb.CreateConte
 	if err != nil {
 		return databaseError(ctx, err)
 	}
-	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,request_text_hash,attachments,reply_to_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,'')) RETURNING created_at_unix_ms", req.ChannelId, content.Sequence, content.Id, req.Text, req.IdempotencyKey, content.AuthorId, textHash[:], metadata, req.ReplyToId).Scan(&content.CreatedAtUnixMs)
+	err = tx.QueryRow(ctx, "INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,request_text_hash,attachments,reply_to_id,mentions) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),$10) RETURNING created_at_unix_ms", req.ChannelId, content.Sequence, content.Id, req.Text, req.IdempotencyKey, content.AuthorId, textHash[:], metadata, req.ReplyToId, mentions).Scan(&content.CreatedAtUnixMs)
 	if err != nil {
 		return databaseError(ctx, err)
 	}

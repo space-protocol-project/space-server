@@ -76,6 +76,7 @@ func (x *FeedPermissions) GetComment() bool {
 
 type FeedPost struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mentions      []*CommunityMention    `protobuf:"bytes,16,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	AuthorId      string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
@@ -125,6 +126,13 @@ func (x *FeedPost) ProtoReflect() protoreflect.Message {
 // Deprecated: Use FeedPost.ProtoReflect.Descriptor instead.
 func (*FeedPost) Descriptor() ([]byte, []int) {
 	return file_space_v1_feed_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *FeedPost) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *FeedPost) GetId() string {
@@ -340,6 +348,7 @@ func (x *MarkFeedPostReadResponse) GetPost() *FeedPost {
 
 type FeedComment struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mentions      []*CommunityMention    `protobuf:"bytes,11,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	PostId        string                 `protobuf:"bytes,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	AuthorId      string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
@@ -382,6 +391,13 @@ func (x *FeedComment) ProtoReflect() protoreflect.Message {
 // Deprecated: Use FeedComment.ProtoReflect.Descriptor instead.
 func (*FeedComment) Descriptor() ([]byte, []int) {
 	return file_space_v1_feed_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *FeedComment) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *FeedComment) GetId() string {
@@ -716,6 +732,7 @@ func (x *GetFeedPostResponse) GetPermissions() *FeedPermissions {
 // Ключ 1..128 байт, автор берётся из сессии; правила повтора — ADR-046.
 type CreateFeedPostRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
+	Mentions       []*CommunityMention    `protobuf:"bytes,5,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	ChannelId      string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	Text           string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -752,6 +769,13 @@ func (x *CreateFeedPostRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CreateFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*CreateFeedPostRequest) Descriptor() ([]byte, []int) {
 	return file_space_v1_feed_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateFeedPostRequest) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *CreateFeedPostRequest) GetChannelId() string {
@@ -828,6 +852,7 @@ func (x *CreateFeedPostResponse) GetPost() *FeedPost {
 
 type CommentFeedPostRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
+	Mentions       []*CommunityMention    `protobuf:"bytes,6,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	ChannelId      string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	PostId         string                 `protobuf:"bytes,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	Text           string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
@@ -865,6 +890,13 @@ func (x *CommentFeedPostRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CommentFeedPostRequest.ProtoReflect.Descriptor instead.
 func (*CommentFeedPostRequest) Descriptor() ([]byte, []int) {
 	return file_space_v1_feed_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CommentFeedPostRequest) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *CommentFeedPostRequest) GetChannelId() string {
@@ -2185,11 +2217,12 @@ var File_space_v1_feed_proto protoreflect.FileDescriptor
 
 const file_space_v1_feed_proto_rawDesc = "" +
 	"\n" +
-	"\x13space/v1/feed.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\"E\n" +
+	"\x13space/v1/feed.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\x1a!space/v1/community_mentions.proto\"E\n" +
 	"\x0fFeedPermissions\x12\x18\n" +
 	"\apublish\x18\x01 \x01(\bR\apublish\x12\x18\n" +
-	"\acomment\x18\x02 \x01(\bR\acomment\"\xe9\x03\n" +
-	"\bFeedPost\x12\x0e\n" +
+	"\acomment\x18\x02 \x01(\bR\acomment\"\xa1\x04\n" +
+	"\bFeedPost\x126\n" +
+	"\bmentions\x18\x10 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x1b\n" +
@@ -2214,8 +2247,9 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12)\n" +
 	"\x10through_sequence\x18\x03 \x01(\x03R\x0fthroughSequence\"B\n" +
 	"\x18MarkFeedPostReadResponse\x12&\n" +
-	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\"\xb3\x02\n" +
-	"\vFeedComment\x12\x0e\n" +
+	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\"\xeb\x02\n" +
+	"\vFeedComment\x126\n" +
+	"\bmentions\x18\v \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
 	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x1f\n" +
@@ -2247,16 +2281,18 @@ const file_space_v1_feed_proto_rawDesc = "" +
 	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\x121\n" +
 	"\bcomments\x18\x02 \x03(\v2\x15.space.v1.FeedCommentR\bcomments\x12#\n" +
 	"\rnext_sequence\x18\x03 \x01(\x03R\fnextSequence\x12;\n" +
-	"\vpermissions\x18\x04 \x01(\v2\x19.space.v1.FeedPermissionsR\vpermissions\"\x9a\x01\n" +
-	"\x15CreateFeedPostRequest\x12\x1d\n" +
+	"\vpermissions\x18\x04 \x01(\v2\x19.space.v1.FeedPermissionsR\vpermissions\"\xd2\x01\n" +
+	"\x15CreateFeedPostRequest\x126\n" +
+	"\bmentions\x18\x05 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12%\n" +
 	"\x0eattachment_ids\x18\x04 \x03(\tR\rattachmentIds\"@\n" +
 	"\x16CreateFeedPostResponse\x12&\n" +
-	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\"\xb4\x01\n" +
-	"\x16CommentFeedPostRequest\x12\x1d\n" +
+	"\x04post\x18\x01 \x01(\v2\x12.space.v1.FeedPostR\x04post\"\xec\x01\n" +
+	"\x16CommentFeedPostRequest\x126\n" +
+	"\bmentions\x18\x06 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x12\n" +
@@ -2428,61 +2464,66 @@ var file_space_v1_feed_proto_goTypes = []any{
 	(*ListFeedReportsResponse)(nil),     // 29: space.v1.ListFeedReportsResponse
 	(*ResolveFeedReportRequest)(nil),    // 30: space.v1.ResolveFeedReportRequest
 	(*ResolveFeedReportResponse)(nil),   // 31: space.v1.ResolveFeedReportResponse
-	(*Asset)(nil),                       // 32: space.v1.Asset
+	(*CommunityMention)(nil),            // 32: space.v1.CommunityMention
+	(*Asset)(nil),                       // 33: space.v1.Asset
 }
 var file_space_v1_feed_proto_depIdxs = []int32{
-	32, // 0: space.v1.FeedPost.attachments:type_name -> space.v1.Asset
-	1,  // 1: space.v1.MarkFeedPostReadResponse.post:type_name -> space.v1.FeedPost
-	32, // 2: space.v1.FeedComment.attachments:type_name -> space.v1.Asset
-	1,  // 3: space.v1.ListFeedPostsResponse.posts:type_name -> space.v1.FeedPost
-	0,  // 4: space.v1.ListFeedPostsResponse.permissions:type_name -> space.v1.FeedPermissions
-	1,  // 5: space.v1.GetFeedPostResponse.post:type_name -> space.v1.FeedPost
-	4,  // 6: space.v1.GetFeedPostResponse.comments:type_name -> space.v1.FeedComment
-	0,  // 7: space.v1.GetFeedPostResponse.permissions:type_name -> space.v1.FeedPermissions
-	1,  // 8: space.v1.CreateFeedPostResponse.post:type_name -> space.v1.FeedPost
-	4,  // 9: space.v1.CommentFeedPostResponse.comment:type_name -> space.v1.FeedComment
-	1,  // 10: space.v1.CommentFeedPostResponse.post:type_name -> space.v1.FeedPost
-	0,  // 11: space.v1.FeedAccessRule.permissions:type_name -> space.v1.FeedPermissions
-	13, // 12: space.v1.GetFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
-	13, // 13: space.v1.UpdateFeedAccessRequest.rules:type_name -> space.v1.FeedAccessRule
-	13, // 14: space.v1.UpdateFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
-	1,  // 15: space.v1.ModerateFeedPostResponse.post:type_name -> space.v1.FeedPost
-	4,  // 16: space.v1.ModerateFeedCommentResponse.comment:type_name -> space.v1.FeedComment
-	1,  // 17: space.v1.ModerateFeedCommentResponse.post:type_name -> space.v1.FeedPost
-	23, // 18: space.v1.ListFeedModerationResponse.events:type_name -> space.v1.FeedModerationEvent
-	25, // 19: space.v1.ListFeedReportsResponse.reports:type_name -> space.v1.FeedReport
-	25, // 20: space.v1.ResolveFeedReportResponse.report:type_name -> space.v1.FeedReport
-	5,  // 21: space.v1.FeedService.ListFeedPosts:input_type -> space.v1.ListFeedPostsRequest
-	7,  // 22: space.v1.FeedService.GetFeedPost:input_type -> space.v1.GetFeedPostRequest
-	9,  // 23: space.v1.FeedService.CreateFeedPost:input_type -> space.v1.CreateFeedPostRequest
-	11, // 24: space.v1.FeedService.CommentFeedPost:input_type -> space.v1.CommentFeedPostRequest
-	14, // 25: space.v1.FeedService.GetFeedAccess:input_type -> space.v1.GetFeedAccessRequest
-	16, // 26: space.v1.FeedService.UpdateFeedAccess:input_type -> space.v1.UpdateFeedAccessRequest
-	18, // 27: space.v1.FeedService.ModerateFeedPost:input_type -> space.v1.ModerateFeedPostRequest
-	20, // 28: space.v1.FeedService.ModerateFeedComment:input_type -> space.v1.ModerateFeedCommentRequest
-	22, // 29: space.v1.FeedService.ListFeedModeration:input_type -> space.v1.ListFeedModerationRequest
-	26, // 30: space.v1.FeedService.ReportFeedContent:input_type -> space.v1.ReportFeedContentRequest
-	28, // 31: space.v1.FeedService.ListFeedReports:input_type -> space.v1.ListFeedReportsRequest
-	30, // 32: space.v1.FeedService.ResolveFeedReport:input_type -> space.v1.ResolveFeedReportRequest
-	2,  // 33: space.v1.FeedService.MarkFeedPostRead:input_type -> space.v1.MarkFeedPostReadRequest
-	6,  // 34: space.v1.FeedService.ListFeedPosts:output_type -> space.v1.ListFeedPostsResponse
-	8,  // 35: space.v1.FeedService.GetFeedPost:output_type -> space.v1.GetFeedPostResponse
-	10, // 36: space.v1.FeedService.CreateFeedPost:output_type -> space.v1.CreateFeedPostResponse
-	12, // 37: space.v1.FeedService.CommentFeedPost:output_type -> space.v1.CommentFeedPostResponse
-	15, // 38: space.v1.FeedService.GetFeedAccess:output_type -> space.v1.GetFeedAccessResponse
-	17, // 39: space.v1.FeedService.UpdateFeedAccess:output_type -> space.v1.UpdateFeedAccessResponse
-	19, // 40: space.v1.FeedService.ModerateFeedPost:output_type -> space.v1.ModerateFeedPostResponse
-	21, // 41: space.v1.FeedService.ModerateFeedComment:output_type -> space.v1.ModerateFeedCommentResponse
-	24, // 42: space.v1.FeedService.ListFeedModeration:output_type -> space.v1.ListFeedModerationResponse
-	27, // 43: space.v1.FeedService.ReportFeedContent:output_type -> space.v1.ReportFeedContentResponse
-	29, // 44: space.v1.FeedService.ListFeedReports:output_type -> space.v1.ListFeedReportsResponse
-	31, // 45: space.v1.FeedService.ResolveFeedReport:output_type -> space.v1.ResolveFeedReportResponse
-	3,  // 46: space.v1.FeedService.MarkFeedPostRead:output_type -> space.v1.MarkFeedPostReadResponse
-	34, // [34:47] is the sub-list for method output_type
-	21, // [21:34] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	32, // 0: space.v1.FeedPost.mentions:type_name -> space.v1.CommunityMention
+	33, // 1: space.v1.FeedPost.attachments:type_name -> space.v1.Asset
+	1,  // 2: space.v1.MarkFeedPostReadResponse.post:type_name -> space.v1.FeedPost
+	32, // 3: space.v1.FeedComment.mentions:type_name -> space.v1.CommunityMention
+	33, // 4: space.v1.FeedComment.attachments:type_name -> space.v1.Asset
+	1,  // 5: space.v1.ListFeedPostsResponse.posts:type_name -> space.v1.FeedPost
+	0,  // 6: space.v1.ListFeedPostsResponse.permissions:type_name -> space.v1.FeedPermissions
+	1,  // 7: space.v1.GetFeedPostResponse.post:type_name -> space.v1.FeedPost
+	4,  // 8: space.v1.GetFeedPostResponse.comments:type_name -> space.v1.FeedComment
+	0,  // 9: space.v1.GetFeedPostResponse.permissions:type_name -> space.v1.FeedPermissions
+	32, // 10: space.v1.CreateFeedPostRequest.mentions:type_name -> space.v1.CommunityMention
+	1,  // 11: space.v1.CreateFeedPostResponse.post:type_name -> space.v1.FeedPost
+	32, // 12: space.v1.CommentFeedPostRequest.mentions:type_name -> space.v1.CommunityMention
+	4,  // 13: space.v1.CommentFeedPostResponse.comment:type_name -> space.v1.FeedComment
+	1,  // 14: space.v1.CommentFeedPostResponse.post:type_name -> space.v1.FeedPost
+	0,  // 15: space.v1.FeedAccessRule.permissions:type_name -> space.v1.FeedPermissions
+	13, // 16: space.v1.GetFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
+	13, // 17: space.v1.UpdateFeedAccessRequest.rules:type_name -> space.v1.FeedAccessRule
+	13, // 18: space.v1.UpdateFeedAccessResponse.rules:type_name -> space.v1.FeedAccessRule
+	1,  // 19: space.v1.ModerateFeedPostResponse.post:type_name -> space.v1.FeedPost
+	4,  // 20: space.v1.ModerateFeedCommentResponse.comment:type_name -> space.v1.FeedComment
+	1,  // 21: space.v1.ModerateFeedCommentResponse.post:type_name -> space.v1.FeedPost
+	23, // 22: space.v1.ListFeedModerationResponse.events:type_name -> space.v1.FeedModerationEvent
+	25, // 23: space.v1.ListFeedReportsResponse.reports:type_name -> space.v1.FeedReport
+	25, // 24: space.v1.ResolveFeedReportResponse.report:type_name -> space.v1.FeedReport
+	5,  // 25: space.v1.FeedService.ListFeedPosts:input_type -> space.v1.ListFeedPostsRequest
+	7,  // 26: space.v1.FeedService.GetFeedPost:input_type -> space.v1.GetFeedPostRequest
+	9,  // 27: space.v1.FeedService.CreateFeedPost:input_type -> space.v1.CreateFeedPostRequest
+	11, // 28: space.v1.FeedService.CommentFeedPost:input_type -> space.v1.CommentFeedPostRequest
+	14, // 29: space.v1.FeedService.GetFeedAccess:input_type -> space.v1.GetFeedAccessRequest
+	16, // 30: space.v1.FeedService.UpdateFeedAccess:input_type -> space.v1.UpdateFeedAccessRequest
+	18, // 31: space.v1.FeedService.ModerateFeedPost:input_type -> space.v1.ModerateFeedPostRequest
+	20, // 32: space.v1.FeedService.ModerateFeedComment:input_type -> space.v1.ModerateFeedCommentRequest
+	22, // 33: space.v1.FeedService.ListFeedModeration:input_type -> space.v1.ListFeedModerationRequest
+	26, // 34: space.v1.FeedService.ReportFeedContent:input_type -> space.v1.ReportFeedContentRequest
+	28, // 35: space.v1.FeedService.ListFeedReports:input_type -> space.v1.ListFeedReportsRequest
+	30, // 36: space.v1.FeedService.ResolveFeedReport:input_type -> space.v1.ResolveFeedReportRequest
+	2,  // 37: space.v1.FeedService.MarkFeedPostRead:input_type -> space.v1.MarkFeedPostReadRequest
+	6,  // 38: space.v1.FeedService.ListFeedPosts:output_type -> space.v1.ListFeedPostsResponse
+	8,  // 39: space.v1.FeedService.GetFeedPost:output_type -> space.v1.GetFeedPostResponse
+	10, // 40: space.v1.FeedService.CreateFeedPost:output_type -> space.v1.CreateFeedPostResponse
+	12, // 41: space.v1.FeedService.CommentFeedPost:output_type -> space.v1.CommentFeedPostResponse
+	15, // 42: space.v1.FeedService.GetFeedAccess:output_type -> space.v1.GetFeedAccessResponse
+	17, // 43: space.v1.FeedService.UpdateFeedAccess:output_type -> space.v1.UpdateFeedAccessResponse
+	19, // 44: space.v1.FeedService.ModerateFeedPost:output_type -> space.v1.ModerateFeedPostResponse
+	21, // 45: space.v1.FeedService.ModerateFeedComment:output_type -> space.v1.ModerateFeedCommentResponse
+	24, // 46: space.v1.FeedService.ListFeedModeration:output_type -> space.v1.ListFeedModerationResponse
+	27, // 47: space.v1.FeedService.ReportFeedContent:output_type -> space.v1.ReportFeedContentResponse
+	29, // 48: space.v1.FeedService.ListFeedReports:output_type -> space.v1.ListFeedReportsResponse
+	31, // 49: space.v1.FeedService.ResolveFeedReport:output_type -> space.v1.ResolveFeedReportResponse
+	3,  // 50: space.v1.FeedService.MarkFeedPostRead:output_type -> space.v1.MarkFeedPostReadResponse
+	38, // [38:51] is the sub-list for method output_type
+	25, // [25:38] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_feed_proto_init() }
@@ -2491,6 +2532,7 @@ func file_space_v1_feed_proto_init() {
 		return
 	}
 	file_space_v1_space_proto_init()
+	file_space_v1_community_mentions_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

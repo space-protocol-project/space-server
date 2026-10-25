@@ -23,6 +23,7 @@ const (
 
 type ForumThread struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
+	Mentions           []*CommunityMention    `protobuf:"bytes,19,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	Hidden             bool                   `protobuf:"varint,18,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	Pinned             bool                   `protobuf:"varint,13,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	ReadStateSupported bool                   `protobuf:"varint,14,opt,name=read_state_supported,json=readStateSupported,proto3" json:"read_state_supported,omitempty"`
@@ -73,6 +74,13 @@ func (x *ForumThread) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ForumThread.ProtoReflect.Descriptor instead.
 func (*ForumThread) Descriptor() ([]byte, []int) {
 	return file_space_v1_forum_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ForumThread) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *ForumThread) GetHidden() bool {
@@ -203,6 +211,7 @@ func (x *ForumThread) GetReplyCount() int64 {
 
 type ForumReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mentions      []*CommunityMention    `protobuf:"bytes,11,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	Hidden        bool                   `protobuf:"varint,9,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	Revision      int64                  `protobuf:"varint,10,opt,name=revision,proto3" json:"revision,omitempty"`
 	Attachments   []*Asset               `protobuf:"bytes,8,rep,name=attachments,proto3" json:"attachments,omitempty"`
@@ -245,6 +254,13 @@ func (x *ForumReply) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ForumReply.ProtoReflect.Descriptor instead.
 func (*ForumReply) Descriptor() ([]byte, []int) {
 	return file_space_v1_forum_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ForumReply) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 func (x *ForumReply) GetHidden() bool {
@@ -591,6 +607,7 @@ type CreateForumThreadRequest struct {
 	Text           string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	AttachmentIds  []string               `protobuf:"bytes,5,rep,name=attachment_ids,json=attachmentIds,proto3" json:"attachment_ids,omitempty"`
+	Mentions       []*CommunityMention    `protobuf:"bytes,6,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -660,6 +677,13 @@ func (x *CreateForumThreadRequest) GetAttachmentIds() []string {
 	return nil
 }
 
+func (x *CreateForumThreadRequest) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
+}
+
 type CreateForumThreadResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Thread        *ForumThread           `protobuf:"bytes,1,opt,name=thread,proto3" json:"thread,omitempty"`
@@ -711,6 +735,7 @@ type ReplyForumThreadRequest struct {
 	Text           string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	AttachmentIds  []string               `protobuf:"bytes,5,rep,name=attachment_ids,json=attachmentIds,proto3" json:"attachment_ids,omitempty"`
+	Mentions       []*CommunityMention    `protobuf:"bytes,6,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -776,6 +801,13 @@ func (x *ReplyForumThreadRequest) GetIdempotencyKey() string {
 func (x *ReplyForumThreadRequest) GetAttachmentIds() []string {
 	if x != nil {
 		return x.AttachmentIds
+	}
+	return nil
+}
+
+func (x *ReplyForumThreadRequest) GetMentions() []*CommunityMention {
+	if x != nil {
+		return x.Mentions
 	}
 	return nil
 }
@@ -2108,8 +2140,9 @@ var File_space_v1_forum_proto protoreflect.FileDescriptor
 
 const file_space_v1_forum_proto_rawDesc = "" +
 	"\n" +
-	"\x14space/v1/forum.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\"\xae\x04\n" +
-	"\vForumThread\x12\x16\n" +
+	"\x14space/v1/forum.proto\x12\bspace.v1\x1a\x14space/v1/space.proto\x1a!space/v1/community_mentions.proto\"\xe6\x04\n" +
+	"\vForumThread\x126\n" +
+	"\bmentions\x18\x13 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x16\n" +
 	"\x06hidden\x18\x12 \x01(\bR\x06hidden\x12\x16\n" +
 	"\x06pinned\x18\r \x01(\bR\x06pinned\x120\n" +
 	"\x14read_state_supported\x18\x0e \x01(\bR\x12readStateSupported\x12\x12\n" +
@@ -2131,9 +2164,10 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"\x06closed\x18\n" +
 	" \x01(\bR\x06closed\x12\x1f\n" +
 	"\vreply_count\x18\v \x01(\x03R\n" +
-	"replyCount\"\xb6\x02\n" +
+	"replyCount\"\xee\x02\n" +
 	"\n" +
-	"ForumReply\x12\x16\n" +
+	"ForumReply\x126\n" +
+	"\bmentions\x18\v \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\x12\x16\n" +
 	"\x06hidden\x18\t \x01(\bR\x06hidden\x12\x1a\n" +
 	"\brevision\x18\n" +
 	" \x01(\x03R\brevision\x121\n" +
@@ -2167,23 +2201,25 @@ const file_space_v1_forum_proto_rawDesc = "" +
 	"\x16GetForumThreadResponse\x12-\n" +
 	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\x12.\n" +
 	"\areplies\x18\x02 \x03(\v2\x14.space.v1.ForumReplyR\areplies\x12#\n" +
-	"\rnext_sequence\x18\x03 \x01(\x03R\fnextSequence\"\xb3\x01\n" +
+	"\rnext_sequence\x18\x03 \x01(\x03R\fnextSequence\"\xeb\x01\n" +
 	"\x18CreateForumThreadRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12%\n" +
-	"\x0eattachment_ids\x18\x05 \x03(\tR\rattachmentIds\"J\n" +
+	"\x0eattachment_ids\x18\x05 \x03(\tR\rattachmentIds\x126\n" +
+	"\bmentions\x18\x06 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\"J\n" +
 	"\x19CreateForumThreadResponse\x12-\n" +
-	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\"\xb9\x01\n" +
+	"\x06thread\x18\x01 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\"\xf1\x01\n" +
 	"\x17ReplyForumThreadRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12%\n" +
-	"\x0eattachment_ids\x18\x05 \x03(\tR\rattachmentIds\"u\n" +
+	"\x0eattachment_ids\x18\x05 \x03(\tR\rattachmentIds\x126\n" +
+	"\bmentions\x18\x06 \x03(\v2\x1a.space.v1.CommunityMentionR\bmentions\"u\n" +
 	"\x18ReplyForumThreadResponse\x12*\n" +
 	"\x05reply\x18\x01 \x01(\v2\x14.space.v1.ForumReplyR\x05reply\x12-\n" +
 	"\x06thread\x18\x02 \x01(\v2\x15.space.v1.ForumThreadR\x06thread\"\x82\x01\n" +
@@ -2344,57 +2380,62 @@ var file_space_v1_forum_proto_goTypes = []any{
 	(*ListForumReportsResponse)(nil),     // 27: space.v1.ListForumReportsResponse
 	(*ResolveForumReportRequest)(nil),    // 28: space.v1.ResolveForumReportRequest
 	(*ResolveForumReportResponse)(nil),   // 29: space.v1.ResolveForumReportResponse
-	(*Asset)(nil),                        // 30: space.v1.Asset
+	(*CommunityMention)(nil),             // 30: space.v1.CommunityMention
+	(*Asset)(nil),                        // 31: space.v1.Asset
 }
 var file_space_v1_forum_proto_depIdxs = []int32{
-	30, // 0: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
-	30, // 1: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
-	0,  // 2: space.v1.ListForumThreadsResponse.threads:type_name -> space.v1.ForumThread
-	0,  // 3: space.v1.GetForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	1,  // 4: space.v1.GetForumThreadResponse.replies:type_name -> space.v1.ForumReply
-	0,  // 5: space.v1.CreateForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	1,  // 6: space.v1.ReplyForumThreadResponse.reply:type_name -> space.v1.ForumReply
-	0,  // 7: space.v1.ReplyForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	0,  // 8: space.v1.CloseForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	0,  // 9: space.v1.SetForumThreadPinnedResponse.thread:type_name -> space.v1.ForumThread
-	0,  // 10: space.v1.MarkForumThreadReadResponse.thread:type_name -> space.v1.ForumThread
-	0,  // 11: space.v1.ModerateForumThreadResponse.thread:type_name -> space.v1.ForumThread
-	1,  // 12: space.v1.ModerateForumReplyResponse.reply:type_name -> space.v1.ForumReply
-	0,  // 13: space.v1.ModerateForumReplyResponse.thread:type_name -> space.v1.ForumThread
-	21, // 14: space.v1.ListForumModerationResponse.events:type_name -> space.v1.ForumModerationEvent
-	23, // 15: space.v1.ListForumReportsResponse.reports:type_name -> space.v1.ForumReport
-	23, // 16: space.v1.ResolveForumReportResponse.report:type_name -> space.v1.ForumReport
-	24, // 17: space.v1.ForumService.ReportForumContent:input_type -> space.v1.ReportForumContentRequest
-	26, // 18: space.v1.ForumService.ListForumReports:input_type -> space.v1.ListForumReportsRequest
-	28, // 19: space.v1.ForumService.ResolveForumReport:input_type -> space.v1.ResolveForumReportRequest
-	2,  // 20: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
-	4,  // 21: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
-	6,  // 22: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
-	8,  // 23: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
-	12, // 24: space.v1.ForumService.SetForumThreadPinned:input_type -> space.v1.SetForumThreadPinnedRequest
-	14, // 25: space.v1.ForumService.MarkForumThreadRead:input_type -> space.v1.MarkForumThreadReadRequest
-	10, // 26: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
-	16, // 27: space.v1.ForumService.ModerateForumThread:input_type -> space.v1.ModerateForumThreadRequest
-	18, // 28: space.v1.ForumService.ModerateForumReply:input_type -> space.v1.ModerateForumReplyRequest
-	20, // 29: space.v1.ForumService.ListForumModeration:input_type -> space.v1.ListForumModerationRequest
-	25, // 30: space.v1.ForumService.ReportForumContent:output_type -> space.v1.ReportForumContentResponse
-	27, // 31: space.v1.ForumService.ListForumReports:output_type -> space.v1.ListForumReportsResponse
-	29, // 32: space.v1.ForumService.ResolveForumReport:output_type -> space.v1.ResolveForumReportResponse
-	3,  // 33: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
-	5,  // 34: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
-	7,  // 35: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
-	9,  // 36: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
-	13, // 37: space.v1.ForumService.SetForumThreadPinned:output_type -> space.v1.SetForumThreadPinnedResponse
-	15, // 38: space.v1.ForumService.MarkForumThreadRead:output_type -> space.v1.MarkForumThreadReadResponse
-	11, // 39: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
-	17, // 40: space.v1.ForumService.ModerateForumThread:output_type -> space.v1.ModerateForumThreadResponse
-	19, // 41: space.v1.ForumService.ModerateForumReply:output_type -> space.v1.ModerateForumReplyResponse
-	22, // 42: space.v1.ForumService.ListForumModeration:output_type -> space.v1.ListForumModerationResponse
-	30, // [30:43] is the sub-list for method output_type
-	17, // [17:30] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	30, // 0: space.v1.ForumThread.mentions:type_name -> space.v1.CommunityMention
+	31, // 1: space.v1.ForumThread.attachments:type_name -> space.v1.Asset
+	30, // 2: space.v1.ForumReply.mentions:type_name -> space.v1.CommunityMention
+	31, // 3: space.v1.ForumReply.attachments:type_name -> space.v1.Asset
+	0,  // 4: space.v1.ListForumThreadsResponse.threads:type_name -> space.v1.ForumThread
+	0,  // 5: space.v1.GetForumThreadResponse.thread:type_name -> space.v1.ForumThread
+	1,  // 6: space.v1.GetForumThreadResponse.replies:type_name -> space.v1.ForumReply
+	30, // 7: space.v1.CreateForumThreadRequest.mentions:type_name -> space.v1.CommunityMention
+	0,  // 8: space.v1.CreateForumThreadResponse.thread:type_name -> space.v1.ForumThread
+	30, // 9: space.v1.ReplyForumThreadRequest.mentions:type_name -> space.v1.CommunityMention
+	1,  // 10: space.v1.ReplyForumThreadResponse.reply:type_name -> space.v1.ForumReply
+	0,  // 11: space.v1.ReplyForumThreadResponse.thread:type_name -> space.v1.ForumThread
+	0,  // 12: space.v1.CloseForumThreadResponse.thread:type_name -> space.v1.ForumThread
+	0,  // 13: space.v1.SetForumThreadPinnedResponse.thread:type_name -> space.v1.ForumThread
+	0,  // 14: space.v1.MarkForumThreadReadResponse.thread:type_name -> space.v1.ForumThread
+	0,  // 15: space.v1.ModerateForumThreadResponse.thread:type_name -> space.v1.ForumThread
+	1,  // 16: space.v1.ModerateForumReplyResponse.reply:type_name -> space.v1.ForumReply
+	0,  // 17: space.v1.ModerateForumReplyResponse.thread:type_name -> space.v1.ForumThread
+	21, // 18: space.v1.ListForumModerationResponse.events:type_name -> space.v1.ForumModerationEvent
+	23, // 19: space.v1.ListForumReportsResponse.reports:type_name -> space.v1.ForumReport
+	23, // 20: space.v1.ResolveForumReportResponse.report:type_name -> space.v1.ForumReport
+	24, // 21: space.v1.ForumService.ReportForumContent:input_type -> space.v1.ReportForumContentRequest
+	26, // 22: space.v1.ForumService.ListForumReports:input_type -> space.v1.ListForumReportsRequest
+	28, // 23: space.v1.ForumService.ResolveForumReport:input_type -> space.v1.ResolveForumReportRequest
+	2,  // 24: space.v1.ForumService.ListForumThreads:input_type -> space.v1.ListForumThreadsRequest
+	4,  // 25: space.v1.ForumService.GetForumThread:input_type -> space.v1.GetForumThreadRequest
+	6,  // 26: space.v1.ForumService.CreateForumThread:input_type -> space.v1.CreateForumThreadRequest
+	8,  // 27: space.v1.ForumService.ReplyForumThread:input_type -> space.v1.ReplyForumThreadRequest
+	12, // 28: space.v1.ForumService.SetForumThreadPinned:input_type -> space.v1.SetForumThreadPinnedRequest
+	14, // 29: space.v1.ForumService.MarkForumThreadRead:input_type -> space.v1.MarkForumThreadReadRequest
+	10, // 30: space.v1.ForumService.CloseForumThread:input_type -> space.v1.CloseForumThreadRequest
+	16, // 31: space.v1.ForumService.ModerateForumThread:input_type -> space.v1.ModerateForumThreadRequest
+	18, // 32: space.v1.ForumService.ModerateForumReply:input_type -> space.v1.ModerateForumReplyRequest
+	20, // 33: space.v1.ForumService.ListForumModeration:input_type -> space.v1.ListForumModerationRequest
+	25, // 34: space.v1.ForumService.ReportForumContent:output_type -> space.v1.ReportForumContentResponse
+	27, // 35: space.v1.ForumService.ListForumReports:output_type -> space.v1.ListForumReportsResponse
+	29, // 36: space.v1.ForumService.ResolveForumReport:output_type -> space.v1.ResolveForumReportResponse
+	3,  // 37: space.v1.ForumService.ListForumThreads:output_type -> space.v1.ListForumThreadsResponse
+	5,  // 38: space.v1.ForumService.GetForumThread:output_type -> space.v1.GetForumThreadResponse
+	7,  // 39: space.v1.ForumService.CreateForumThread:output_type -> space.v1.CreateForumThreadResponse
+	9,  // 40: space.v1.ForumService.ReplyForumThread:output_type -> space.v1.ReplyForumThreadResponse
+	13, // 41: space.v1.ForumService.SetForumThreadPinned:output_type -> space.v1.SetForumThreadPinnedResponse
+	15, // 42: space.v1.ForumService.MarkForumThreadRead:output_type -> space.v1.MarkForumThreadReadResponse
+	11, // 43: space.v1.ForumService.CloseForumThread:output_type -> space.v1.CloseForumThreadResponse
+	17, // 44: space.v1.ForumService.ModerateForumThread:output_type -> space.v1.ModerateForumThreadResponse
+	19, // 45: space.v1.ForumService.ModerateForumReply:output_type -> space.v1.ModerateForumReplyResponse
+	22, // 46: space.v1.ForumService.ListForumModeration:output_type -> space.v1.ListForumModerationResponse
+	34, // [34:47] is the sub-list for method output_type
+	21, // [21:34] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_forum_proto_init() }
@@ -2403,6 +2444,7 @@ func file_space_v1_forum_proto_init() {
 		return
 	}
 	file_space_v1_space_proto_init()
+	file_space_v1_community_mentions_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

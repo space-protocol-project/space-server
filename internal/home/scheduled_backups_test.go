@@ -36,6 +36,29 @@ func scheduledState(t *testing.T, options ScheduledBackupOptions) BackupStatus {
 	return status
 }
 
+// На Windows удалённый файл может ненадолго оставаться в перечислении каталога.
+// Содержимое и число копий проверяем после завершения этой операции файловой системы.
+func waitScheduledFileCount(t *testing.T, folder string, want int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	stable := 0
+	for {
+		entries, err := os.ReadDir(folder)
+		if err == nil && len(entries) == want {
+			stable++
+		} else {
+			stable = 0
+		}
+		if stable == 2 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("Не сохранено нужное число файлов копий: %v %d вместо %d", err, len(entries), want)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestScheduledBackupsRestartRetention(t *testing.T) {
 	options, now, count := scheduledFixture(t)
 	for i := 0; i < 5; i++ {
@@ -55,10 +78,7 @@ func TestScheduledBackupsRestartRetention(t *testing.T) {
 		t.Fatalf("Неверный статус: %+v", status)
 	}
 	folder := filepath.Join(filepath.Dir(options.Data), "scheduled-backups")
-	entries, err := os.ReadDir(folder)
-	if err != nil || len(entries) != 6 {
-		t.Fatalf("Не сохранены ровно три копии: %v %d", err, len(entries))
-	}
+	waitScheduledFileCount(t, folder, 6)
 	*now = now.Add(365 * 24 * time.Hour)
 	if err := RunScheduledBackupCycle(context.Background(), options); err != nil {
 		t.Fatal(err)
@@ -66,6 +86,7 @@ func TestScheduledBackupsRestartRetention(t *testing.T) {
 	if *count != 6 {
 		t.Fatal("После простоя создана очередь копий")
 	}
+	waitScheduledFileCount(t, folder, 6)
 }
 
 func TestScheduledBackupsSpaceAndFailedExportPreserveHistory(t *testing.T) {

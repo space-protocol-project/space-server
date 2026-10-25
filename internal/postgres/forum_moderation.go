@@ -16,6 +16,7 @@ func redactForumThread(t *pb.ForumThread) {
 	if t.Hidden {
 		t.Title = ""
 		t.Text = ""
+		t.Mentions = nil
 		t.AuthorId = ""
 		t.AuthorName = ""
 		t.Attachments = nil
@@ -24,6 +25,7 @@ func redactForumThread(t *pb.ForumThread) {
 func redactForumReply(r *pb.ForumReply, parentHidden bool) {
 	if r.Hidden || parentHidden {
 		r.Text = ""
+		r.Mentions = nil
 		r.AuthorId = ""
 		r.AuthorName = ""
 		r.Attachments = nil

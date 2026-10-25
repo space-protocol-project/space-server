@@ -9,6 +9,9 @@ import (
 
 // Возвращаем имена только тех, кто уже присутствует в доступных сообщениях.
 func populateContentNames(ctx context.Context, tx pgx.Tx, contents []*pb.Content) error {
+	if err := populateChatMentions(ctx, tx, contents); err != nil {
+		return err
+	}
 	ids := map[string]bool{}
 	for _, content := range contents {
 		ids[content.AuthorId] = true

@@ -15,13 +15,18 @@ import (
 )
 
 type contentMutation struct {
+	mentions                            []*pb.CommunityMention
 	kind, channel, id, key, text, emoji string
 	revision, applied                   int64
 	active                              bool
 }
 
 func (m *contentMutation) hash() []byte {
-	encoded, _ := json.Marshal([]any{m.kind, m.channel, m.id, m.revision, m.text, m.emoji, m.active})
+	parts := []any{m.kind, m.channel, m.id, m.revision, m.text, m.emoji, m.active}
+	if len(m.mentions) > 0 {
+		parts = append(parts, m.mentions)
+	}
+	encoded, _ := json.Marshal(parts)
 	digest := sha256.Sum256(encoded)
 	return digest[:]
 }

@@ -21,22 +21,25 @@ const overviewForumRows = `SELECT t.id,t.title,t.body,t.author_id,t.author_name,
 
 const overviewFeedRows = `SELECT p.id,'' AS title,p.body,p.author_id,p.author_name,p.created_at,p.sequence,
  (CASE WHEN s.post_id IS NULL THEN 1 ELSE 0 END)+
- (SELECT count(*) FROM feed_comments c WHERE c.post_id=p.id AND NOT c.hidden AND c.sequence>COALESCE(s.read_sequence,0)),0::bigint,0::bigint
+ (SELECT count(*) FROM feed_comments c WHERE c.post_id=p.id AND NOT c.hidden AND c.sequence>COALESCE(s.read_sequence,0)),
+ (SELECT count(*) FROM feed_comments c WHERE c.post_id=p.id AND NOT c.hidden AND c.sequence>COALESCE(s.read_sequence,0) AND c.author_id<>$2 AND p.author_id=$2),
+ COALESCE((SELECT min(c.sequence) FROM feed_comments c WHERE c.post_id=p.id AND NOT c.hidden AND c.sequence>COALESCE(s.read_sequence,0) AND c.author_id<>$2 AND p.author_id=$2),0)
  FROM feed_posts p LEFT JOIN feed_read_state s ON s.post_id=p.id AND s.principal_id=$2
- WHERE p.channel_id=$1 AND NOT p.hidden ORDER BY p.sequence DESC LIMIT $3`
+ WHERE p.channel_id=$1 AND NOT p.hidden`
 
 func overviewEntries(ctx context.Context, tx pgx.Tx, channel, kind string, limit int, replies bool) ([]*pb.CommunityOverviewEntry, error) {
-	query := overviewForumRows + ` ORDER BY t.sequence DESC LIMIT $3`
-	args := []any{channel, authn.Actor(ctx), limit}
+	base := overviewForumRows
 	contentKind := pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FORUM_THREAD
-	if replies {
-		// Имена вычисляемых столбцов нужны внешнему фильтру.
-		query = `SELECT * FROM (` + overviewForumRows + `) AS entries(id,title,body,author_id,author_name,created_at,sequence,unread,unread_replies,first_reply) WHERE unread_replies>0 ORDER BY created_at DESC,sequence DESC LIMIT $3`
-	}
 	if kind == "feed" {
-		query = overviewFeedRows
+		base = overviewFeedRows
 		contentKind = pb.CommunitySearchKind_COMMUNITY_SEARCH_KIND_FEED_POST
 	}
+	query := `SELECT * FROM (` + base + `) AS entries(id,title,body,author_id,author_name,created_at,sequence,unread,unread_replies,first_reply)`
+	if replies {
+		query += ` WHERE unread_replies>0`
+	}
+	query += ` ORDER BY sequence DESC LIMIT $3`
+	args := []any{channel, authn.Actor(ctx), limit}
 	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		return nil, databaseError(ctx, err)
@@ -88,11 +91,13 @@ func (s *Store) GetCommunityOverview(ctx context.Context, req *pb.GetCommunityOv
 	if err != nil {
 		return nil, err
 	}
-	if kind == "forum" {
-		out.RepliesToYou, err = overviewEntries(ctx, tx, req.ChannelId, kind, limit, true)
-		if err != nil {
-			return nil, err
-		}
+	out.RepliesToYou, err = overviewEntries(ctx, tx, req.ChannelId, kind, limit, true)
+	if err != nil {
+		return nil, err
+	}
+	out.Mentions, err = overviewMentions(ctx, tx, req.ChannelId, limit)
+	if err != nil {
+		return nil, err
 	}
 	channel, err := channelAccess(ctx, tx, req.ChannelId, "read", true)
 	if err != nil {

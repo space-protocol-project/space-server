@@ -57,9 +57,11 @@ func TestPersonalFeedPagesQuotesHiddenAndArchive(t *testing.T) {
  f:=newChannelFixture(t);c:=feedSection(t,f,"personal_pages");original:=feedCreate(t,f,f.owner,c.Id,"root")
  feed:=pb.NewFeedServiceClient(f.conn)
  quote,err:=feed.CreateFeedPost(f.owner,&pb.CreateFeedPostRequest{ChannelId:c.Id,RepostOf:original.Id,Text:"Цитата",IdempotencyKey:"quote"});if err!=nil {t.Fatal(err)}
- member,_:=f.enroll(t,true);api:=pb.NewParticipantFollowServiceClient(f.conn);followSet(t,f,member,c.Id,f.ownerID,0)
+ member,memberID:=f.enroll(t,true);api:=pb.NewParticipantFollowServiceClient(f.conn);followSet(t,f,member,c.Id,f.ownerID,0)
  if _,err=f.store.pool.Exec(f.ctx,"UPDATE feed_posts SET created_at=CASE WHEN id=$1 THEN 2 ELSE 1 END",quote.Post.Id);err!=nil {t.Fatal(err)}
  page,err:=api.ListPersonalFeed(member,&pb.ListPersonalFeedRequest{Limit:1});if err!=nil||len(page.Entries)!=1||page.NextPageToken==""||page.Entries[0].Post.GetQuotedPost().GetId()!=original.Id {t.Fatal(page,err)}
+ var readMarks int
+ if err=f.store.pool.QueryRow(f.ctx,"SELECT count(*) FROM feed_read_state WHERE principal_id=$1",memberID).Scan(&readMarks);err!=nil||readMarks!=0 {t.Fatal("Личная лента изменила отметки чтения",readMarks,err)}
  next,err:=api.ListPersonalFeed(member,&pb.ListPersonalFeedRequest{PageToken:page.NextPageToken});if err!=nil||len(next.Entries)!=1||next.Entries[0].Post.Id!=original.Id {t.Fatal(next,err)}
  _,err=api.ListFollowingParticipants(member,&pb.ListFollowingParticipantsRequest{PageToken:page.NextPageToken});requireCode(t,err,codes.InvalidArgument)
  stranger,_:=f.enroll(t,true);_,err=api.ListPersonalFeed(stranger,&pb.ListPersonalFeedRequest{PageToken:page.NextPageToken});requireCode(t,err,codes.InvalidArgument)
@@ -68,6 +70,7 @@ func TestPersonalFeedPagesQuotesHiddenAndArchive(t *testing.T) {
  if _,err=f.store.pool.Exec(f.ctx,"UPDATE channels SET archived=true WHERE id=$1",c.Id);err!=nil {t.Fatal(err)}
  page,err=api.ListPersonalFeed(member,&pb.ListPersonalFeedRequest{});if err!=nil||len(page.Entries)!=0 {t.Fatal(page,err)}
 }
+
 
 func TestParticipantFollowsCommentAuthorBlockedAndConcurrentCAS(t *testing.T) {
  f:=newChannelFixture(t);c:=feedSection(t,f,"follow_comments");root:=feedCreate(t,f,f.owner,c.Id,"root")

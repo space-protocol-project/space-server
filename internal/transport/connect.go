@@ -345,10 +345,10 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.ParticipantFollowServiceGetParticipantFollowStatesProcedure: true,
-	rpc.ParticipantFollowServiceSetParticipantFollowProcedure: true,
-	rpc.ParticipantFollowServiceListFollowingParticipantsProcedure: true,
-	rpc.ParticipantFollowServiceListPersonalFeedProcedure: true,
+	rpc.ParticipantFollowServiceGetParticipantFollowStatesProcedure:       true,
+	rpc.ParticipantFollowServiceSetParticipantFollowProcedure:             true,
+	rpc.ParticipantFollowServiceListFollowingParticipantsProcedure:        true,
+	rpc.ParticipantFollowServiceListPersonalFeedProcedure:                 true,
 	rpc.SpaceSearchServiceSearchSpaceProcedure:                            true,
 	rpc.CommunityReactionServiceListCommunityReactionsProcedure:           true,
 	rpc.CommunityFavoriteServiceGetCommunityFavoriteStatesProcedure:       true,

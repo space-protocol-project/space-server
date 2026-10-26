@@ -127,8 +127,8 @@ func TestUserExportReaderRevocationsAndValidation(t *testing.T) {
 func TestUserExportDoesNotSilentlyTruncate(t *testing.T) {
 	f := newChannelFixture(t)
 	c := f.create(t, "export_limit")
-	_, err := f.store.pool.Exec(f.ctx, `INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,created_at_unix_ms)
- SELECT $1,i,'export-'||i,'Текст','export-'||i,$2,i FROM generate_series(1,5001) i`, c.Id, f.ownerID)
+	_, err := f.store.pool.Exec(f.ctx, `INSERT INTO contents(channel_id,sequence,id,text,idempotency_key,author_id,created_at_unix_ms,request_text_hash)
+ SELECT $1,i,'export-'||i,'Текст','export-'||i,$2,i,sha256(convert_to('Текст','UTF8')) FROM generate_series(1,5001) i`, c.Id, f.ownerID)
 	if err != nil {
 		t.Fatal(err)
 	}

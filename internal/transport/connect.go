@@ -343,7 +343,7 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.SpaceSearchServiceSearchSpaceProcedure: true,
+	rpc.SpaceSearchServiceSearchSpaceProcedure:                            true,
 	rpc.CommunityReactionServiceListCommunityReactionsProcedure:           true,
 	rpc.CommunityFavoriteServiceGetCommunityFavoriteStatesProcedure:       true,
 	rpc.CommunityFavoriteServiceListCommunityFavoritesProcedure:           true,

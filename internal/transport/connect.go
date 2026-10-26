@@ -347,7 +347,7 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.UserExportServiceExportUserContentProcedure: true,
+	rpc.UserExportServiceExportUserContentProcedure:                       true,
 	rpc.ParticipantFollowServiceGetParticipantFollowStatesProcedure:       true,
 	rpc.ParticipantFollowServiceSetParticipantFollowProcedure:             true,
 	rpc.ParticipantFollowServiceListFollowingParticipantsProcedure:        true,

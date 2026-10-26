@@ -311,6 +311,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(mentionPath, mentionHandler)
 	notificationPath, notificationHandler := rpc.NewPersonalNotificationServiceHandler(connectPersonalNotifications{client: pb.NewPersonalNotificationServiceClient(connection)}, connect.WithReadMaxBytes(16384), connect.WithSendMaxBytes(1024*1024))
 	mux.Handle(notificationPath, notificationHandler)
+	reactionPath, reactionHandler := rpc.NewCommunityReactionServiceHandler(connectCommunityReactions{client: pb.NewCommunityReactionServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(256*1024))
+	mux.Handle(reactionPath, reactionHandler)
 	mux.Handle(overviewPath, overviewHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
@@ -337,6 +339,8 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.CommunityReactionServiceListCommunityReactionsProcedure:           true,
+	rpc.CommunityReactionServiceSetCommunityReactionProcedure:             true,
 	rpc.CommunityOverviewServiceGetCommunityOverviewProcedure:             true,
 	rpc.PersonalNotificationServiceListPersonalNotificationsProcedure:     true,
 	rpc.PersonalNotificationServiceMarkPersonalNotificationsReadProcedure: true,

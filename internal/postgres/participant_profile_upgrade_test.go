@@ -49,7 +49,7 @@ func TestParticipantProfileUpgradeFromSchema36(t *testing.T) {
 	var revision int64
 	var version int
 	err = pool.QueryRow(ctx, "SELECT nickname,profile_avatar,profile_revision,(SELECT max(version) FROM schema_migrations) FROM memberships WHERE principal_id='u_owner'").Scan(&name, &avatar, &revision, &version)
-	if err != nil || name != "Прежнее имя" || len(avatar) != 0 || revision != 0 || version != 37 {
+	if err != nil || name != "Прежнее имя" || len(avatar) != 0 || revision != 0 || version != SchemaVersion() {
 		t.Fatalf("Миграция профиля: %q %d %d %v", name, revision, version, err)
 	}
 }

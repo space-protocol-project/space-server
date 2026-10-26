@@ -541,7 +541,7 @@ func channelLockClause(lock bool, action string) string {
 	if lock {
 		clause = "FOR SHARE"
 	}
-	if lock && (action == "write" || action == "manage" || strings.HasPrefix(action, "feed.")) {
+	if lock && (action == "write" || action == "manage" || action == "community.react" || strings.HasPrefix(action, "feed.")) {
 		clause = "FOR UPDATE"
 	}
 	return clause

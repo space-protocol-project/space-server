@@ -121,6 +121,7 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	pb.RegisterCommunitySearchServiceServer(server, store)
 	pb.RegisterCommunityOverviewServiceServer(server, store)
 	pb.RegisterCommunityMentionServiceServer(server, store)
+	pb.RegisterCommunityReactionServiceServer(server, store)
 	pb.RegisterPersonalNotificationServiceServer(server, store)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)

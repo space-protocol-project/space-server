@@ -58,6 +58,8 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 		rpc.ForumServiceMarkForumThreadReadProcedure,
 		rpc.ForumServiceModerateForumThreadProcedure,
 		rpc.ForumServiceModerateForumReplyProcedure,
+		rpc.CommunityReactionServiceListCommunityReactionsProcedure,
+		rpc.CommunityReactionServiceSetCommunityReactionProcedure,
 		rpc.ForumServiceListForumModerationProcedure,
 		rpc.ForumServiceReportForumContentProcedure,
 		rpc.ForumServiceListForumReportsProcedure,
@@ -104,7 +106,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
 	expected := 0
-	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto, pb.File_space_v1_feed_proto, pb.File_space_v1_community_search_proto, pb.File_space_v1_community_overview_proto, pb.File_space_v1_community_mentions_proto, pb.File_space_v1_personal_notifications_proto}
+	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto, pb.File_space_v1_feed_proto, pb.File_space_v1_community_search_proto, pb.File_space_v1_community_overview_proto, pb.File_space_v1_community_mentions_proto, pb.File_space_v1_personal_notifications_proto, pb.File_space_v1_community_reactions_proto}
 	for _, file := range files {
 		services := file.Services()
 		for i := 0; i < services.Len(); i++ {

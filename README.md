@@ -1,15 +1,10 @@
 # Space Server
 
-В следующем срезе добавлены `ParticipantFollowService`, capability
-`core.participant.follows.v1` и миграция 41: личные подписки на авторов и
-персональная хронология доступных разделов ленты. Сервер повторно проверяет
-права на каждой странице; подписка не расширяет доступ. Срез ещё не выпущен.
-[Контракт ADR-059](https://github.com/space-protocol-project/space-protocol/blob/main/docs/adr/059-participant-follows.md),
-[поведение клиента и проверки](https://github.com/space-protocol-project/space-app/blob/main/docs/PARTICIPANT-FOLLOWS.md).
+Опубликован [runtime **v0.7.23**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.23), совместимый с клиентом **v0.7.29+59**. Go 1.27.3, PostgreSQL 17.11; миграция схемы **40→41**, голосовой профиль **3** сохранён. Добавлены личные подписки, персональная лента и экспорт собственного содержимого в JSON. Подписки не расширяют доступ; экспорт исключает чужой текст, MLS и секреты. Сервер повторно проверяет действующую сессию и права чтения.
 
-Опубликован [runtime **v0.7.22**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.22), совместимый с [клиентом **v0.7.28+58**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.28). Go 1.27.3, PostgreSQL 17.11; миграция схемы **39→40**, голосовой профиль **3** сохранён. Общий поиск чатов, форума и ленты, ответы на конкретные комментарии, репосты и цитаты внутри раздела: повторная проверка прав, безопасные повторы и скрытие оригинала без копии содержимого. Обновите приложение и сервер вместе. [Изменения](Changelog.md), [отчёт выпуска](https://github.com/space-protocol-project/space-app/blob/main/docs/SEARCH-FEED-RELEASE.md).
+[Контракт подписок ADR-059](https://github.com/space-protocol-project/space-protocol/blob/main/docs/adr/059-participant-follows.md), [экспорта ADR-060](https://github.com/space-protocol-project/space-protocol/blob/main/docs/adr/060-user-content-export.md), [изменения](Changelog.md), [отчёт совместимого выпуска](https://github.com/space-protocol-project/space-app/blob/main/docs/MARKDOWN-EXPORT-RELEASE.md). Общий поиск чатов, форума и ленты, ответы на комментарии, репосты и цитаты доступны начиная с v0.7.22.
 
-[Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40371335438) успешен на Windows x64, Linux x64 и macOS arm64: TLS, обновление, перенос, восстановление MLS, полные Go/Flutter и проверка гонок. [Публичные файлы проверены](https://github.com/space-protocol-project/space-app/actions/runs/40381975116): полное скачивание, размеры, SHA-256 и CRC; во всех архивах схема 40. [Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40375012094) и [установка публичного runtime на трёх платформах](https://github.com/space-protocol-project/space-app/actions/runs/40375088511) прошли проверку. Оба выпуска Latest; [релизный CI приложения](https://github.com/space-protocol-project/space-app/actions/runs/40375158499) успешен, подпись Android совпадает с v0.7.27.
+[Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40406370390) успешен на Windows x64, Linux x64 и macOS arm64: TLS, обновление, перенос, восстановление MLS, полные Go/Flutter и проверка гонок. [Публичные архивы проверены](https://github.com/space-protocol-project/space-app/actions/runs/40409781309): полное скачивание, размеры, SHA-256 и CRC; во всех архивах схема 41. [Опубликованный Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40409785065) также прошёл проверку. Сборки и тесты выполняются только в GitHub CI; физический Android и эмулятор не используются.
 
 Перед обновлением сохраните резервную копию пространства и ключей MLS. Установленные данные не заменяются комплектом runtime.
 
@@ -26,11 +21,11 @@ Runtime v0.7.16 включает `CommunitySearchService`, capability `core.comm
 
 В runtime v0.7.10 голосовые комнаты поддерживают настраиваемый лимит от 2 до 32 участников (по умолчанию 8) на компьютерах и Android: схема 27, голосовой профиль 3, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. Для изменения лимита и форума обновите клиент до v0.7.13. Для Android используйте клиент v0.7.10; рамки речи доступны начиная с v0.7.9: сервер передаёт стабильное audio_slot, а клиент связывает его с аудиодорожкой. Старые клиенты подключаются только при лимите 8. Уменьшение лимита не отключает активных участников. Вложения выключены по умолчанию только в новых пространствах; миграция сохраняет прежние значения. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md).
 
-Запуск с нуля одной командой (приложение v0.7.28 и runtime v0.7.22):
+Запуск с нуля одной командой (приложение v0.7.29 и runtime v0.7.23):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.7.22/packaging/install.sh | SPACE_VERSION=v0.7.22 sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.7.23/packaging/install.sh | SPACE_VERSION=v0.7.23 sh
 ```
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.

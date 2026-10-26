@@ -207,10 +207,10 @@ jobs:
           done
           cd app-source/client
           flutter test test/live/mls_server_test.dart --reporter expanded
-      - name: Реакции и избранное — два устройства и перезапуск
+      - name: Реакции, избранное и общий поиск — настоящие клиенты и перезапуск
         shell: bash
         run: |
-          for scenario in reactions favorites; do
+          for scenario in reactions favorites space_search; do
             database="space_community_${scenario}"
             PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U space -d space_test -v ON_ERROR_STOP=1 -c "CREATE DATABASE $database"
             SPACE_DATABASE_URL="postgres://space:ci-only-password@127.0.0.1:5432/$database?sslmode=disable" \

@@ -44,7 +44,12 @@ func feedReadStates(ctx context.Context, tx pgx.Tx, posts []*pb.FeedPost) error 
 		post.ReadStateSupported, post.Seen = true, seen
 		post.ReadSequence, post.UnreadCount = sequence, unread
 	}
-	return databaseErrorOrNil(ctx, rows.Err())
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return databaseError(ctx, err)
+	}
+	return hydrateFeedQuotes(ctx, tx, posts)
 }
 
 func (s *Store) MarkFeedPostRead(ctx context.Context, req *pb.MarkFeedPostReadRequest) (*pb.MarkFeedPostReadResponse, error) {

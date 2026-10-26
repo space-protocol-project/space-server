@@ -1,8 +1,8 @@
 # Space Server
 
-Опубликован [runtime **v0.7.21**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.21), совместимый с [клиентом **v0.7.27+57**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.27). Go 1.27.3, PostgreSQL 17.11; миграции схемы **37→38→39**, голосовой профиль **3** сохранён. Реакции и личное избранное тем и ответов форума, публикаций и комментариев ленты: ревизии, безопасные повторы, синхронизация устройств и серверные права. Обновите приложение и сервер вместе. [Изменения](Changelog.md), [отчёт выпуска](https://github.com/space-protocol-project/space-app/blob/main/docs/COMMUNITY-ACTIONS-RELEASE.md).
+Опубликован [runtime **v0.7.22**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.22), совместимый с [клиентом **v0.7.28+58**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.28). Go 1.27.3, PostgreSQL 17.11; миграция схемы **39→40**, голосовой профиль **3** сохранён. Общий поиск чатов, форума и ленты, ответы на конкретные комментарии, репосты и цитаты внутри раздела: повторная проверка прав, безопасные повторы и скрытие оригинала без копии содержимого. Обновите приложение и сервер вместе. [Изменения](Changelog.md), [отчёт выпуска](https://github.com/space-protocol-project/space-app/blob/main/docs/SEARCH-FEED-RELEASE.md).
 
-[Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40336123924) успешен на Windows x64, Linux x64 и macOS arm64: TLS, обновление, перенос, восстановление MLS, полные Go/Flutter и проверка гонок. [Публичные файлы проверены](https://github.com/space-protocol-project/space-app/actions/runs/40347995528): полное скачивание, размеры, SHA-256 и CRC; во всех архивах схема 39. [Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40340549930) и [установка публичного runtime на трёх платформах](https://github.com/space-protocol-project/space-app/actions/runs/40340564507) прошли проверку. Оба выпуска Latest; [релизный CI приложения](https://github.com/space-protocol-project/space-app/actions/runs/40340976945) успешен.
+[Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40371335438) успешен на Windows x64, Linux x64 и macOS arm64: TLS, обновление, перенос, восстановление MLS, полные Go/Flutter и проверка гонок. [Публичные файлы проверены](https://github.com/space-protocol-project/space-app/actions/runs/40381975116): полное скачивание, размеры, SHA-256 и CRC; во всех архивах схема 40. [Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40375012094) и [установка публичного runtime на трёх платформах](https://github.com/space-protocol-project/space-app/actions/runs/40375088511) прошли проверку. Оба выпуска Latest; [релизный CI приложения](https://github.com/space-protocol-project/space-app/actions/runs/40375158499) успешен, подпись Android совпадает с v0.7.27.
 
 Перед обновлением сохраните резервную копию пространства и ключей MLS. Установленные данные не заменяются комплектом runtime.
 
@@ -19,11 +19,11 @@ Runtime v0.7.16 включает `CommunitySearchService`, capability `core.comm
 
 В runtime v0.7.10 голосовые комнаты поддерживают настраиваемый лимит от 2 до 32 участников (по умолчанию 8) на компьютерах и Android: схема 27, голосовой профиль 3, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. Для изменения лимита и форума обновите клиент до v0.7.13. Для Android используйте клиент v0.7.10; рамки речи доступны начиная с v0.7.9: сервер передаёт стабильное audio_slot, а клиент связывает его с аудиодорожкой. Старые клиенты подключаются только при лимите 8. Уменьшение лимита не отключает активных участников. Вложения выключены по умолчанию только в новых пространствах; миграция сохраняет прежние значения. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md).
 
-Запуск с нуля одной командой (приложение и runtime v0.3.5):
+Запуск с нуля одной командой (приложение v0.7.28 и runtime v0.7.22):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.3.5/packaging/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.7.22/packaging/install.sh | SPACE_VERSION=v0.7.22 sh
 ```
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.

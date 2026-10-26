@@ -533,6 +533,7 @@ func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID,
 		pb.RegisterFeedServiceServer(server, store)
 		pb.RegisterCommunitySearchServiceServer(server, store)
 		pb.RegisterSpaceSearchServiceServer(server, store)
+	pb.RegisterParticipantFollowServiceServer(server, store)
 		pb.RegisterCommunityOverviewServiceServer(server, store)
 		pb.RegisterCommunityMentionServiceServer(server, store)
 		pb.RegisterCommunityReactionServiceServer(server, store)

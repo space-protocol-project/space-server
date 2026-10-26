@@ -310,6 +310,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(spaceSearchPath, spaceSearchHandler)
 	followsPath, followsHandler := rpc.NewParticipantFollowServiceHandler(connectParticipantFollows{client: pb.NewParticipantFollowServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(2*1024*1024))
 	mux.Handle(followsPath, followsHandler)
+	exportPath, exportHandler := rpc.NewUserExportServiceHandler(connectUserExport{client: pb.NewUserExportServiceClient(connection)}, connect.WithReadMaxBytes(4096), connect.WithSendMaxBytes(16*1024*1024))
+	mux.Handle(exportPath, exportHandler)
 	overviewPath, overviewHandler := rpc.NewCommunityOverviewServiceHandler(connectCommunityOverview{client: pb.NewCommunityOverviewServiceClient(connection)}, connect.WithReadMaxBytes(4096), connect.WithSendMaxBytes(1024*1024))
 	mentionPath, mentionHandler := rpc.NewCommunityMentionServiceHandler(connectCommunityMentions{client: pb.NewCommunityMentionServiceClient(connection)}, connect.WithReadMaxBytes(16384), connect.WithSendMaxBytes(65536))
 	mux.Handle(mentionPath, mentionHandler)
@@ -345,6 +347,7 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.UserExportServiceExportUserContentProcedure: true,
 	rpc.ParticipantFollowServiceGetParticipantFollowStatesProcedure:       true,
 	rpc.ParticipantFollowServiceSetParticipantFollowProcedure:             true,
 	rpc.ParticipantFollowServiceListFollowingParticipantsProcedure:        true,

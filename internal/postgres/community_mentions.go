@@ -20,7 +20,7 @@ const mentionMembers = ` FROM memberships m
  WHERE NOT m.blocked AND EXISTS(SELECT 1 FROM channels mention_channel WHERE mention_channel.id=$1 AND
  (mention_channel.mls_group_id IS NULL OR EXISTS(SELECT 1 FROM mls_members mm JOIN device_grants dg ON dg.id=mm.grant_id
  WHERE mm.channel_id=$1 AND mm.left_sequence IS NULL AND dg.principal_id=m.principal_id AND dg.revoked_at IS NULL)))
- AND (m.role IN ('owner','admin') OR
+ AND (m.principal_id=(SELECT owner_id FROM space_settings WHERE singleton=true) OR m.role IN ('owner','admin') OR
  (COALESCE(personal.visible,role_acl.visible,false) AND COALESCE(personal.can_read,role_acl.can_read,false)))`
 
 func mentionName(name, principal string) string {

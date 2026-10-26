@@ -17,7 +17,7 @@ import (
 )
 
 func validateReactionChange(req *pb.SetCommunityReactionRequest) error {
-	if !validReactionReference(req.Content) || !reactions.Valid(req.Emoji) || req.ExpectedRevision < 0 || !validForumText(req.IdempotencyKey, 128) {
+	if !validCommunityReference(req.Content) || !reactions.Valid(req.Emoji) || req.ExpectedRevision < 0 || !validForumText(req.IdempotencyKey, 128) {
 		return status.Error(codes.InvalidArgument, "Некорректная реакция, ревизия или ключ запроса")
 	}
 	return nil
@@ -99,12 +99,12 @@ func (s *Store) SetCommunityReaction(ctx context.Context, req *pb.SetCommunityRe
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	tx, c, err := s.reactionTransaction(ctx, req.ChannelId, true)
+	tx, c, err := s.communityContentTransaction(ctx, req.ChannelId, true)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	closed, err := reactionTarget(ctx, tx, c, req.Content)
+	closed, err := communityContentTarget(ctx, tx, c, req.Content)
 	if err != nil {
 		return nil, err
 	}

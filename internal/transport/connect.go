@@ -313,6 +313,8 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(notificationPath, notificationHandler)
 	reactionPath, reactionHandler := rpc.NewCommunityReactionServiceHandler(connectCommunityReactions{client: pb.NewCommunityReactionServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(256*1024))
 	mux.Handle(reactionPath, reactionHandler)
+	favoritePath, favoriteHandler := rpc.NewCommunityFavoriteServiceHandler(connectCommunityFavorites{client: pb.NewCommunityFavoriteServiceClient(connection)}, connect.WithReadMaxBytes(16*1024), connect.WithSendMaxBytes(256*1024))
+	mux.Handle(favoritePath, favoriteHandler)
 	mux.Handle(overviewPath, overviewHandler)
 	mux.Handle("/", base)
 	return connectBodyLimit(connectAuthorization(mux, verifier))
@@ -340,6 +342,9 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 
 var connectProcedures = map[string]bool{
 	rpc.CommunityReactionServiceListCommunityReactionsProcedure:           true,
+	rpc.CommunityFavoriteServiceGetCommunityFavoriteStatesProcedure:       true,
+	rpc.CommunityFavoriteServiceListCommunityFavoritesProcedure:           true,
+	rpc.CommunityFavoriteServiceSetCommunityFavoriteProcedure:             true,
 	rpc.CommunityReactionServiceSetCommunityReactionProcedure:             true,
 	rpc.CommunityOverviewServiceGetCommunityOverviewProcedure:             true,
 	rpc.PersonalNotificationServiceListPersonalNotificationsProcedure:     true,

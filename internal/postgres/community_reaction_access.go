@@ -9,11 +9,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func validReactionReference(ref *pb.CommunityContentReference) bool {
+func validCommunityReference(ref *pb.CommunityContentReference) bool {
 	return ref != nil && ref.Kind >= 1 && ref.Kind <= 4 && validForumText(ref.Id, 128)
 }
 
-func (s *Store) reactionTransaction(ctx context.Context, channel string, write bool) (pgx.Tx, *pb.Channel, error) {
+func (s *Store) communityContentTransaction(ctx context.Context, channel string, write bool) (pgx.Tx, *pb.Channel, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, databaseError(ctx, err)
@@ -56,7 +56,7 @@ func reactionWriteAllowed(ctx context.Context, tx pgx.Tx, c *pb.Channel) (bool, 
 
 // Видимость объекта и его родителя задаётся общей проекцией сообществ.
 // Блокировка канала удерживает ACL, закрытие и модерацию до конца транзакции.
-func reactionTarget(ctx context.Context, tx pgx.Tx, c *pb.Channel, ref *pb.CommunityContentReference) (bool, error) {
+func communityContentTarget(ctx context.Context, tx pgx.Tx, c *pb.Channel, ref *pb.CommunityContentReference) (bool, error) {
 	forum := ref.Kind <= 2
 	if forum != (c.Views[0].Type == "forum") {
 		return false, status.Error(codes.InvalidArgument, "Тип объекта не соответствует разделу")

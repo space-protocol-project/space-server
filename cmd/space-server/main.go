@@ -535,6 +535,7 @@ func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID,
 		pb.RegisterCommunityOverviewServiceServer(server, store)
 		pb.RegisterCommunityMentionServiceServer(server, store)
 		pb.RegisterCommunityReactionServiceServer(server, store)
+		pb.RegisterCommunityFavoriteServiceServer(server, store)
 		pb.RegisterPersonalNotificationServiceServer(server, store)
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
 		pb.RegisterAssetServiceServer(server, store)

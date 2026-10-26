@@ -33,13 +33,13 @@ func reactionState(ctx context.Context, tx pgx.Tx, channel string, ref *pb.Commu
 	return out, databaseErrorOrNil(ctx, rows.Err())
 }
 
-func validateReactionPage(refs []*pb.CommunityContentReference) error {
+func validateCommunityReferences(refs []*pb.CommunityContentReference) error {
 	if len(refs) == 0 || len(refs) > 50 {
 		return status.Error(codes.InvalidArgument, "Нужно от 1 до 50 объектов")
 	}
 	seen := map[string]bool{}
 	for _, ref := range refs {
-		if !validReactionReference(ref) {
+		if !validCommunityReference(ref) {
 			return status.Error(codes.InvalidArgument, "Некорректный объект")
 		}
 		key := ref.Kind.String() + ":" + ref.Id
@@ -52,12 +52,12 @@ func validateReactionPage(refs []*pb.CommunityContentReference) error {
 }
 
 func (s *Store) ListCommunityReactions(ctx context.Context, req *pb.ListCommunityReactionsRequest) (*pb.ListCommunityReactionsResponse, error) {
-	if err := validateReactionPage(req.Contents); err != nil {
+	if err := validateCommunityReferences(req.Contents); err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	tx, c, err := s.reactionTransaction(ctx, req.ChannelId, false)
+	tx, c, err := s.communityContentTransaction(ctx, req.ChannelId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (s *Store) ListCommunityReactions(ctx context.Context, req *pb.ListCommunit
 	}
 	out := new(pb.ListCommunityReactionsResponse)
 	for _, ref := range req.Contents {
-		closed, err := reactionTarget(ctx, tx, c, ref)
+		closed, err := communityContentTarget(ctx, tx, c, ref)
 		if status.Code(err) == codes.NotFound {
 			continue
 		}

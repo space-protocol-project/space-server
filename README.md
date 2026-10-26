@@ -1,5 +1,12 @@
 # Space Server
 
+В следующем срезе добавлены `ParticipantFollowService`, capability
+`core.participant.follows.v1` и миграция 41: личные подписки на авторов и
+персональная хронология доступных разделов ленты. Сервер повторно проверяет
+права на каждой странице; подписка не расширяет доступ. Срез ещё не выпущен.
+[Контракт ADR-059](https://github.com/space-protocol-project/space-protocol/blob/main/docs/adr/059-participant-follows.md),
+[поведение клиента и проверки](https://github.com/space-protocol-project/space-app/blob/main/docs/PARTICIPANT-FOLLOWS.md).
+
 Опубликован [runtime **v0.7.22**](https://github.com/space-protocol-project/space-server/releases/tag/v0.7.22), совместимый с [клиентом **v0.7.28+58**](https://github.com/space-protocol-project/space-app/releases/tag/v0.7.28). Go 1.27.3, PostgreSQL 17.11; миграция схемы **39→40**, голосовой профиль **3** сохранён. Общий поиск чатов, форума и ленты, ответы на конкретные комментарии, репосты и цитаты внутри раздела: повторная проверка прав, безопасные повторы и скрытие оригинала без копии содержимого. Обновите приложение и сервер вместе. [Изменения](Changelog.md), [отчёт выпуска](https://github.com/space-protocol-project/space-app/blob/main/docs/SEARCH-FEED-RELEASE.md).
 
 [Релизный CI](https://github.com/space-protocol-project/space-server/actions/runs/40371335438) успешен на Windows x64, Linux x64 и macOS arm64: TLS, обновление, перенос, восстановление MLS, полные Go/Flutter и проверка гонок. [Публичные файлы проверены](https://github.com/space-protocol-project/space-app/actions/runs/40381975116): полное скачивание, размеры, SHA-256 и CRC; во всех архивах схема 40. [Linux-установщик](https://github.com/space-protocol-project/space-server/actions/runs/40375012094) и [установка публичного runtime на трёх платформах](https://github.com/space-protocol-project/space-app/actions/runs/40375088511) прошли проверку. Оба выпуска Latest; [релизный CI приложения](https://github.com/space-protocol-project/space-app/actions/runs/40375158499) успешен, подпись Android совпадает с v0.7.27.

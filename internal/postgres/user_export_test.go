@@ -10,10 +10,18 @@ import (
 )
 
 func TestUserExportAttachmentMetadataExcludesStorageDetails(t *testing.T) {
- data,err:=json.Marshal([]*pb.Asset{{Id:"asset",Name:"file.txt",MediaType:"text/plain",ByteSize:3,Sha256:make([]byte,32),StorageGroup:"private-storage",AuthorId:"other"}})
- if err!=nil {t.Fatal(err)}
- assets,err:=exportAttachments(data);if err!=nil||len(assets)!=1||assets[0].Name!="file.txt" {t.Fatal(assets,err)}
- encoded,err:=protojson.Marshal(assets[0]);if err!=nil||strings.Contains(string(encoded),"private-storage")||strings.Contains(string(encoded),"other") {t.Fatal(string(encoded),err)}
+	data, err := json.Marshal([]*pb.Asset{{Id: "asset", Name: "file.txt", MediaType: "text/plain", ByteSize: 3, Sha256: make([]byte, 32), StorageGroup: "private-storage", AuthorId: "other"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assets, err := exportAttachments(data)
+	if err != nil || len(assets) != 1 || assets[0].Name != "file.txt" {
+		t.Fatal(assets, err)
+	}
+	encoded, err := protojson.Marshal(assets[0])
+	if err != nil || strings.Contains(string(encoded), "private-storage") || strings.Contains(string(encoded), "other") {
+		t.Fatal(string(encoded), err)
+	}
 }
 
 func TestUserExportOwnContentAndReferences(t *testing.T) {

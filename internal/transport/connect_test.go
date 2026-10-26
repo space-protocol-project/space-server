@@ -32,6 +32,7 @@ func (connectVerifier) Authenticate(_ context.Context, token string) (string, er
 func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 	handler := WithConnect(http.NotFoundHandler(), nil, connectVerifier{})
 	for _, path := range []string{
+		rpc.SpaceSearchServiceSearchSpaceProcedure,
 		rpc.PersonalNotificationServiceListPersonalNotificationsProcedure,
 		rpc.PersonalNotificationServiceMarkPersonalNotificationsReadProcedure,
 		rpc.ChannelServiceListChannelsProcedure,
@@ -109,7 +110,7 @@ func TestConnectAuthorizesBeforeDecodingAllProtectedServices(t *testing.T) {
 
 func TestConnectProcedureRegistryCoversServices(t *testing.T) {
 	expected := 0
-	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto, pb.File_space_v1_feed_proto, pb.File_space_v1_community_search_proto, pb.File_space_v1_community_overview_proto, pb.File_space_v1_community_mentions_proto, pb.File_space_v1_personal_notifications_proto, pb.File_space_v1_community_reactions_proto, pb.File_space_v1_community_favorites_proto}
+	files := []protoreflect.FileDescriptor{pb.File_space_v1_space_proto, pb.File_space_v1_voice_proto, pb.File_space_v1_forum_proto, pb.File_space_v1_feed_proto, pb.File_space_v1_community_search_proto, pb.File_space_v1_space_search_proto, pb.File_space_v1_community_overview_proto, pb.File_space_v1_community_mentions_proto, pb.File_space_v1_personal_notifications_proto, pb.File_space_v1_community_reactions_proto, pb.File_space_v1_community_favorites_proto}
 	for _, file := range files {
 		services := file.Services()
 		for i := 0; i < services.Len(); i++ {

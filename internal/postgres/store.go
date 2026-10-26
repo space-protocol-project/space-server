@@ -36,6 +36,7 @@ type Identity struct {
 }
 
 type Store struct {
+	pb.UnimplementedSpaceSearchServiceServer
 	pb.UnimplementedCommunityReactionServiceServer
 	pb.UnimplementedCommunityFavoriteServiceServer
 	pb.UnimplementedFeedServiceServer

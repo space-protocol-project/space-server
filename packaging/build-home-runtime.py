@@ -51,7 +51,7 @@ def build():
     tagged = os.environ.get("GITHUB_REF", "").startswith("refs/tags/")
     read_notes = runpy.run_path(str(ROOT / "packaging/release-notes.py"))["release_notes"]
     named = tagged or bool(os.environ.get("SPACE_RUNTIME_CANDIDATE_VERSION"))
-    notes = read_notes(changelog, VERSION if named else "Unreleased", allow_unreleased=not named)
+    notes = read_notes(changelog, VERSION if named else "Не выпущено", allow_unreleased=not named)
     if len(notes.encode("utf-8")) > 8192:
         raise ValueError("Описание выпуска превышает 8 КиБ")
     DIST.mkdir(exist_ok=True)

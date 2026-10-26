@@ -12,12 +12,14 @@ def tag_info(tag):
     return {"version": tag[1:], "native_version": ".".join(match.group(i) for i in (1, 2, 3)), "prerelease": match.group(4) is not None}
 
 def release_notes(changelog, tag, allow_unreleased=False):
-    if not (allow_unreleased and tag == "Unreleased"):
+    unreleased = allow_unreleased and tag == "Не выпущено"
+    if not unreleased:
         tag_info(tag)
     sections = list(re.finditer(r"^## (.+)$", changelog, re.MULTILINE))
     matches = []
     for index, section in enumerate(sections):
-        version = section.group(1).strip().split()[0].strip("[]")
+        heading = section.group(1).strip()
+        version = heading if unreleased else heading.split()[0].strip("[]")
         if version == tag:
             end = sections[index + 1].start() if index + 1 < len(sections) else len(changelog)
             matches.append(changelog[section.end():end].strip())

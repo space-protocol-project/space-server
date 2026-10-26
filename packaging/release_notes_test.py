@@ -7,10 +7,15 @@ notes = runpy.run_path(str(Path(__file__).with_name("release-notes.py")))["relea
 
 class ReleaseNotesTest(unittest.TestCase):
     def test_unreleased_requires_explicit_permission(self):
-        text = "## Unreleased\nКандидат.\n\n## v0.1.0\nСтарый выпуск.\n"
+        text = "## Не выпущено\nКандидат.\n\n## v0.1.0\nСтарый выпуск.\n"
         with self.assertRaises(ValueError):
-            notes(text, "Unreleased")
-        self.assertEqual(notes(text, "Unreleased", allow_unreleased=True), "Кандидат.\n")
+            notes(text, "Не выпущено")
+        self.assertEqual(notes(text, "Не выпущено", allow_unreleased=True), "Кандидат.\n")
+
+    def test_unreleased_is_unique_and_nonempty(self):
+        for text in ["## Не выпущено\n\n## v0.1.0\nВыпуск", "## Не выпущено\nОдин\n## Не выпущено\nДва"]:
+            with self.assertRaises(ValueError):
+                notes(text, "Не выпущено", allow_unreleased=True)
     def test_selects_exact_section_and_preserves_newlines(self):
         text = "# Изменения\n\n## v0.1.0 — дата\n\nПервый абзац.\n\n- Пункт\n\n## v0.2.0\n\nСервер.\n"
         self.assertEqual(notes(text, "v0.1.0"), "Первый абзац.\n\n- Пункт\n")

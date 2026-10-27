@@ -31,7 +31,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Раздельные развёртывания: непрозрачное хранилище и свидетель версии.
+// core.directory.backup.v1: независимые хранилище и свидетель версии.
 type RemoteBackupServiceClient interface {
 	CreateBackupSlot(ctx context.Context, in *CreateBackupSlotRequest, opts ...grpc.CallOption) (*CreateBackupSlotResponse, error)
 	RevokeBackupSlot(ctx context.Context, in *RevokeBackupSlotRequest, opts ...grpc.CallOption) (*RevokeBackupSlotResponse, error)
@@ -113,7 +113,7 @@ func (c *remoteBackupServiceClient) ReadBackupWitness(ctx context.Context, in *R
 // All implementations must embed UnimplementedRemoteBackupServiceServer
 // for forward compatibility.
 //
-// Раздельные развёртывания: непрозрачное хранилище и свидетель версии.
+// core.directory.backup.v1: независимые хранилище и свидетель версии.
 type RemoteBackupServiceServer interface {
 	CreateBackupSlot(context.Context, *CreateBackupSlotRequest) (*CreateBackupSlotResponse, error)
 	RevokeBackupSlot(context.Context, *RevokeBackupSlotRequest) (*RevokeBackupSlotResponse, error)

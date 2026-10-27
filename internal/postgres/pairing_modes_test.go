@@ -60,7 +60,9 @@ func TestPairingFullAndLimitedAuthority(t *testing.T) {
  limitedLogin := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose:"auth.login", GrantId:limited.GrantId}, childPrivate)
  if _, err := auth.CreateChallenge(ctx, &pb.CreateChallengeRequest{Purpose:"device.delegate", RecoveryGrantId:limited.GrantId, DevicePublicKey:source}); status.Code(err) != codes.Unauthenticated { t.Fatal("Ограниченный стал управляющим",err) }
  if _, err := auth.CreateChallenge(ctx, &pb.CreateChallengeRequest{Purpose:"recovery.device.revoke", RecoveryGrantId:limited.GrantId, GrantId:full.GrantId}); status.Code(err) != codes.Unauthenticated { t.Fatal("Ограниченный отзывает управляющего",err) }
- if _, err := auth.CreateRootRotation(fullContext, &pb.CreateRootRotationRequest{}); status.Code(err) == codes.OK { t.Fatal("Рабочий управляющий меняет root") }
+ newRoot, _, _ := ed25519.GenerateKey(rand.Reader)
+ newDevice, _, _ := ed25519.GenerateKey(rand.Reader)
+ if _, err := auth.CreateRootRotation(fullContext, &pb.CreateRootRotationRequest{Profile:"root-rotation-v1", NewRootPublicKey:newRoot, NewDevicePublicKey:newDevice, OperationId:"pairing-authority-test"}); status.Code(err) != codes.Unauthenticated { t.Fatal("Рабочий управляющий меняет root",err) }
  if err := store.pool.QueryRow(ctx,"SELECT scopes FROM device_grants WHERE id=$1",limited.GrantId).Scan(&scopes); err != nil || !slices.Equal(scopes, []string{"chat.read","chat.write"}) { t.Fatal(scopes,err) }
  // Подпись управляющего отзывает только устройство той же личности.
  foreignRoot, foreignPrivate, _ := ed25519.GenerateKey(rand.Reader)

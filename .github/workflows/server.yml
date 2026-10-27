@@ -210,7 +210,7 @@ jobs:
       - name: Реакции, избранное, поиск и социальная лента — настоящие клиенты и перезапуск
         shell: bash
         run: |
-          for scenario in reactions favorites space_search feed_social participant_follows user_export; do
+          for scenario in reactions favorites space_search feed_social participant_follows user_export pairing_modes; do
             database="space_community_${scenario}"
             PGPASSWORD=ci-only-password psql -h 127.0.0.1 -U space -d space_test -v ON_ERROR_STOP=1 -c "CREATE DATABASE $database"
             SPACE_DATABASE_URL="postgres://space:ci-only-password@127.0.0.1:5432/$database?sslmode=disable" \

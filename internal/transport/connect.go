@@ -351,12 +351,12 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
-	rpc.RemoteBackupServiceCreateBackupSlotProcedure: true,
-	rpc.RemoteBackupServiceRevokeBackupSlotProcedure: true,
-	rpc.RemoteBackupServicePutBackupProcedure: true,
-	rpc.RemoteBackupServiceGetBackupProcedure: true,
-	rpc.RemoteBackupServiceAdvanceBackupWitnessProcedure: true,
-	rpc.RemoteBackupServiceReadBackupWitnessProcedure: true,
+	rpc.RemoteBackupServiceCreateBackupSlotProcedure:                      true,
+	rpc.RemoteBackupServiceRevokeBackupSlotProcedure:                      true,
+	rpc.RemoteBackupServicePutBackupProcedure:                             true,
+	rpc.RemoteBackupServiceGetBackupProcedure:                             true,
+	rpc.RemoteBackupServiceAdvanceBackupWitnessProcedure:                  true,
+	rpc.RemoteBackupServiceReadBackupWitnessProcedure:                     true,
 	rpc.DirectoryPairingServiceCreateDirectoryTransferProcedure:           true,
 	rpc.DirectoryPairingServiceOpenDirectoryTransferProcedure:             true,
 	rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure:               true,

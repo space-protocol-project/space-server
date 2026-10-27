@@ -13,7 +13,9 @@ import (
 const MaxRPCRequestBytes = 1024 * 1024
 
 func requestMessageLimit(method string) int {
-	if method == rpc.RemoteBackupServicePutBackupProcedure { return 6*1024*1024 }
+	if method == rpc.RemoteBackupServicePutBackupProcedure {
+		return 6 * 1024 * 1024
+	}
 	if method == rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure {
 		return 96 * 1024
 	}

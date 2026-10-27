@@ -61,7 +61,7 @@ func (s *AuthService) CreateRootRotation(ctx context.Context, req *pb.CreateRoot
 	var source string
 	var scopes []string
 	err = tx.QueryRow(ctx, `SELECT p.root_public_key,p.auth_epoch,g.id,g.scopes FROM auth_sessions sess JOIN device_grants g ON g.id=sess.grant_id JOIN principals p ON p.id=g.principal_id
- WHERE sess.token_hash=$1 AND p.id=$2 AND sess.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch AND g.parent_grant_id IS NULL AND g.signature_kind IN ('root','rotation') AND NOT (g.scopes && ARRAY['identity.recover','device.manage']::text[])`, hash[:], authn.Actor(ctx)).Scan(&root, &epoch, &source, &scopes)
+ WHERE sess.token_hash=$1 AND p.id=$2 AND sess.expires_at>now() AND g.expires_at>now() AND g.revoked_at IS NULL AND g.auth_epoch=p.auth_epoch AND g.parent_grant_id IS NULL AND g.signature_kind IN ('root','rotation') AND NOT (g.scopes && ARRAY['identity.recover','device.manage']::text[]) AND NOT EXISTS(SELECT 1 FROM device_pairings pairing WHERE pairing.grant_id=g.id)`, hash[:], authn.Actor(ctx)).Scan(&root, &epoch, &source, &scopes)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, denied()
 	}

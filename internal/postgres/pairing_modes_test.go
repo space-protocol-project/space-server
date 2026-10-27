@@ -67,6 +67,16 @@ func TestPairingFullAndLimitedAuthority(t *testing.T) {
  newDevice, _, _ := ed25519.GenerateKey(rand.Reader)
  if _, err := auth.CreateRootRotation(fullContext, &pb.CreateRootRotationRequest{Profile:"root-rotation-v1", NewRootPublicKey:newRoot, NewDevicePublicKey:newDevice, OperationId:"pairing-authority-test"}); status.Code(err) != codes.Unauthenticated { t.Fatal("Рабочий управляющий меняет root",err) }
  if err := store.pool.QueryRow(ctx,"SELECT scopes FROM device_grants WHERE id=$1",limited.GrantId).Scan(&scopes); err != nil || !slices.Equal(scopes, []string{"chat.read","chat.write"}) { t.Fatal(scopes,err) }
+ // Даже root-подписанный ограниченный pairing не подготавливает смену root.
+ limitedKey, limitedPrivate, _ := ed25519.GenerateKey(rand.Reader)
+ directPair, err := auth.CreatePairing(ctx, &pb.CreatePairingRequest{PublicKey:limitedKey, DeviceName:"limited"})
+ if err != nil { t.Fatal(err) }
+ if _, err := auth.ProposePairing(sourceContext, &pb.ProposePairingRequest{PairingId:directPair.Pairing.Id}); err != nil { t.Fatal(err) }
+ direct := complete(t,ctx,auth,&pb.CreateChallengeRequest{Purpose:"device.register", RootPublicKey:root, DevicePublicKey:limitedKey, PairingId:directPair.Pairing.Id},rootPrivate)
+ directLogin := complete(t,ctx,auth,&pb.CreateChallengeRequest{Purpose:"auth.login", GrantId:direct.GrantId},limitedPrivate)
+ directContext := metadata.AppendToOutgoingContext(ctx,"authorization","Bearer "+directLogin.AccessToken)
+ if _, err := auth.ClaimPairing(directContext,&pb.ClaimPairingRequest{PairingId:directPair.Pairing.Id}); err != nil { t.Fatal(err) }
+ if _, err := auth.CreateRootRotation(directContext,&pb.CreateRootRotationRequest{Profile:"root-rotation-v1", NewRootPublicKey:newRoot, NewDevicePublicKey:newDevice}); status.Code(err) != codes.Unauthenticated { t.Fatal("Ограниченный pairing подготавливает смену root",err) }
  // Подпись управляющего отзывает только устройство той же личности.
  foreignRoot, foreignPrivate, _ := ed25519.GenerateKey(rand.Reader)
  foreign := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose:"device.register", RootPublicKey:foreignRoot, DevicePublicKey:source}, foreignPrivate)

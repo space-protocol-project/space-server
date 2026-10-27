@@ -24,7 +24,11 @@ func backupHeadValid(h *pb.BackupHead) bool {
 	if h == nil || !backupBytes(h.Id, 16) || h.Revision < 1 || h.Revision > 9007199254740991 {
 		return false
 	}
-	return backupBytes(h.Digest, 32) && backupBytes(h.ArchiveDigest, 32) && ((h.Revision == 1 && h.Parent == "") || (h.Revision > 1 && backupBytes(h.Parent, 32)))
+	return backupBytes(h.Digest, 32) && backupBytes(h.ArchiveDigest, 32) && ((h.Revision == 1 && h.Parent == "") || (h.Revision > 1 && backupBytes(h.Parent, 32))) && h.Digest==backupChainDigest(h)
+}
+
+func backupChainDigest(h *pb.BackupHead) string {
+ return backupHash([]byte(fmt.Sprintf("space/backup-chain/v1\n%s\n%d\n%s\n%s",h.Id,h.Revision,h.Parent,h.ArchiveDigest)))
 }
 
 func backupHash(raw []byte) string {

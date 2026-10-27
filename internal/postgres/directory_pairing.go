@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"strings"
 	"time"
@@ -18,6 +19,10 @@ const directoryNoiseProfile = "Noise_XX_25519_ChaChaPoly_SHA256"
 
 func directoryCapability(value, prefix string) ([]byte, error) {
 	if len(value) != 46 || !strings.HasPrefix(value, prefix) {
+		return nil, status.Error(codes.InvalidArgument, "Неверная capability передачи")
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(value[3:])
+	if err != nil || len(decoded) != 32 || base64.RawURLEncoding.EncodeToString(decoded) != value[3:] {
 		return nil, status.Error(codes.InvalidArgument, "Неверная capability передачи")
 	}
 	digest := sha256.Sum256([]byte(value))

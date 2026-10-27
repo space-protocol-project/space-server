@@ -267,63 +267,18 @@ func (x *PutBackupResponse) GetHead() *BackupHead {
 	return nil
 }
 
-type AdvanceBackupWitnessResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Head          *BackupHead            `protobuf:"bytes,1,opt,name=head,proto3" json:"head,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdvanceBackupWitnessResponse) Reset() {
-	*x = AdvanceBackupWitnessResponse{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdvanceBackupWitnessResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdvanceBackupWitnessResponse) ProtoMessage() {}
-
-func (x *AdvanceBackupWitnessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdvanceBackupWitnessResponse.ProtoReflect.Descriptor instead.
-func (*AdvanceBackupWitnessResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AdvanceBackupWitnessResponse) GetHead() *BackupHead {
-	if x != nil {
-		return x.Head
-	}
-	return nil
-}
-
 type CreateBackupSlotRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ReadHash      []byte                 `protobuf:"bytes,2,opt,name=read_hash,json=readHash,proto3" json:"read_hash,omitempty"`
 	WriteHash     []byte                 `protobuf:"bytes,3,opt,name=write_hash,json=writeHash,proto3" json:"write_hash,omitempty"`
-	Witness       bool                   `protobuf:"varint,4,opt,name=witness,proto3" json:"witness,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateBackupSlotRequest) Reset() {
 	*x = CreateBackupSlotRequest{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[6]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +290,7 @@ func (x *CreateBackupSlotRequest) String() string {
 func (*CreateBackupSlotRequest) ProtoMessage() {}
 
 func (x *CreateBackupSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[6]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +303,7 @@ func (x *CreateBackupSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBackupSlotRequest.ProtoReflect.Descriptor instead.
 func (*CreateBackupSlotRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{6}
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateBackupSlotRequest) GetId() string {
@@ -372,13 +327,6 @@ func (x *CreateBackupSlotRequest) GetWriteHash() []byte {
 	return nil
 }
 
-func (x *CreateBackupSlotRequest) GetWitness() bool {
-	if x != nil {
-		return x.Witness
-	}
-	return false
-}
-
 type PutBackupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Head          *BackupHead            `protobuf:"bytes,1,opt,name=head,proto3" json:"head,omitempty"`
@@ -390,7 +338,7 @@ type PutBackupRequest struct {
 
 func (x *PutBackupRequest) Reset() {
 	*x = PutBackupRequest{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[7]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -402,7 +350,7 @@ func (x *PutBackupRequest) String() string {
 func (*PutBackupRequest) ProtoMessage() {}
 
 func (x *PutBackupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[7]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -415,7 +363,7 @@ func (x *PutBackupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutBackupRequest.ProtoReflect.Descriptor instead.
 func (*PutBackupRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{7}
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PutBackupRequest) GetHead() *BackupHead {
@@ -450,7 +398,7 @@ type GetBackupRequest struct {
 
 func (x *GetBackupRequest) Reset() {
 	*x = GetBackupRequest{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[8]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -462,7 +410,7 @@ func (x *GetBackupRequest) String() string {
 func (*GetBackupRequest) ProtoMessage() {}
 
 func (x *GetBackupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[8]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -475,7 +423,7 @@ func (x *GetBackupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBackupRequest.ProtoReflect.Descriptor instead.
 func (*GetBackupRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{8}
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetBackupRequest) GetId() string {
@@ -509,7 +457,7 @@ type GetBackupResponse struct {
 
 func (x *GetBackupResponse) Reset() {
 	*x = GetBackupResponse{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[9]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -521,7 +469,7 @@ func (x *GetBackupResponse) String() string {
 func (*GetBackupResponse) ProtoMessage() {}
 
 func (x *GetBackupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[9]
+	mi := &file_space_v1_remote_backup_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,7 +482,7 @@ func (x *GetBackupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBackupResponse.ProtoReflect.Descriptor instead.
 func (*GetBackupResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{9}
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetBackupResponse) GetHead() *BackupHead {
@@ -551,59 +499,7 @@ func (x *GetBackupResponse) GetArchive() []byte {
 	return nil
 }
 
-type AdvanceBackupWitnessRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Head          *BackupHead            `protobuf:"bytes,1,opt,name=head,proto3" json:"head,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AdvanceBackupWitnessRequest) Reset() {
-	*x = AdvanceBackupWitnessRequest{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AdvanceBackupWitnessRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AdvanceBackupWitnessRequest) ProtoMessage() {}
-
-func (x *AdvanceBackupWitnessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AdvanceBackupWitnessRequest.ProtoReflect.Descriptor instead.
-func (*AdvanceBackupWitnessRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *AdvanceBackupWitnessRequest) GetHead() *BackupHead {
-	if x != nil {
-		return x.Head
-	}
-	return nil
-}
-
-func (x *AdvanceBackupWitnessRequest) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
-type ReadBackupWitnessRequest struct {
+type ReadBackupHeadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
@@ -612,21 +508,21 @@ type ReadBackupWitnessRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadBackupWitnessRequest) Reset() {
-	*x = ReadBackupWitnessRequest{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[11]
+func (x *ReadBackupHeadRequest) Reset() {
+	*x = ReadBackupHeadRequest{}
+	mi := &file_space_v1_remote_backup_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadBackupWitnessRequest) String() string {
+func (x *ReadBackupHeadRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadBackupWitnessRequest) ProtoMessage() {}
+func (*ReadBackupHeadRequest) ProtoMessage() {}
 
-func (x *ReadBackupWitnessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[11]
+func (x *ReadBackupHeadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_remote_backup_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -637,33 +533,33 @@ func (x *ReadBackupWitnessRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadBackupWitnessRequest.ProtoReflect.Descriptor instead.
-func (*ReadBackupWitnessRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{11}
+// Deprecated: Use ReadBackupHeadRequest.ProtoReflect.Descriptor instead.
+func (*ReadBackupHeadRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ReadBackupWitnessRequest) GetId() string {
+func (x *ReadBackupHeadRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *ReadBackupWitnessRequest) GetToken() string {
+func (x *ReadBackupHeadRequest) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
 	return ""
 }
 
-func (x *ReadBackupWitnessRequest) GetChallenge() string {
+func (x *ReadBackupHeadRequest) GetChallenge() string {
 	if x != nil {
 		return x.Challenge
 	}
 	return ""
 }
 
-type ReadBackupWitnessResponse struct {
+type ReadBackupHeadResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Head          *BackupHead            `protobuf:"bytes,1,opt,name=head,proto3" json:"head,omitempty"`
 	Challenge     string                 `protobuf:"bytes,2,opt,name=challenge,proto3" json:"challenge,omitempty"`
@@ -672,21 +568,21 @@ type ReadBackupWitnessResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadBackupWitnessResponse) Reset() {
-	*x = ReadBackupWitnessResponse{}
-	mi := &file_space_v1_remote_backup_proto_msgTypes[12]
+func (x *ReadBackupHeadResponse) Reset() {
+	*x = ReadBackupHeadResponse{}
+	mi := &file_space_v1_remote_backup_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadBackupWitnessResponse) String() string {
+func (x *ReadBackupHeadResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadBackupWitnessResponse) ProtoMessage() {}
+func (*ReadBackupHeadResponse) ProtoMessage() {}
 
-func (x *ReadBackupWitnessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_remote_backup_proto_msgTypes[12]
+func (x *ReadBackupHeadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_remote_backup_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -697,26 +593,26 @@ func (x *ReadBackupWitnessResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadBackupWitnessResponse.ProtoReflect.Descriptor instead.
-func (*ReadBackupWitnessResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{12}
+// Deprecated: Use ReadBackupHeadResponse.ProtoReflect.Descriptor instead.
+func (*ReadBackupHeadResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_remote_backup_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *ReadBackupWitnessResponse) GetHead() *BackupHead {
+func (x *ReadBackupHeadResponse) GetHead() *BackupHead {
 	if x != nil {
 		return x.Head
 	}
 	return nil
 }
 
-func (x *ReadBackupWitnessResponse) GetChallenge() string {
+func (x *ReadBackupHeadResponse) GetChallenge() string {
 	if x != nil {
 		return x.Challenge
 	}
 	return ""
 }
 
-func (x *ReadBackupWitnessResponse) GetSignature() []byte {
+func (x *ReadBackupHeadResponse) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
 	}
@@ -741,15 +637,12 @@ const file_space_v1_remote_backup_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1a\n" +
 	"\x18RevokeBackupSlotResponse\"=\n" +
 	"\x11PutBackupResponse\x12(\n" +
-	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\"H\n" +
-	"\x1cAdvanceBackupWitnessResponse\x12(\n" +
-	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\"\x7f\n" +
+	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\"e\n" +
 	"\x17CreateBackupSlotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tread_hash\x18\x02 \x01(\fR\breadHash\x12\x1d\n" +
 	"\n" +
-	"write_hash\x18\x03 \x01(\fR\twriteHash\x12\x18\n" +
-	"\awitness\x18\x04 \x01(\bR\awitness\"l\n" +
+	"write_hash\x18\x03 \x01(\fR\twriteHash\"l\n" +
 	"\x10PutBackupRequest\x12(\n" +
 	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12\x18\n" +
@@ -760,25 +653,21 @@ const file_space_v1_remote_backup_proto_rawDesc = "" +
 	"\brevision\x18\x03 \x01(\x03R\brevision\"W\n" +
 	"\x11GetBackupResponse\x12(\n" +
 	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\x12\x18\n" +
-	"\aarchive\x18\x02 \x01(\fR\aarchive\"]\n" +
-	"\x1bAdvanceBackupWitnessRequest\x12(\n" +
-	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"^\n" +
-	"\x18ReadBackupWitnessRequest\x12\x0e\n" +
+	"\aarchive\x18\x02 \x01(\fR\aarchive\"[\n" +
+	"\x15ReadBackupHeadRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12\x1c\n" +
-	"\tchallenge\x18\x03 \x01(\tR\tchallenge\"\x81\x01\n" +
-	"\x19ReadBackupWitnessResponse\x12(\n" +
+	"\tchallenge\x18\x03 \x01(\tR\tchallenge\"~\n" +
+	"\x16ReadBackupHeadResponse\x12(\n" +
 	"\x04head\x18\x01 \x01(\v2\x14.space.v1.BackupHeadR\x04head\x12\x1c\n" +
 	"\tchallenge\x18\x02 \x01(\tR\tchallenge\x12\x1c\n" +
-	"\tsignature\x18\x03 \x01(\fR\tsignature2\x9c\x04\n" +
+	"\tsignature\x18\x03 \x01(\fR\tsignature2\xac\x03\n" +
 	"\x13RemoteBackupService\x12Y\n" +
 	"\x10CreateBackupSlot\x12!.space.v1.CreateBackupSlotRequest\x1a\".space.v1.CreateBackupSlotResponse\x12Y\n" +
 	"\x10RevokeBackupSlot\x12!.space.v1.RevokeBackupSlotRequest\x1a\".space.v1.RevokeBackupSlotResponse\x12D\n" +
 	"\tPutBackup\x12\x1a.space.v1.PutBackupRequest\x1a\x1b.space.v1.PutBackupResponse\x12D\n" +
-	"\tGetBackup\x12\x1a.space.v1.GetBackupRequest\x1a\x1b.space.v1.GetBackupResponse\x12e\n" +
-	"\x14AdvanceBackupWitness\x12%.space.v1.AdvanceBackupWitnessRequest\x1a&.space.v1.AdvanceBackupWitnessResponse\x12\\\n" +
-	"\x11ReadBackupWitness\x12\".space.v1.ReadBackupWitnessRequest\x1a#.space.v1.ReadBackupWitnessResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
+	"\tGetBackup\x12\x1a.space.v1.GetBackupRequest\x1a\x1b.space.v1.GetBackupResponse\x12S\n" +
+	"\x0eReadBackupHead\x12\x1f.space.v1.ReadBackupHeadRequest\x1a .space.v1.ReadBackupHeadResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_remote_backup_proto_rawDescOnce sync.Once
@@ -792,47 +681,41 @@ func file_space_v1_remote_backup_proto_rawDescGZIP() []byte {
 	return file_space_v1_remote_backup_proto_rawDescData
 }
 
-var file_space_v1_remote_backup_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_space_v1_remote_backup_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_space_v1_remote_backup_proto_goTypes = []any{
-	(*BackupHead)(nil),                   // 0: space.v1.BackupHead
-	(*CreateBackupSlotResponse)(nil),     // 1: space.v1.CreateBackupSlotResponse
-	(*RevokeBackupSlotRequest)(nil),      // 2: space.v1.RevokeBackupSlotRequest
-	(*RevokeBackupSlotResponse)(nil),     // 3: space.v1.RevokeBackupSlotResponse
-	(*PutBackupResponse)(nil),            // 4: space.v1.PutBackupResponse
-	(*AdvanceBackupWitnessResponse)(nil), // 5: space.v1.AdvanceBackupWitnessResponse
-	(*CreateBackupSlotRequest)(nil),      // 6: space.v1.CreateBackupSlotRequest
-	(*PutBackupRequest)(nil),             // 7: space.v1.PutBackupRequest
-	(*GetBackupRequest)(nil),             // 8: space.v1.GetBackupRequest
-	(*GetBackupResponse)(nil),            // 9: space.v1.GetBackupResponse
-	(*AdvanceBackupWitnessRequest)(nil),  // 10: space.v1.AdvanceBackupWitnessRequest
-	(*ReadBackupWitnessRequest)(nil),     // 11: space.v1.ReadBackupWitnessRequest
-	(*ReadBackupWitnessResponse)(nil),    // 12: space.v1.ReadBackupWitnessResponse
+	(*BackupHead)(nil),               // 0: space.v1.BackupHead
+	(*CreateBackupSlotResponse)(nil), // 1: space.v1.CreateBackupSlotResponse
+	(*RevokeBackupSlotRequest)(nil),  // 2: space.v1.RevokeBackupSlotRequest
+	(*RevokeBackupSlotResponse)(nil), // 3: space.v1.RevokeBackupSlotResponse
+	(*PutBackupResponse)(nil),        // 4: space.v1.PutBackupResponse
+	(*CreateBackupSlotRequest)(nil),  // 5: space.v1.CreateBackupSlotRequest
+	(*PutBackupRequest)(nil),         // 6: space.v1.PutBackupRequest
+	(*GetBackupRequest)(nil),         // 7: space.v1.GetBackupRequest
+	(*GetBackupResponse)(nil),        // 8: space.v1.GetBackupResponse
+	(*ReadBackupHeadRequest)(nil),    // 9: space.v1.ReadBackupHeadRequest
+	(*ReadBackupHeadResponse)(nil),   // 10: space.v1.ReadBackupHeadResponse
 }
 var file_space_v1_remote_backup_proto_depIdxs = []int32{
 	0,  // 0: space.v1.CreateBackupSlotResponse.head:type_name -> space.v1.BackupHead
 	0,  // 1: space.v1.PutBackupResponse.head:type_name -> space.v1.BackupHead
-	0,  // 2: space.v1.AdvanceBackupWitnessResponse.head:type_name -> space.v1.BackupHead
-	0,  // 3: space.v1.PutBackupRequest.head:type_name -> space.v1.BackupHead
-	0,  // 4: space.v1.GetBackupResponse.head:type_name -> space.v1.BackupHead
-	0,  // 5: space.v1.AdvanceBackupWitnessRequest.head:type_name -> space.v1.BackupHead
-	0,  // 6: space.v1.ReadBackupWitnessResponse.head:type_name -> space.v1.BackupHead
-	6,  // 7: space.v1.RemoteBackupService.CreateBackupSlot:input_type -> space.v1.CreateBackupSlotRequest
-	2,  // 8: space.v1.RemoteBackupService.RevokeBackupSlot:input_type -> space.v1.RevokeBackupSlotRequest
-	7,  // 9: space.v1.RemoteBackupService.PutBackup:input_type -> space.v1.PutBackupRequest
-	8,  // 10: space.v1.RemoteBackupService.GetBackup:input_type -> space.v1.GetBackupRequest
-	10, // 11: space.v1.RemoteBackupService.AdvanceBackupWitness:input_type -> space.v1.AdvanceBackupWitnessRequest
-	11, // 12: space.v1.RemoteBackupService.ReadBackupWitness:input_type -> space.v1.ReadBackupWitnessRequest
-	1,  // 13: space.v1.RemoteBackupService.CreateBackupSlot:output_type -> space.v1.CreateBackupSlotResponse
-	3,  // 14: space.v1.RemoteBackupService.RevokeBackupSlot:output_type -> space.v1.RevokeBackupSlotResponse
-	4,  // 15: space.v1.RemoteBackupService.PutBackup:output_type -> space.v1.PutBackupResponse
-	9,  // 16: space.v1.RemoteBackupService.GetBackup:output_type -> space.v1.GetBackupResponse
-	5,  // 17: space.v1.RemoteBackupService.AdvanceBackupWitness:output_type -> space.v1.AdvanceBackupWitnessResponse
-	12, // 18: space.v1.RemoteBackupService.ReadBackupWitness:output_type -> space.v1.ReadBackupWitnessResponse
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	0,  // 2: space.v1.PutBackupRequest.head:type_name -> space.v1.BackupHead
+	0,  // 3: space.v1.GetBackupResponse.head:type_name -> space.v1.BackupHead
+	0,  // 4: space.v1.ReadBackupHeadResponse.head:type_name -> space.v1.BackupHead
+	5,  // 5: space.v1.RemoteBackupService.CreateBackupSlot:input_type -> space.v1.CreateBackupSlotRequest
+	2,  // 6: space.v1.RemoteBackupService.RevokeBackupSlot:input_type -> space.v1.RevokeBackupSlotRequest
+	6,  // 7: space.v1.RemoteBackupService.PutBackup:input_type -> space.v1.PutBackupRequest
+	7,  // 8: space.v1.RemoteBackupService.GetBackup:input_type -> space.v1.GetBackupRequest
+	9,  // 9: space.v1.RemoteBackupService.ReadBackupHead:input_type -> space.v1.ReadBackupHeadRequest
+	1,  // 10: space.v1.RemoteBackupService.CreateBackupSlot:output_type -> space.v1.CreateBackupSlotResponse
+	3,  // 11: space.v1.RemoteBackupService.RevokeBackupSlot:output_type -> space.v1.RevokeBackupSlotResponse
+	4,  // 12: space.v1.RemoteBackupService.PutBackup:output_type -> space.v1.PutBackupResponse
+	8,  // 13: space.v1.RemoteBackupService.GetBackup:output_type -> space.v1.GetBackupResponse
+	10, // 14: space.v1.RemoteBackupService.ReadBackupHead:output_type -> space.v1.ReadBackupHeadResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_remote_backup_proto_init() }
@@ -846,7 +729,7 @@ func file_space_v1_remote_backup_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_remote_backup_proto_rawDesc), len(file_space_v1_remote_backup_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

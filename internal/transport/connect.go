@@ -355,7 +355,7 @@ var connectProcedures = map[string]bool{
 	rpc.RemoteBackupServiceRevokeBackupSlotProcedure:                      true,
 	rpc.RemoteBackupServicePutBackupProcedure:                             true,
 	rpc.RemoteBackupServiceGetBackupProcedure:                             true,
-	rpc.RemoteBackupServiceReadBackupHeadProcedure:                     true,
+	rpc.RemoteBackupServiceReadBackupHeadProcedure:                        true,
 	rpc.DirectoryPairingServiceCreateDirectoryTransferProcedure:           true,
 	rpc.DirectoryPairingServiceOpenDirectoryTransferProcedure:             true,
 	rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure:               true,

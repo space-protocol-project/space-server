@@ -45,12 +45,9 @@ const (
 	// RemoteBackupServiceGetBackupProcedure is the fully-qualified name of the RemoteBackupService's
 	// GetBackup RPC.
 	RemoteBackupServiceGetBackupProcedure = "/space.v1.RemoteBackupService/GetBackup"
-	// RemoteBackupServiceAdvanceBackupWitnessProcedure is the fully-qualified name of the
-	// RemoteBackupService's AdvanceBackupWitness RPC.
-	RemoteBackupServiceAdvanceBackupWitnessProcedure = "/space.v1.RemoteBackupService/AdvanceBackupWitness"
-	// RemoteBackupServiceReadBackupWitnessProcedure is the fully-qualified name of the
-	// RemoteBackupService's ReadBackupWitness RPC.
-	RemoteBackupServiceReadBackupWitnessProcedure = "/space.v1.RemoteBackupService/ReadBackupWitness"
+	// RemoteBackupServiceReadBackupHeadProcedure is the fully-qualified name of the
+	// RemoteBackupService's ReadBackupHead RPC.
+	RemoteBackupServiceReadBackupHeadProcedure = "/space.v1.RemoteBackupService/ReadBackupHead"
 )
 
 // RemoteBackupServiceClient is a client for the space.v1.RemoteBackupService service.
@@ -59,8 +56,7 @@ type RemoteBackupServiceClient interface {
 	RevokeBackupSlot(context.Context, *connect.Request[v1.RevokeBackupSlotRequest]) (*connect.Response[v1.RevokeBackupSlotResponse], error)
 	PutBackup(context.Context, *connect.Request[v1.PutBackupRequest]) (*connect.Response[v1.PutBackupResponse], error)
 	GetBackup(context.Context, *connect.Request[v1.GetBackupRequest]) (*connect.Response[v1.GetBackupResponse], error)
-	AdvanceBackupWitness(context.Context, *connect.Request[v1.AdvanceBackupWitnessRequest]) (*connect.Response[v1.AdvanceBackupWitnessResponse], error)
-	ReadBackupWitness(context.Context, *connect.Request[v1.ReadBackupWitnessRequest]) (*connect.Response[v1.ReadBackupWitnessResponse], error)
+	ReadBackupHead(context.Context, *connect.Request[v1.ReadBackupHeadRequest]) (*connect.Response[v1.ReadBackupHeadResponse], error)
 }
 
 // NewRemoteBackupServiceClient constructs a client for the space.v1.RemoteBackupService service. By
@@ -98,16 +94,10 @@ func NewRemoteBackupServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(remoteBackupServiceMethods.ByName("GetBackup")),
 			connect.WithClientOptions(opts...),
 		),
-		advanceBackupWitness: connect.NewClient[v1.AdvanceBackupWitnessRequest, v1.AdvanceBackupWitnessResponse](
+		readBackupHead: connect.NewClient[v1.ReadBackupHeadRequest, v1.ReadBackupHeadResponse](
 			httpClient,
-			baseURL+RemoteBackupServiceAdvanceBackupWitnessProcedure,
-			connect.WithSchema(remoteBackupServiceMethods.ByName("AdvanceBackupWitness")),
-			connect.WithClientOptions(opts...),
-		),
-		readBackupWitness: connect.NewClient[v1.ReadBackupWitnessRequest, v1.ReadBackupWitnessResponse](
-			httpClient,
-			baseURL+RemoteBackupServiceReadBackupWitnessProcedure,
-			connect.WithSchema(remoteBackupServiceMethods.ByName("ReadBackupWitness")),
+			baseURL+RemoteBackupServiceReadBackupHeadProcedure,
+			connect.WithSchema(remoteBackupServiceMethods.ByName("ReadBackupHead")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -115,12 +105,11 @@ func NewRemoteBackupServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // remoteBackupServiceClient implements RemoteBackupServiceClient.
 type remoteBackupServiceClient struct {
-	createBackupSlot     *connect.Client[v1.CreateBackupSlotRequest, v1.CreateBackupSlotResponse]
-	revokeBackupSlot     *connect.Client[v1.RevokeBackupSlotRequest, v1.RevokeBackupSlotResponse]
-	putBackup            *connect.Client[v1.PutBackupRequest, v1.PutBackupResponse]
-	getBackup            *connect.Client[v1.GetBackupRequest, v1.GetBackupResponse]
-	advanceBackupWitness *connect.Client[v1.AdvanceBackupWitnessRequest, v1.AdvanceBackupWitnessResponse]
-	readBackupWitness    *connect.Client[v1.ReadBackupWitnessRequest, v1.ReadBackupWitnessResponse]
+	createBackupSlot *connect.Client[v1.CreateBackupSlotRequest, v1.CreateBackupSlotResponse]
+	revokeBackupSlot *connect.Client[v1.RevokeBackupSlotRequest, v1.RevokeBackupSlotResponse]
+	putBackup        *connect.Client[v1.PutBackupRequest, v1.PutBackupResponse]
+	getBackup        *connect.Client[v1.GetBackupRequest, v1.GetBackupResponse]
+	readBackupHead   *connect.Client[v1.ReadBackupHeadRequest, v1.ReadBackupHeadResponse]
 }
 
 // CreateBackupSlot calls space.v1.RemoteBackupService.CreateBackupSlot.
@@ -143,14 +132,9 @@ func (c *remoteBackupServiceClient) GetBackup(ctx context.Context, req *connect.
 	return c.getBackup.CallUnary(ctx, req)
 }
 
-// AdvanceBackupWitness calls space.v1.RemoteBackupService.AdvanceBackupWitness.
-func (c *remoteBackupServiceClient) AdvanceBackupWitness(ctx context.Context, req *connect.Request[v1.AdvanceBackupWitnessRequest]) (*connect.Response[v1.AdvanceBackupWitnessResponse], error) {
-	return c.advanceBackupWitness.CallUnary(ctx, req)
-}
-
-// ReadBackupWitness calls space.v1.RemoteBackupService.ReadBackupWitness.
-func (c *remoteBackupServiceClient) ReadBackupWitness(ctx context.Context, req *connect.Request[v1.ReadBackupWitnessRequest]) (*connect.Response[v1.ReadBackupWitnessResponse], error) {
-	return c.readBackupWitness.CallUnary(ctx, req)
+// ReadBackupHead calls space.v1.RemoteBackupService.ReadBackupHead.
+func (c *remoteBackupServiceClient) ReadBackupHead(ctx context.Context, req *connect.Request[v1.ReadBackupHeadRequest]) (*connect.Response[v1.ReadBackupHeadResponse], error) {
+	return c.readBackupHead.CallUnary(ctx, req)
 }
 
 // RemoteBackupServiceHandler is an implementation of the space.v1.RemoteBackupService service.
@@ -159,8 +143,7 @@ type RemoteBackupServiceHandler interface {
 	RevokeBackupSlot(context.Context, *connect.Request[v1.RevokeBackupSlotRequest]) (*connect.Response[v1.RevokeBackupSlotResponse], error)
 	PutBackup(context.Context, *connect.Request[v1.PutBackupRequest]) (*connect.Response[v1.PutBackupResponse], error)
 	GetBackup(context.Context, *connect.Request[v1.GetBackupRequest]) (*connect.Response[v1.GetBackupResponse], error)
-	AdvanceBackupWitness(context.Context, *connect.Request[v1.AdvanceBackupWitnessRequest]) (*connect.Response[v1.AdvanceBackupWitnessResponse], error)
-	ReadBackupWitness(context.Context, *connect.Request[v1.ReadBackupWitnessRequest]) (*connect.Response[v1.ReadBackupWitnessResponse], error)
+	ReadBackupHead(context.Context, *connect.Request[v1.ReadBackupHeadRequest]) (*connect.Response[v1.ReadBackupHeadResponse], error)
 }
 
 // NewRemoteBackupServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -194,16 +177,10 @@ func NewRemoteBackupServiceHandler(svc RemoteBackupServiceHandler, opts ...conne
 		connect.WithSchema(remoteBackupServiceMethods.ByName("GetBackup")),
 		connect.WithHandlerOptions(opts...),
 	)
-	remoteBackupServiceAdvanceBackupWitnessHandler := connect.NewUnaryHandler(
-		RemoteBackupServiceAdvanceBackupWitnessProcedure,
-		svc.AdvanceBackupWitness,
-		connect.WithSchema(remoteBackupServiceMethods.ByName("AdvanceBackupWitness")),
-		connect.WithHandlerOptions(opts...),
-	)
-	remoteBackupServiceReadBackupWitnessHandler := connect.NewUnaryHandler(
-		RemoteBackupServiceReadBackupWitnessProcedure,
-		svc.ReadBackupWitness,
-		connect.WithSchema(remoteBackupServiceMethods.ByName("ReadBackupWitness")),
+	remoteBackupServiceReadBackupHeadHandler := connect.NewUnaryHandler(
+		RemoteBackupServiceReadBackupHeadProcedure,
+		svc.ReadBackupHead,
+		connect.WithSchema(remoteBackupServiceMethods.ByName("ReadBackupHead")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/space.v1.RemoteBackupService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -216,10 +193,8 @@ func NewRemoteBackupServiceHandler(svc RemoteBackupServiceHandler, opts ...conne
 			remoteBackupServicePutBackupHandler.ServeHTTP(w, r)
 		case RemoteBackupServiceGetBackupProcedure:
 			remoteBackupServiceGetBackupHandler.ServeHTTP(w, r)
-		case RemoteBackupServiceAdvanceBackupWitnessProcedure:
-			remoteBackupServiceAdvanceBackupWitnessHandler.ServeHTTP(w, r)
-		case RemoteBackupServiceReadBackupWitnessProcedure:
-			remoteBackupServiceReadBackupWitnessHandler.ServeHTTP(w, r)
+		case RemoteBackupServiceReadBackupHeadProcedure:
+			remoteBackupServiceReadBackupHeadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -245,10 +220,6 @@ func (UnimplementedRemoteBackupServiceHandler) GetBackup(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.RemoteBackupService.GetBackup is not implemented"))
 }
 
-func (UnimplementedRemoteBackupServiceHandler) AdvanceBackupWitness(context.Context, *connect.Request[v1.AdvanceBackupWitnessRequest]) (*connect.Response[v1.AdvanceBackupWitnessResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.RemoteBackupService.AdvanceBackupWitness is not implemented"))
-}
-
-func (UnimplementedRemoteBackupServiceHandler) ReadBackupWitness(context.Context, *connect.Request[v1.ReadBackupWitnessRequest]) (*connect.Response[v1.ReadBackupWitnessResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.RemoteBackupService.ReadBackupWitness is not implemented"))
+func (UnimplementedRemoteBackupServiceHandler) ReadBackupHead(context.Context, *connect.Request[v1.ReadBackupHeadRequest]) (*connect.Response[v1.ReadBackupHeadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.RemoteBackupService.ReadBackupHead is not implemented"))
 }

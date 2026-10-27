@@ -19,26 +19,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RemoteBackupService_CreateBackupSlot_FullMethodName     = "/space.v1.RemoteBackupService/CreateBackupSlot"
-	RemoteBackupService_RevokeBackupSlot_FullMethodName     = "/space.v1.RemoteBackupService/RevokeBackupSlot"
-	RemoteBackupService_PutBackup_FullMethodName            = "/space.v1.RemoteBackupService/PutBackup"
-	RemoteBackupService_GetBackup_FullMethodName            = "/space.v1.RemoteBackupService/GetBackup"
-	RemoteBackupService_AdvanceBackupWitness_FullMethodName = "/space.v1.RemoteBackupService/AdvanceBackupWitness"
-	RemoteBackupService_ReadBackupWitness_FullMethodName    = "/space.v1.RemoteBackupService/ReadBackupWitness"
+	RemoteBackupService_CreateBackupSlot_FullMethodName = "/space.v1.RemoteBackupService/CreateBackupSlot"
+	RemoteBackupService_RevokeBackupSlot_FullMethodName = "/space.v1.RemoteBackupService/RevokeBackupSlot"
+	RemoteBackupService_PutBackup_FullMethodName        = "/space.v1.RemoteBackupService/PutBackup"
+	RemoteBackupService_GetBackup_FullMethodName        = "/space.v1.RemoteBackupService/GetBackup"
+	RemoteBackupService_ReadBackupHead_FullMethodName   = "/space.v1.RemoteBackupService/ReadBackupHead"
 )
 
 // RemoteBackupServiceClient is the client API for RemoteBackupService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// core.directory.backup.v1: независимые хранилище и свидетель версии.
+// core.directory.backup.v1: зашифрованные копии на сервере пространства.
 type RemoteBackupServiceClient interface {
 	CreateBackupSlot(ctx context.Context, in *CreateBackupSlotRequest, opts ...grpc.CallOption) (*CreateBackupSlotResponse, error)
 	RevokeBackupSlot(ctx context.Context, in *RevokeBackupSlotRequest, opts ...grpc.CallOption) (*RevokeBackupSlotResponse, error)
 	PutBackup(ctx context.Context, in *PutBackupRequest, opts ...grpc.CallOption) (*PutBackupResponse, error)
 	GetBackup(ctx context.Context, in *GetBackupRequest, opts ...grpc.CallOption) (*GetBackupResponse, error)
-	AdvanceBackupWitness(ctx context.Context, in *AdvanceBackupWitnessRequest, opts ...grpc.CallOption) (*AdvanceBackupWitnessResponse, error)
-	ReadBackupWitness(ctx context.Context, in *ReadBackupWitnessRequest, opts ...grpc.CallOption) (*ReadBackupWitnessResponse, error)
+	ReadBackupHead(ctx context.Context, in *ReadBackupHeadRequest, opts ...grpc.CallOption) (*ReadBackupHeadResponse, error)
 }
 
 type remoteBackupServiceClient struct {
@@ -89,20 +87,10 @@ func (c *remoteBackupServiceClient) GetBackup(ctx context.Context, in *GetBackup
 	return out, nil
 }
 
-func (c *remoteBackupServiceClient) AdvanceBackupWitness(ctx context.Context, in *AdvanceBackupWitnessRequest, opts ...grpc.CallOption) (*AdvanceBackupWitnessResponse, error) {
+func (c *remoteBackupServiceClient) ReadBackupHead(ctx context.Context, in *ReadBackupHeadRequest, opts ...grpc.CallOption) (*ReadBackupHeadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AdvanceBackupWitnessResponse)
-	err := c.cc.Invoke(ctx, RemoteBackupService_AdvanceBackupWitness_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *remoteBackupServiceClient) ReadBackupWitness(ctx context.Context, in *ReadBackupWitnessRequest, opts ...grpc.CallOption) (*ReadBackupWitnessResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadBackupWitnessResponse)
-	err := c.cc.Invoke(ctx, RemoteBackupService_ReadBackupWitness_FullMethodName, in, out, cOpts...)
+	out := new(ReadBackupHeadResponse)
+	err := c.cc.Invoke(ctx, RemoteBackupService_ReadBackupHead_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +101,13 @@ func (c *remoteBackupServiceClient) ReadBackupWitness(ctx context.Context, in *R
 // All implementations must embed UnimplementedRemoteBackupServiceServer
 // for forward compatibility.
 //
-// core.directory.backup.v1: независимые хранилище и свидетель версии.
+// core.directory.backup.v1: зашифрованные копии на сервере пространства.
 type RemoteBackupServiceServer interface {
 	CreateBackupSlot(context.Context, *CreateBackupSlotRequest) (*CreateBackupSlotResponse, error)
 	RevokeBackupSlot(context.Context, *RevokeBackupSlotRequest) (*RevokeBackupSlotResponse, error)
 	PutBackup(context.Context, *PutBackupRequest) (*PutBackupResponse, error)
 	GetBackup(context.Context, *GetBackupRequest) (*GetBackupResponse, error)
-	AdvanceBackupWitness(context.Context, *AdvanceBackupWitnessRequest) (*AdvanceBackupWitnessResponse, error)
-	ReadBackupWitness(context.Context, *ReadBackupWitnessRequest) (*ReadBackupWitnessResponse, error)
+	ReadBackupHead(context.Context, *ReadBackupHeadRequest) (*ReadBackupHeadResponse, error)
 	mustEmbedUnimplementedRemoteBackupServiceServer()
 }
 
@@ -143,11 +130,8 @@ func (UnimplementedRemoteBackupServiceServer) PutBackup(context.Context, *PutBac
 func (UnimplementedRemoteBackupServiceServer) GetBackup(context.Context, *GetBackupRequest) (*GetBackupResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBackup not implemented")
 }
-func (UnimplementedRemoteBackupServiceServer) AdvanceBackupWitness(context.Context, *AdvanceBackupWitnessRequest) (*AdvanceBackupWitnessResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method AdvanceBackupWitness not implemented")
-}
-func (UnimplementedRemoteBackupServiceServer) ReadBackupWitness(context.Context, *ReadBackupWitnessRequest) (*ReadBackupWitnessResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReadBackupWitness not implemented")
+func (UnimplementedRemoteBackupServiceServer) ReadBackupHead(context.Context, *ReadBackupHeadRequest) (*ReadBackupHeadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadBackupHead not implemented")
 }
 func (UnimplementedRemoteBackupServiceServer) mustEmbedUnimplementedRemoteBackupServiceServer() {}
 func (UnimplementedRemoteBackupServiceServer) testEmbeddedByValue()                             {}
@@ -242,38 +226,20 @@ func _RemoteBackupService_GetBackup_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RemoteBackupService_AdvanceBackupWitness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AdvanceBackupWitnessRequest)
+func _RemoteBackupService_ReadBackupHead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadBackupHeadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RemoteBackupServiceServer).AdvanceBackupWitness(ctx, in)
+		return srv.(RemoteBackupServiceServer).ReadBackupHead(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RemoteBackupService_AdvanceBackupWitness_FullMethodName,
+		FullMethod: RemoteBackupService_ReadBackupHead_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RemoteBackupServiceServer).AdvanceBackupWitness(ctx, req.(*AdvanceBackupWitnessRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RemoteBackupService_ReadBackupWitness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadBackupWitnessRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RemoteBackupServiceServer).ReadBackupWitness(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RemoteBackupService_ReadBackupWitness_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RemoteBackupServiceServer).ReadBackupWitness(ctx, req.(*ReadBackupWitnessRequest))
+		return srv.(RemoteBackupServiceServer).ReadBackupHead(ctx, req.(*ReadBackupHeadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -302,12 +268,8 @@ var RemoteBackupService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RemoteBackupService_GetBackup_Handler,
 		},
 		{
-			MethodName: "AdvanceBackupWitness",
-			Handler:    _RemoteBackupService_AdvanceBackupWitness_Handler,
-		},
-		{
-			MethodName: "ReadBackupWitness",
-			Handler:    _RemoteBackupService_ReadBackupWitness_Handler,
+			MethodName: "ReadBackupHead",
+			Handler:    _RemoteBackupService_ReadBackupHead_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

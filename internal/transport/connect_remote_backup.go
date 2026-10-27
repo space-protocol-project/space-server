@@ -8,6 +8,7 @@ import (
 )
 
 type connectRemoteBackup struct { client pb.RemoteBackupServiceClient }
+func (s connectRemoteBackup) RevokeBackupSlot(ctx context.Context, req *connect.Request[pb.RevokeBackupSlotRequest]) (*connect.Response[pb.RevokeBackupSlotResponse],error) { return bridgeUnary(ctx,req,s.client.RevokeBackupSlot) }
 func (s connectRemoteBackup) CreateBackupSlot(ctx context.Context, req *connect.Request[pb.CreateBackupSlotRequest]) (*connect.Response[pb.CreateBackupSlotResponse],error) { return bridgeUnary(ctx,req,s.client.CreateBackupSlot) }
 func (s connectRemoteBackup) PutBackup(ctx context.Context, req *connect.Request[pb.PutBackupRequest]) (*connect.Response[pb.PutBackupResponse],error) { return bridgeUnary(ctx,req,s.client.PutBackup) }
 func (s connectRemoteBackup) AdvanceBackupWitness(ctx context.Context, req *connect.Request[pb.AdvanceBackupWitnessRequest]) (*connect.Response[pb.AdvanceBackupWitnessResponse],error) { return bridgeUnary(ctx,req,s.client.AdvanceBackupWitness) }

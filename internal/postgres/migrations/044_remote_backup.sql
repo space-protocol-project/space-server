@@ -4,6 +4,7 @@ CREATE TABLE remote_backup_slots (
  read_hash bytea NOT NULL CHECK(octet_length(read_hash)=32),
  write_hash bytea NOT NULL CHECK(octet_length(write_hash)=32),
  witness boolean NOT NULL,
+ revoked boolean NOT NULL DEFAULT false,
  revision bigint NOT NULL DEFAULT 0,
  digest text NOT NULL DEFAULT '',
  parent text NOT NULL DEFAULT '',

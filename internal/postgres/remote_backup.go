@@ -45,7 +45,7 @@ func (s *Store) createBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRe
  if err=tx.QueryRow(ctx,"SELECT count(*),count(*) FILTER(WHERE owner_id=$1) FROM remote_backup_slots",authn.Actor(ctx)).Scan(&count,&own); err!=nil { return nil,databaseError(ctx,err) }
  // Повтор создания не меняет права и не расходует дополнительную квоту.
  var same bool
- if err=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM remote_backup_slots WHERE id=$1 AND owner_id=$2 AND read_hash=$3 AND write_hash=$4 AND witness=$5)",req.Id,authn.Actor(ctx),req.ReadHash,req.WriteHash,req.Witness).Scan(&same); err!=nil { return nil,databaseError(ctx,err) }
+ if err=tx.QueryRow(ctx,"SELECT EXISTS(SELECT 1 FROM remote_backup_slots WHERE id=$1 AND owner_id=$2 AND read_hash=$3 AND write_hash=$4 AND witness=$5 AND NOT revoked)",req.Id,authn.Actor(ctx),req.ReadHash,req.WriteHash,req.Witness).Scan(&same); err!=nil { return nil,databaseError(ctx,err) }
  if same { return &pb.BackupHead{Id:req.Id},nil }
  if count>=64 || own>=4 { return nil,status.Error(codes.ResourceExhausted,"Квота слотов копий") }
  tag,err:=tx.Exec(ctx,"INSERT INTO remote_backup_slots(id,owner_id,read_hash,write_hash,witness) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",req.Id,authn.Actor(ctx),req.ReadHash,req.WriteHash,req.Witness)
@@ -58,7 +58,7 @@ func backupSlot(ctx context.Context, tx pgx.Tx, id,token string, write,witness b
  if !backupBytes(id,16) || !backupBytes(token,32) { return nil,denied() }
  h:=sha256.Sum256([]byte(token)); column:="read_hash"; if write { column="write_hash" }
  result:=&pb.BackupHead{Id:id}
- err:=tx.QueryRow(ctx,"SELECT revision,digest,parent,archive_digest FROM remote_backup_slots WHERE id=$1 AND "+column+"=$2 AND witness=$3 FOR UPDATE",id,h[:],witness).Scan(&result.Revision,&result.Digest,&result.Parent,&result.ArchiveDigest)
+ err:=tx.QueryRow(ctx,"SELECT revision,digest,parent,archive_digest FROM remote_backup_slots WHERE id=$1 AND "+column+"=$2 AND witness=$3 AND NOT revoked FOR UPDATE",id,h[:],witness).Scan(&result.Revision,&result.Digest,&result.Parent,&result.ArchiveDigest)
  if err!=nil { return nil,pairError(ctx,err) }; return result,nil
 }
 
@@ -111,6 +111,15 @@ func backupWitnessText(h *pb.BackupHead, challenge string) []byte {
 
 func (s *Store) CreateBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRequest) (*pb.CreateBackupSlotResponse,error) {
  h,err:=s.createBackupSlot(ctx,req); if err!=nil { return nil,err }; return &pb.CreateBackupSlotResponse{Head:h},nil
+}
+func (s *Store) RevokeBackupSlot(ctx context.Context, req *pb.RevokeBackupSlotRequest) (*pb.RevokeBackupSlotResponse,error) {
+ if !backupBytes(req.Id,16) { return nil,status.Error(codes.InvalidArgument,"Неверный слот") }
+ if authn.Token(ctx)=="" { return nil,denied() }
+ tx,err:=s.backupTransaction(ctx); if err!=nil { return nil,err }; defer tx.Rollback(ctx)
+ if err=s.lockSession(ctx,tx); err!=nil { return nil,err }
+ tag,err:=tx.Exec(ctx,"UPDATE remote_backup_slots SET revoked=true WHERE id=$1 AND owner_id=$2",req.Id,authn.Actor(ctx))
+ if err!=nil { return nil,databaseError(ctx,err) }; if tag.RowsAffected()!=1 { return nil,forbidden() }
+ if err=tx.Commit(ctx); err!=nil { return nil,databaseError(ctx,err) }; return &pb.RevokeBackupSlotResponse{},nil
 }
 func (s *Store) PutBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.PutBackupResponse,error) {
  h,err:=s.putBackup(ctx,req); if err!=nil { return nil,err }; return &pb.PutBackupResponse{Head:h},nil

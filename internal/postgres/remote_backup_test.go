@@ -99,3 +99,19 @@ func TestRemoteBackupConnectLargeArchiveAndCreationRevocation(t *testing.T) {
  create.Header().Set("Authorization",token[0]); _,err=api.CreateBackupSlot(context.Background(),create)
  if connect.CodeOf(err)!=connect.CodeUnauthenticated { t.Fatal(err) }
 }
+
+func TestRemoteBackupOwnerRevocationAndQuota(t *testing.T) {
+ f:=newChannelFixture(t); id:=backupID(9); api:=backupCreate(t,f,id,false)
+ other,_:=f.enroll(t,true)
+ _,err:=api.RevokeBackupSlot(other,&pb.RevokeBackupSlotRequest{Id:id}); requireCode(t,err,codes.PermissionDenied)
+ req:=backupRequest(id,1,"",[]byte{1}); if _,err=api.PutBackup(f.ctx,req); err!=nil { t.Fatal(err) }
+ for range 2 { if _,err=api.RevokeBackupSlot(f.owner,&pb.RevokeBackupSlotRequest{Id:id}); err!=nil { t.Fatal(err) } }
+ _,err=api.GetBackup(f.ctx,&pb.GetBackupRequest{Id:id,Token:backupToken(1),Revision:1}); requireCode(t,err,codes.NotFound)
+ _,err=api.PutBackup(f.ctx,req); requireCode(t,err,codes.NotFound)
+ read,write:=sha256.Sum256([]byte(backupToken(1))),sha256.Sum256([]byte(backupToken(2)))
+ _,err=api.CreateBackupSlot(f.owner,&pb.CreateBackupSlotRequest{Id:id,ReadHash:read[:],WriteHash:write[:]}); requireCode(t,err,codes.AlreadyExists)
+ for n:=byte(10);n<=12;n++ { backupCreate(t,f,backupID(n),false) }
+ _,err=api.CreateBackupSlot(f.owner,&pb.CreateBackupSlotRequest{Id:backupID(13),ReadHash:read[:],WriteHash:write[:]}); requireCode(t,err,codes.ResourceExhausted)
+ var count int
+ if err=f.store.pool.QueryRow(f.ctx,"SELECT count(*) FROM remote_backup_versions WHERE slot_id=$1",id).Scan(&count); err!=nil || count!=1 { t.Fatal("Отзыв удалил контейнер",count,err) }
+}

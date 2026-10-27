@@ -101,6 +101,11 @@ func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 
 // Общая проверка для gRPC и HTTP Connect до декодирования тела.
 var publicProcedures = map[string]bool{
+	"/space.v1.DirectoryPairingService/CreateDirectoryTransfer":true,
+	"/space.v1.DirectoryPairingService/OpenDirectoryTransfer":true,
+	"/space.v1.DirectoryPairingService/WriteDirectoryFrame":true,
+	"/space.v1.DirectoryPairingService/ReadDirectoryFrame":true,
+	"/space.v1.DirectoryPairingService/CloseDirectoryTransfer":true,
 	"/space.v1.AuthService/CompleteRootRotation": true,
 	"/space.v1.AuthService/CreatePairing":        true,
 	"/space.v1.AuthService/InspectPairing":       true,

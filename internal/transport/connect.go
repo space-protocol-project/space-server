@@ -282,6 +282,8 @@ func (s connectMembership) GetMembership(ctx context.Context, req *connect.Reque
 func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.Verifier) http.Handler {
 	options := []connect.HandlerOption{connect.WithReadMaxBytes(16 * 1024), connect.WithSendMaxBytes(1024 * 1024)}
 	mux := http.NewServeMux()
+	directoryPath,directoryHandler:=rpc.NewDirectoryPairingServiceHandler(connectDirectoryPairing{client:pb.NewDirectoryPairingServiceClient(connection)},connect.WithReadMaxBytes(96*1024),connect.WithSendMaxBytes(96*1024))
+	mux.Handle(directoryPath,directoryHandler)
 	pathChannelService, handlerChannelService := rpc.NewChannelServiceHandler(connectChannel{client: pb.NewChannelServiceClient(connection)}, options...)
 	mux.Handle(pathChannelService, handlerChannelService)
 	pathContentService, handlerContentService := rpc.NewContentServiceHandler(connectContent{client: pb.NewContentServiceClient(connection)}, options...)
@@ -347,6 +349,11 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.DirectoryPairingServiceCreateDirectoryTransferProcedure:true,
+	rpc.DirectoryPairingServiceOpenDirectoryTransferProcedure:true,
+	rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure:true,
+	rpc.DirectoryPairingServiceReadDirectoryFrameProcedure:true,
+	rpc.DirectoryPairingServiceCloseDirectoryTransferProcedure:true,
 	rpc.UserExportServiceExportUserContentProcedure:                       true,
 	rpc.ParticipantFollowServiceGetParticipantFollowStatesProcedure:       true,
 	rpc.ParticipantFollowServiceSetParticipantFollowProcedure:             true,

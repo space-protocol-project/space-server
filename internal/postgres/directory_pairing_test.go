@@ -238,3 +238,33 @@ func TestDirectoryPairingQuotasAndNoIdentityChanges(t *testing.T) {
 		t.Fatal("Relay изменил доступ")
 	}
 }
+
+func TestDirectoryPairingGlobalWireBudget(t *testing.T) {
+ ctx,url:=isolatedDatabase(t)
+ store,_,err:=openManual(ctx,url)
+ if err!=nil {t.Fatal(err)}
+ defer store.Close()
+ payload:=make([]byte,65535)
+ total:=0
+ for attempt:=0;attempt<7;attempt++ {
+  lease,err:=store.CreateDirectoryTransfer(ctx,&pb.CreateDirectoryTransferRequest{Profile:directoryNoiseProfile})
+  if err!=nil {t.Fatal(err)}
+  peer,err:=store.OpenDirectoryTransfer(ctx,&pb.OpenDirectoryTransferRequest{Code:lease.Code})
+  if err!=nil {t.Fatal(err)}
+  for seq:=uint32(0);seq<80;seq++ {
+   token:=peer.PeerToken;if seq==0 || seq==2 || seq==3 {token=lease.OwnerToken}
+   _,err:=store.WriteDirectoryFrame(ctx,&pb.WriteDirectoryFrameRequest{Id:lease.Id,Token:token,Sequence:seq,Data:payload})
+   if total+len(payload)>32*1024*1024 {
+    if status.Code(err)!=codes.ResourceExhausted {t.Fatal("Обход общего лимита",err)}
+    var stored int
+    if err:=store.pool.QueryRow(ctx,"SELECT sum(wire_bytes) FROM directory_transfers").Scan(&stored);err!=nil || stored!=total {t.Fatal(stored,total,err)}
+    frame,err:=store.ReadDirectoryFrame(ctx,&pb.ReadDirectoryFrameRequest{Id:lease.Id,Token:token,Sequence:seq})
+    if err!=nil || frame.Available {t.Fatal("Отклонённый кадр сохранён",frame,err)}
+    return
+   }
+   if err!=nil {t.Fatal(err)}
+   total+=len(payload)
+  }
+ }
+ t.Fatal("Общий лимит не достигнут")
+}

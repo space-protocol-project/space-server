@@ -34,7 +34,7 @@ func (s *Store) backupTransaction(ctx context.Context) (pgx.Tx,error) {
  return tx,nil
 }
 
-func (s *Store) CreateBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRequest) (*pb.BackupHead,error) {
+func (s *Store) createBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRequest) (*pb.BackupHead,error) {
  if !backupBytes(req.Id,16) || len(req.ReadHash)!=32 || len(req.WriteHash)!=32 || bytes.Equal(req.ReadHash,req.WriteHash) { return nil,status.Error(codes.InvalidArgument,"Неверный слот копии") }
  if authn.Token(ctx)=="" { return nil,denied() }
  tx,err:=s.backupTransaction(ctx); if err!=nil { return nil,err }; defer tx.Rollback(ctx)
@@ -73,7 +73,7 @@ func saveBackupHead(ctx context.Context, tx pgx.Tx, h *pb.BackupHead) error {
  return err
 }
 
-func (s *Store) PutBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.BackupHead,error) {
+func (s *Store) putBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.BackupHead,error) {
  if !backupHeadValid(req.Head) || len(req.Archive)==0 || len(req.Archive)>5*1024*1024 || backupHash(req.Archive)!=req.Head.ArchiveDigest { return nil,status.Error(codes.InvalidArgument,"Неверная копия") }
  tx,err:=s.backupTransaction(ctx); if err!=nil { return nil,err }; defer tx.Rollback(ctx)
  old,err:=backupSlot(ctx,tx,req.Head.Id,req.Token,true,false); if err!=nil { return nil,err }
@@ -95,7 +95,7 @@ func (s *Store) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.Ge
  if err!=nil { return nil,pairError(ctx,err) }; return result,nil
 }
 
-func (s *Store) AdvanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupWitnessRequest) (*pb.BackupHead,error) {
+func (s *Store) advanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupWitnessRequest) (*pb.BackupHead,error) {
  if !backupHeadValid(req.Head) { return nil,status.Error(codes.InvalidArgument,"Неверная голова") }
  tx,err:=s.backupTransaction(ctx); if err!=nil { return nil,err }; defer tx.Rollback(ctx)
  old,err:=backupSlot(ctx,tx,req.Head.Id,req.Token,true,true); if err!=nil { return nil,err }
@@ -107,6 +107,16 @@ func (s *Store) AdvanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupW
 
 func backupWitnessText(h *pb.BackupHead, challenge string) []byte {
  return []byte(fmt.Sprintf("space/backup-witness/v1\n%s\n%s\n%d\n%s\n%s\n%s",challenge,h.Id,h.Revision,h.Digest,h.Parent,h.ArchiveDigest))
+}
+
+func (s *Store) CreateBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRequest) (*pb.CreateBackupSlotResponse,error) {
+ h,err:=s.createBackupSlot(ctx,req); if err!=nil { return nil,err }; return &pb.CreateBackupSlotResponse{Head:h},nil
+}
+func (s *Store) PutBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.PutBackupResponse,error) {
+ h,err:=s.putBackup(ctx,req); if err!=nil { return nil,err }; return &pb.PutBackupResponse{Head:h},nil
+}
+func (s *Store) AdvanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupWitnessRequest) (*pb.AdvanceBackupWitnessResponse,error) {
+ h,err:=s.advanceBackupWitness(ctx,req); if err!=nil { return nil,err }; return &pb.AdvanceBackupWitnessResponse{Head:h},nil
 }
 
 func (s *Store) ReadBackupWitness(ctx context.Context, req *pb.ReadBackupWitnessRequest) (*pb.ReadBackupWitnessResponse,error) {

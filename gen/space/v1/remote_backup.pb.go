@@ -22,12 +22,14 @@ const (
 )
 
 type BackupHead struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Revision      int64                  `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
-	Digest        string                 `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
-	Parent        string                 `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`
-	ArchiveDigest string                 `protobuf:"bytes,5,opt,name=archive_digest,json=archiveDigest,proto3" json:"archive_digest,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Revision int64                  `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	// SHA-256 цепочки ciphertext; отпечаток открытого манифеста не раскрывается.
+	Digest string `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
+	// Предыдущий digest цепочки либо пустая строка у первой версии.
+	Parent        string `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`
+	ArchiveDigest string `protobuf:"bytes,5,opt,name=archive_digest,json=archiveDigest,proto3" json:"archive_digest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

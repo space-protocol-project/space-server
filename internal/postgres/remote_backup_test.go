@@ -38,9 +38,9 @@ func backupCreate(t *testing.T, f *channelFixture, id string, witness bool) pb.R
 	return api
 }
 func backupRequest(id string, revision int64, parent string, data []byte) *pb.PutBackupRequest {
-	 head:=&pb.BackupHead{Id:id,Revision:revision,Parent:parent,ArchiveDigest:backupHash(data)}
- head.Digest=backupChainDigest(head)
- return &pb.PutBackupRequest{Head:head,Token:backupToken(2),Archive:data}
+	head := &pb.BackupHead{Id: id, Revision: revision, Parent: parent, ArchiveDigest: backupHash(data)}
+	head.Digest = backupChainDigest(head)
+	return &pb.PutBackupRequest{Head: head, Token: backupToken(2), Archive: data}
 }
 
 func TestRemoteBackupCapabilitiesWitnessAndRestart(t *testing.T) {
@@ -48,9 +48,10 @@ func TestRemoteBackupCapabilitiesWitnessAndRestart(t *testing.T) {
 	id := backupID(1)
 	store, witness := backupCreate(t, f, id, false), backupCreate(t, w, id, true)
 	req := backupRequest(id, 1, "", []byte("opaque encrypted bytes"))
-	wrongChain:=proto.Clone(req).(*pb.PutBackupRequest)
-	wrongChain.Head.Digest=backupToken(19)
-	_,invalid:=store.PutBackup(f.ctx,wrongChain); requireCode(t,invalid,codes.InvalidArgument)
+	wrongChain := proto.Clone(req).(*pb.PutBackupRequest)
+	wrongChain.Head.Digest = backupToken(19)
+	_, invalid := store.PutBackup(f.ctx, wrongChain)
+	requireCode(t, invalid, codes.InvalidArgument)
 	_, err := store.CreateBackupSlot(f.ctx, &pb.CreateBackupSlotRequest{Id: backupID(2), ReadHash: bytes.Repeat([]byte{1}, 32), WriteHash: bytes.Repeat([]byte{2}, 32)})
 	requireCode(t, err, codes.Unauthenticated)
 	bad := proto.Clone(req).(*pb.PutBackupRequest)
@@ -66,7 +67,7 @@ func TestRemoteBackupCapabilitiesWitnessAndRestart(t *testing.T) {
 	changed := proto.Clone(req).(*pb.PutBackupRequest)
 	changed.Archive = []byte("different")
 	changed.Head.ArchiveDigest = backupHash(changed.Archive)
-	changed.Head.Digest=backupChainDigest(changed.Head)
+	changed.Head.Digest = backupChainDigest(changed.Head)
 	_, err = store.PutBackup(f.ctx, changed)
 	requireCode(t, err, codes.Aborted)
 	_, err = store.GetBackup(f.ctx, &pb.GetBackupRequest{Id: id, Token: backupToken(2), Revision: 1})

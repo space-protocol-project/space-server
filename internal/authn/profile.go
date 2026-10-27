@@ -101,20 +101,20 @@ func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 
 // Общая проверка для gRPC и HTTP Connect до декодирования тела.
 var publicProcedures = map[string]bool{
-	"/space.v1.DirectoryPairingService/CreateDirectoryTransfer":true,
-	"/space.v1.DirectoryPairingService/OpenDirectoryTransfer":true,
-	"/space.v1.DirectoryPairingService/WriteDirectoryFrame":true,
-	"/space.v1.DirectoryPairingService/ReadDirectoryFrame":true,
-	"/space.v1.DirectoryPairingService/CloseDirectoryTransfer":true,
-	"/space.v1.AuthService/CompleteRootRotation": true,
-	"/space.v1.AuthService/CreatePairing":        true,
-	"/space.v1.AuthService/InspectPairing":       true,
-	"/space.v1.AuthService/PollPairing":          true,
-	"/space.v1.AuthService/CancelPairing":        true,
-	"/space.v1.MembershipService/PreviewInvite":  true,
-	"/space.v1.AuthService/CreateChallenge":      true,
-	"/space.v1.AuthService/CompleteChallenge":    true,
-	"/space.v1.AdminService/GetSetupStatus":      true,
+	"/space.v1.DirectoryPairingService/CreateDirectoryTransfer": true,
+	"/space.v1.DirectoryPairingService/OpenDirectoryTransfer":   true,
+	"/space.v1.DirectoryPairingService/WriteDirectoryFrame":     true,
+	"/space.v1.DirectoryPairingService/ReadDirectoryFrame":      true,
+	"/space.v1.DirectoryPairingService/CloseDirectoryTransfer":  true,
+	"/space.v1.AuthService/CompleteRootRotation":                true,
+	"/space.v1.AuthService/CreatePairing":                       true,
+	"/space.v1.AuthService/InspectPairing":                      true,
+	"/space.v1.AuthService/PollPairing":                         true,
+	"/space.v1.AuthService/CancelPairing":                       true,
+	"/space.v1.MembershipService/PreviewInvite":                 true,
+	"/space.v1.AuthService/CreateChallenge":                     true,
+	"/space.v1.AuthService/CompleteChallenge":                   true,
+	"/space.v1.AdminService/GetSetupStatus":                     true,
 }
 
 func AuthorizeCall(ctx context.Context, verifier Verifier, method string) (context.Context, error) {

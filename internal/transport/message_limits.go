@@ -13,7 +13,9 @@ import (
 const MaxRPCRequestBytes = 1024 * 1024
 
 func requestMessageLimit(method string) int {
-	if method==rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure {return 96*1024}
+	if method == rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure {
+		return 96 * 1024
+	}
 	if method == rpc.FeedServiceCreateFeedPostProcedure || method == rpc.FeedServiceCommentFeedPostProcedure || method == rpc.FeedServiceUpdateFeedAccessProcedure || method == rpc.ForumServiceCreateForumThreadProcedure || method == rpc.ForumServiceReplyForumThreadProcedure {
 		return 64 * 1024
 	}

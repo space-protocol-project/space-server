@@ -516,7 +516,7 @@ func newRPCServer(service *chat.Service, store *postgres.Store, serverID, origin
 }
 
 func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID, origin string, voiceService *voice.Service, lifecycle ...grpc.StreamServerInterceptor) *grpc.Server {
-	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(transport.MaxRPCRequestBytes)}
+	grpcOptions := []grpc.ServerOption{grpc.MaxRecvMsgSize(6*1024*1024)}
 	unary := []grpc.UnaryServerInterceptor{transport.MessageSizeLimit}
 	streams := append(lifecycle, transport.StreamMessageSizeLimit)
 	if store != nil {
@@ -542,6 +542,7 @@ func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID,
 		pb.RegisterPersonalNotificationServiceServer(server, store)
 		pb.RegisterAuthServiceServer(server, postgres.NewAuth(store, serverID, origin))
 		pb.RegisterDirectoryPairingServiceServer(server, store)
+		pb.RegisterRemoteBackupServiceServer(server, store)
 		pb.RegisterAssetServiceServer(server, store)
 		pb.RegisterMlsServiceServer(server, store)
 		pb.RegisterSyncServiceServer(server, store)

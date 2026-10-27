@@ -282,6 +282,8 @@ func (s connectMembership) GetMembership(ctx context.Context, req *connect.Reque
 func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.Verifier) http.Handler {
 	options := []connect.HandlerOption{connect.WithReadMaxBytes(16 * 1024), connect.WithSendMaxBytes(1024 * 1024)}
 	mux := http.NewServeMux()
+	backupPath, backupHandler := rpc.NewRemoteBackupServiceHandler(connectRemoteBackup{client: pb.NewRemoteBackupServiceClient(connection)}, connect.WithReadMaxBytes(6*1024*1024), connect.WithSendMaxBytes(6*1024*1024))
+	mux.Handle(backupPath, backupHandler)
 	directoryPath, directoryHandler := rpc.NewDirectoryPairingServiceHandler(connectDirectoryPairing{client: pb.NewDirectoryPairingServiceClient(connection)}, connect.WithReadMaxBytes(96*1024), connect.WithSendMaxBytes(96*1024))
 	mux.Handle(directoryPath, directoryHandler)
 	pathChannelService, handlerChannelService := rpc.NewChannelServiceHandler(connectChannel{client: pb.NewChannelServiceClient(connection)}, options...)
@@ -349,6 +351,11 @@ func authorizeConnectRequest(r *http.Request, verifier authn.Verifier) error {
 }
 
 var connectProcedures = map[string]bool{
+	rpc.RemoteBackupServiceCreateBackupSlotProcedure: true,
+	rpc.RemoteBackupServicePutBackupProcedure: true,
+	rpc.RemoteBackupServiceGetBackupProcedure: true,
+	rpc.RemoteBackupServiceAdvanceBackupWitnessProcedure: true,
+	rpc.RemoteBackupServiceReadBackupWitnessProcedure: true,
 	rpc.DirectoryPairingServiceCreateDirectoryTransferProcedure:           true,
 	rpc.DirectoryPairingServiceOpenDirectoryTransferProcedure:             true,
 	rpc.DirectoryPairingServiceWriteDirectoryFrameProcedure:               true,

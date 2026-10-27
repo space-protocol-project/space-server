@@ -109,12 +109,13 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := grpc.NewServer(grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
+	server := grpc.NewServer(grpc.MaxRecvMsgSize(6*1024*1024), grpc.UnaryInterceptor(authn.Interceptor(store)), grpc.StreamInterceptor(authn.StreamInterceptor(store)))
 	service := chat.NewPersistent(identity.ServerID, store)
 	voiceService, voiceErr := voice.NewService(ctx, store)
 	if voiceErr != nil {
 		t.Fatal(voiceErr)
 	}
+	pb.RegisterRemoteBackupServiceServer(server, store)
 	pb.RegisterVoiceServiceServer(server, voiceService)
 	pb.RegisterForumServiceServer(server, store)
 	pb.RegisterFeedServiceServer(server, store)

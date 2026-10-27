@@ -164,6 +164,7 @@ func (s *AuthService) completeRecovery(ctx context.Context, tx pgx.Tx, t authn.T
 		return denied()
 	}
 	if t.Purpose == "recovery.device.revoke" {
+		if err := validateManagedRevocation(parent, t.Scopes); err != nil { return err }
 		return s.revoke(ctx, tx, t)
 	}
 	if err := validateRecoveryDelegation(t, parent); err != nil {
@@ -248,6 +249,14 @@ func prepareRecoveryGrant(ctx context.Context, tx pgx.Tx, req *pb.CreateChalleng
 		t.GrantID = req.GrantId
 		t.DevicePublicKey = base64.RawURLEncoding.EncodeToString(key)
 		t.GrantExpiresAt = expiry.Unix()
+		if err := validateManagedRevocation(parent, t.Scopes); err != nil { return err }
+	}
+	return nil
+}
+
+func validateManagedRevocation(parent *recoveryAuthority, scopes []string) error {
+	if slices.Contains(parent.scopes, "device.manage") && slices.Contains(scopes, "identity.recover") {
+		return forbidden()
 	}
 	return nil
 }

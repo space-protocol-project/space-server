@@ -56,6 +56,9 @@ func TestPairingFullAndLimitedAuthority(t *testing.T) {
  delegation.FullManagement = true
  if _, err := auth.CreateChallenge(ctx, delegation); status.Code(err) != codes.InvalidArgument { t.Fatal("Повторное делегирование полного режима",err) }
  delegation.FullManagement = false
+ recoveryKey, _, _ := ed25519.GenerateKey(rand.Reader)
+ recovery := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose:"device.register", RootPublicKey:root, DevicePublicKey:recoveryKey, Recovery:true}, rootPrivate)
+ if _, err := auth.CreateChallenge(ctx, &pb.CreateChallengeRequest{Purpose:"recovery.device.revoke", RecoveryGrantId:full.GrantId, GrantId:recovery.GrantId}); status.Code(err) != codes.PermissionDenied { t.Fatal("Рабочий управляющий отзывает recovery-карточку",err) }
  limited := complete(t, ctx, auth, delegation, targetPrivate)
  limitedLogin := complete(t, ctx, auth, &pb.CreateChallengeRequest{Purpose:"auth.login", GrantId:limited.GrantId}, childPrivate)
  if _, err := auth.CreateChallenge(ctx, &pb.CreateChallengeRequest{Purpose:"device.delegate", RecoveryGrantId:limited.GrantId, DevicePublicKey:source}); status.Code(err) != codes.Unauthenticated { t.Fatal("Ограниченный стал управляющим",err) }

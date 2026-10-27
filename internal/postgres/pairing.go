@@ -174,7 +174,9 @@ func lockPairApproval(ctx context.Context, tx pgx.Tx, t authn.Transcript) error 
 	}
 	if p.FullManagement {
 		expected = append(expected, "device.manage")
-		if t.AuthorizerGrantID != "" { return forbidden() }
+		if t.AuthorizerGrantID != "" {
+			return forbidden()
+		}
 	}
 	if !validPair(p) || !bytes.Equal(p.PublicKey, key) || !bytes.Equal(p.ProposedRootPublicKey, root) || !slices.Equal(t.Scopes, expected) {
 		return status.Error(codes.FailedPrecondition, "Сопряжение истекло или уже использовано")

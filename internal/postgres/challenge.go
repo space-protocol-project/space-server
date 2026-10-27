@@ -71,7 +71,9 @@ func (s *AuthService) prepareRegistrationChallenge(ctx context.Context, transact
 	if request.Administrative {
 		transcript.Scopes = append(transcript.Scopes, "space.manage")
 	}
-	if request.FullManagement { transcript.Scopes = append(transcript.Scopes, "device.manage") }
+	if request.FullManagement {
+		transcript.Scopes = append(transcript.Scopes, "device.manage")
+	}
 	transcript.PrincipalID, transcript.AuthEpoch, err = principalForRoot(ctx, transaction, request.RootPublicKey)
 	if err != nil {
 		return err

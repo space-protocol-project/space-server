@@ -76,7 +76,7 @@ func (s *Store) createBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRe
 	}
 	// Повтор создания не меняет права и не расходует дополнительную квоту.
 	var same bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM remote_backup_slots WHERE id=$1 AND owner_id=$2 AND read_hash=$3 AND write_hash=$4 AND witness=$5 AND NOT revoked)", req.Id, authn.Actor(ctx), req.ReadHash, req.WriteHash, req.Witness).Scan(&same); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM remote_backup_slots WHERE id=$1 AND owner_id=$2 AND read_hash=$3 AND write_hash=$4 AND NOT revoked)", req.Id, authn.Actor(ctx), req.ReadHash, req.WriteHash).Scan(&same); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if same {
@@ -85,7 +85,7 @@ func (s *Store) createBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRe
 	if count >= 64 || own >= 4 {
 		return nil, status.Error(codes.ResourceExhausted, "Квота слотов копий")
 	}
-	tag, err := tx.Exec(ctx, "INSERT INTO remote_backup_slots(id,owner_id,read_hash,write_hash,witness) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING", req.Id, authn.Actor(ctx), req.ReadHash, req.WriteHash, req.Witness)
+	tag, err := tx.Exec(ctx, "INSERT INTO remote_backup_slots(id,owner_id,read_hash,write_hash) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", req.Id, authn.Actor(ctx), req.ReadHash, req.WriteHash)
 	if err != nil {
 		return nil, databaseError(ctx, err)
 	}
@@ -98,7 +98,7 @@ func (s *Store) createBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRe
 	return &pb.BackupHead{Id: req.Id}, nil
 }
 
-func backupSlot(ctx context.Context, tx pgx.Tx, id, token string, write, witness bool) (*pb.BackupHead, error) {
+func backupSlot(ctx context.Context, tx pgx.Tx, id, token string, write bool) (*pb.BackupHead, error) {
 	if !backupBytes(id, 16) || !backupBytes(token, 32) {
 		return nil, denied()
 	}
@@ -108,7 +108,7 @@ func backupSlot(ctx context.Context, tx pgx.Tx, id, token string, write, witness
 		column = "write_hash"
 	}
 	result := &pb.BackupHead{Id: id}
-	err := tx.QueryRow(ctx, "SELECT revision,digest,parent,archive_digest FROM remote_backup_slots WHERE id=$1 AND "+column+"=$2 AND witness=$3 AND NOT revoked FOR UPDATE", id, h[:], witness).Scan(&result.Revision, &result.Digest, &result.Parent, &result.ArchiveDigest)
+	err := tx.QueryRow(ctx, "SELECT revision,digest,parent,archive_digest FROM remote_backup_slots WHERE id=$1 AND "+column+"=$2 AND NOT revoked FOR UPDATE", id, h[:]).Scan(&result.Revision, &result.Digest, &result.Parent, &result.ArchiveDigest)
 	if err != nil {
 		return nil, pairError(ctx, err)
 	}
@@ -140,7 +140,7 @@ func (s *Store) putBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Ba
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	old, err := backupSlot(ctx, tx, req.Head.Id, req.Token, true, false)
+	old, err := backupSlot(ctx, tx, req.Head.Id, req.Token, true)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (s *Store) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.Ge
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	if _, err = backupSlot(ctx, tx, req.Id, req.Token, false, false); err != nil {
+	if _, err = backupSlot(ctx, tx, req.Id, req.Token, false); err != nil {
 		return nil, err
 	}
 	result := &pb.GetBackupResponse{Head: &pb.BackupHead{Id: req.Id, Revision: req.Revision}}
@@ -190,36 +190,8 @@ func (s *Store) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.Ge
 	return result, nil
 }
 
-func (s *Store) advanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupWitnessRequest) (*pb.BackupHead, error) {
-	if !backupHeadValid(req.Head) {
-		return nil, status.Error(codes.InvalidArgument, "Неверная голова")
-	}
-	tx, err := s.backupTransaction(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-	old, err := backupSlot(ctx, tx, req.Head.Id, req.Token, true, true)
-	if err != nil {
-		return nil, err
-	}
-	if sameBackup(old, req.Head) {
-		return req.Head, nil
-	}
-	if err = nextBackup(old, req.Head); err != nil {
-		return nil, err
-	}
-	if err = saveBackupHead(ctx, tx, req.Head); err != nil {
-		return nil, databaseError(ctx, err)
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return nil, databaseError(ctx, err)
-	}
-	return req.Head, nil
-}
-
-func backupWitnessText(h *pb.BackupHead, challenge string) []byte {
-	return []byte(fmt.Sprintf("space/backup-witness/v1\n%s\n%s\n%d\n%s\n%s\n%s", challenge, h.Id, h.Revision, h.Digest, h.Parent, h.ArchiveDigest))
+func backupHeadProof(h *pb.BackupHead, challenge string) []byte {
+	return []byte(fmt.Sprintf("space/backup-head/v1\n%s\n%s\n%d\n%s\n%s\n%s", challenge, h.Id, h.Revision, h.Digest, h.Parent, h.ArchiveDigest))
 }
 
 func (s *Store) CreateBackupSlot(ctx context.Context, req *pb.CreateBackupSlotRequest) (*pb.CreateBackupSlotResponse, error) {
@@ -263,15 +235,7 @@ func (s *Store) PutBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Pu
 	}
 	return &pb.PutBackupResponse{Head: h}, nil
 }
-func (s *Store) AdvanceBackupWitness(ctx context.Context, req *pb.AdvanceBackupWitnessRequest) (*pb.AdvanceBackupWitnessResponse, error) {
-	h, err := s.advanceBackupWitness(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.AdvanceBackupWitnessResponse{Head: h}, nil
-}
-
-func (s *Store) ReadBackupWitness(ctx context.Context, req *pb.ReadBackupWitnessRequest) (*pb.ReadBackupWitnessResponse, error) {
+func (s *Store) ReadBackupHead(ctx context.Context, req *pb.ReadBackupHeadRequest) (*pb.ReadBackupHeadResponse, error) {
 	if !backupBytes(req.Challenge, 32) {
 		return nil, status.Error(codes.InvalidArgument, "Неверный challenge")
 	}
@@ -280,7 +244,7 @@ func (s *Store) ReadBackupWitness(ctx context.Context, req *pb.ReadBackupWitness
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	h, err := backupSlot(ctx, tx, req.Id, req.Token, false, true)
+	h, err := backupSlot(ctx, tx, req.Id, req.Token, false)
 	if err != nil {
 		return nil, err
 	}
@@ -291,5 +255,5 @@ func (s *Store) ReadBackupWitness(ctx context.Context, req *pb.ReadBackupWitness
 	defer clear(seed)
 	key := ed25519.NewKeyFromSeed(seed)
 	defer clear(key)
-	return &pb.ReadBackupWitnessResponse{Head: h, Challenge: req.Challenge, Signature: ed25519.Sign(key, backupWitnessText(h, req.Challenge))}, nil
+	return &pb.ReadBackupHeadResponse{Head: h, Challenge: req.Challenge, Signature: ed25519.Sign(key, backupHeadProof(h, req.Challenge))}, nil
 }

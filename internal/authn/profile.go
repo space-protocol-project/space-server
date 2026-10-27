@@ -103,8 +103,7 @@ func Interceptor(verifier Verifier) grpc.UnaryServerInterceptor {
 var publicProcedures = map[string]bool{
 	"/space.v1.RemoteBackupService/PutBackup":                   true,
 	"/space.v1.RemoteBackupService/GetBackup":                   true,
-	"/space.v1.RemoteBackupService/AdvanceBackupWitness":        true,
-	"/space.v1.RemoteBackupService/ReadBackupWitness":           true,
+	"/space.v1.RemoteBackupService/ReadBackupHead":           true,
 	"/space.v1.DirectoryPairingService/CreateDirectoryTransfer": true,
 	"/space.v1.DirectoryPairingService/OpenDirectoryTransfer":   true,
 	"/space.v1.DirectoryPairingService/WriteDirectoryFrame":     true,

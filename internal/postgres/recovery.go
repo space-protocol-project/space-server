@@ -41,7 +41,7 @@ func (s *AuthService) RevokeCurrentDevice(ctx context.Context, _ *pb.RevokeCurre
 	return &pb.RevokeCurrentDeviceResponse{}, nil
 }
 
-const activeParentCondition = ` AND (g.parent_grant_id IS NULL OR EXISTS(SELECT 1 FROM device_grants parent WHERE parent.id=g.parent_grant_id AND parent.principal_id=g.principal_id AND parent.auth_epoch=p.auth_epoch AND parent.revoked_at IS NULL AND parent.expires_at>now() AND 'identity.recover'=ANY(parent.scopes)))`
+const activeParentCondition = ` AND (g.parent_grant_id IS NULL OR EXISTS(SELECT 1 FROM device_grants parent WHERE parent.id=g.parent_grant_id AND parent.principal_id=g.principal_id AND parent.auth_epoch=p.auth_epoch AND parent.revoked_at IS NULL AND parent.expires_at>now() AND (parent.scopes && ARRAY['identity.recover','device.manage']::text[]) AND NOT EXISTS(SELECT 1 FROM device_pairings pp WHERE pp.grant_id=parent.id AND pp.state<>'claimed')))`
 
 func (s *AuthService) challengeTransaction(ctx context.Context) (pgx.Tx, error) {
 	tx, err := s.store.pool.Begin(ctx)
@@ -82,7 +82,7 @@ type recoveryAuthority struct {
 func recoveryParent(ctx context.Context, tx pgx.Tx, id string) (*recoveryAuthority, error) {
 	a := new(recoveryAuthority)
 	err := tx.QueryRow(ctx, `SELECT p.id,p.root_public_key,g.device_public_key,p.auth_epoch,g.expires_at,g.scopes
- FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND g.parent_grant_id IS NULL AND 'identity.recover'=ANY(g.scopes) FOR SHARE OF g`, id).Scan(&a.principal, &a.root, &a.device, &a.epoch, &a.expiry, &a.scopes)
+ FROM device_grants g JOIN principals p ON p.id=g.principal_id WHERE g.id=$1 AND g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND g.parent_grant_id IS NULL AND (g.scopes && ARRAY['identity.recover','device.manage']::text[]) AND NOT EXISTS(SELECT 1 FROM device_pairings pp WHERE pp.grant_id=g.id AND pp.state<>'claimed') FOR SHARE OF g`, id).Scan(&a.principal, &a.root, &a.device, &a.epoch, &a.expiry, &a.scopes)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, denied()
 	}
@@ -207,7 +207,7 @@ func (s *AuthService) ListDevices(ctx context.Context, _ *pb.ListDevicesRequest)
 }
 
 func validateRecoveryRequest(req *pb.CreateChallengeRequest) error {
-	if req.Recovery || len(req.RootPublicKey) != 0 || len(req.RecoveryGrantId) != 46 {
+	if req.FullManagement || req.Recovery || len(req.RootPublicKey) != 0 || len(req.RecoveryGrantId) != 46 {
 		return status.Error(codes.InvalidArgument, "Нужно разрешение ключа восстановления")
 	}
 	if req.Purpose == "device.delegate" && (len(req.DevicePublicKey) != 32 || req.GrantId != "") {

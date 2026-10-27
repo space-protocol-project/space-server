@@ -17,13 +17,13 @@ import (
 )
 
 const activePairCondition = ` AND NOT EXISTS(SELECT 1 FROM device_pairings pairing WHERE pairing.grant_id=g.id AND pairing.state<>'claimed' AND (pairing.expires_at<=now() OR pairing.state='cancelled'))`
-const pairColumns = "id,device_name,device_public_key,administrative,created_at,expires_at,state,COALESCE(grant_id,''),proposed_root_public_key"
+const pairColumns = "id,device_name,device_public_key,administrative,created_at,expires_at,state,COALESCE(grant_id,''),proposed_root_public_key,full_management"
 
 func readPair(row pgx.Row) (*pb.Pairing, string, error) {
 	p := new(pb.Pairing)
 	var created, expiry time.Time
 	var grant string
-	err := row.Scan(&p.Id, &p.DeviceName, &p.PublicKey, &p.Administrative, &created, &expiry, &p.State, &grant, &p.ProposedRootPublicKey)
+	err := row.Scan(&p.Id, &p.DeviceName, &p.PublicKey, &p.Administrative, &created, &expiry, &p.State, &grant, &p.ProposedRootPublicKey, &p.FullManagement)
 	p.CreatedAt = created.Unix()
 	p.ExpiresAt = expiry.Unix()
 	return p, grant, err
@@ -57,6 +57,9 @@ func pairSecret(ctx context.Context, q rowQuery, token string, poll bool, lock s
 	return p, g, nil
 }
 func (s *AuthService) CreatePairing(ctx context.Context, req *pb.CreatePairingRequest) (*pb.CreatePairingResponse, error) {
+	if req.FullManagement && !req.Administrative {
+		return nil, status.Error(codes.InvalidArgument, "Полный режим требует административного scope")
+	}
 	if len(req.PublicKey) != 32 || len(req.DeviceName) > 256 || strings.TrimSpace(req.DeviceName) == "" {
 		return nil, status.Error(codes.InvalidArgument, "Нужны Ed25519 public key и имя устройства до 256 байт")
 	}
@@ -98,9 +101,9 @@ func (s *AuthService) CreatePairing(ctx context.Context, req *pb.CreatePairingRe
 		return nil, err
 	}
 	now := time.Now().UTC().Truncate(time.Second)
-	p := &pb.Pairing{Id: id, DeviceName: req.DeviceName, PublicKey: req.PublicKey, Administrative: req.Administrative, CreatedAt: now.Unix(), ExpiresAt: now.Add(5 * time.Minute).Unix(), State: "pending"}
+	p := &pb.Pairing{Id: id, DeviceName: req.DeviceName, PublicKey: req.PublicKey, Administrative: req.Administrative, FullManagement: req.FullManagement, CreatedAt: now.Unix(), ExpiresAt: now.Add(5 * time.Minute).Unix(), State: "pending"}
 	codeHash, pollHash := sha256.Sum256([]byte(code)), sha256.Sum256([]byte(poll))
-	if _, err = tx.Exec(ctx, "INSERT INTO device_pairings(id,code_hash,poll_hash,device_public_key,device_name,administrative,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", id, codeHash[:], pollHash[:], req.PublicKey, req.DeviceName, req.Administrative, now, time.Unix(p.ExpiresAt, 0)); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO device_pairings(id,code_hash,poll_hash,device_public_key,device_name,administrative,created_at,expires_at,full_management) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", id, codeHash[:], pollHash[:], req.PublicKey, req.DeviceName, req.Administrative, now, time.Unix(p.ExpiresAt, 0), req.FullManagement); err != nil {
 		return nil, databaseError(ctx, err)
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -143,7 +146,7 @@ func (s *AuthService) validatePairChallenge(ctx context.Context, tx pgx.Tx, req 
 	if err != nil {
 		return err
 	}
-	if !validPair(p) || !bytes.Equal(p.PublicKey, req.DevicePublicKey) || !bytes.Equal(p.ProposedRootPublicKey, req.RootPublicKey) || req.Administrative != p.Administrative {
+	if !validPair(p) || !bytes.Equal(p.PublicKey, req.DevicePublicKey) || !bytes.Equal(p.ProposedRootPublicKey, req.RootPublicKey) || req.Administrative != p.Administrative || req.FullManagement != p.FullManagement {
 		return status.Error(codes.FailedPrecondition, "Запрос сопряжения изменён, истёк или уже подтверждён")
 	}
 	var known bool
@@ -168,6 +171,10 @@ func lockPairApproval(ctx context.Context, tx pgx.Tx, t authn.Transcript) error 
 	expected := []string{"chat.read", "chat.write"}
 	if p.Administrative {
 		expected = append(expected, "space.manage")
+	}
+	if p.FullManagement {
+		expected = append(expected, "device.manage")
+		if t.AuthorizerGrantID != "" { return forbidden() }
 	}
 	if !validPair(p) || !bytes.Equal(p.PublicKey, key) || !bytes.Equal(p.ProposedRootPublicKey, root) || !slices.Equal(t.Scopes, expected) {
 		return status.Error(codes.FailedPrecondition, "Сопряжение истекло или уже использовано")

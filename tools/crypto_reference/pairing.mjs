@@ -8,9 +8,10 @@ export async function verificationCode(
   root,
   device,
   administrative = false,
+  fullManagement = false,
 ) {
   const prefix = encoder.encode(
-      `space/pair-check/v1\0${serverId}\0${pairId}\0${administrative ? "manage" : "chat"}\0`,
+      `space/pair-check/v2\0${serverId}\0${pairId}\0${administrative ? "manage" : "chat"}\0${fullManagement ? "full" : "limited"}\0`,
     ),
     all = new Uint8Array(prefix.length + 64);
   all.set(prefix);
@@ -61,6 +62,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
     p.expiresAt !== expected.expiresAt ||
     p.createdAt !== expected.createdAt ||
     !!p.administrative !== !!expected.administrative ||
+    !!p.fullManagement !== !!expected.fullManagement ||
     p.publicKey !== expected.publicKey ||
     Number(p.expiresAt) <= Date.now() / 1000 ||
     root.length !== 32 ||
@@ -95,6 +97,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
     Object.fromEntries(names.map((n) => [n, t[n]])),
   );
   const delegated = t.purpose === "device.delegate";
+  if (p.fullManagement && delegated) throw new Error("Полный режим требует root");
   if (delegated) wanted.splice(1, 0, "authorizer_grant_id");
   const history=(response.rootHistory || []).map(p=>({transcript:url64(bytes(p.transcript)),old_signature:url64(bytes(p.oldSignature)),new_signature:url64(bytes(p.newSignature))}));
   const identity=await verifyRootHistory(history,root,origin,discovery.server_id);
@@ -120,6 +123,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
         "chat.read",
         "chat.write",
         ...(p.administrative ? ["space.manage"] : []),
+        ...(p.fullManagement ? ["device.manage"] : []),
       ]) ||
     t.expires_at !== t.issued_at + 60 ||
     (delegated
@@ -175,6 +179,7 @@ export async function verifyPairing(origin, discovery, pending, response) {
       root,
       device,
       !!p.administrative,
+      !!p.fullManagement,
     ),
   };
 }
@@ -209,6 +214,8 @@ async function verifyRecoveryParent(origin, discovery, response, child, root, id
       Object.fromEntries(keys.map((k) => [k, t[k]])),
     ),
     managed = t.scopes?.includes("space.manage");
+  const full = t.scopes?.includes("device.manage");
+  if (full) { expected.push("pairing_id"); expected.sort(); }
   if (
     raw !== canonical ||
     JSON.stringify(keys) !== JSON.stringify(expected) ||
@@ -233,11 +240,11 @@ async function verifyRecoveryParent(origin, discovery, response, child, root, id
         "chat.read",
         "chat.write",
         ...(managed ? ["space.manage"] : []),
-        "identity.recover",
+        full ? "device.manage" : "identity.recover",
       ]) ||
     (child.scopes.includes("space.manage") && !managed) ||
     t.expires_at !== t.issued_at + 60 ||
-    t.grant_expires_at !== t.issued_at + 3650 * 86400 ||
+    t.grant_expires_at !== t.issued_at + (full ? 30 : 3650) * 86400 ||
     t.grant_expires_at < Date.now() / 1000 ||
     t.grant_expires_at < child.grant_expires_at ||
     t.issued_at > child.issued_at + 5

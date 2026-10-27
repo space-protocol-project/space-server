@@ -25,6 +25,9 @@ func validatePairingPurpose(request *pb.CreateChallengeRequest) error {
 }
 
 func validateChallengeRequest(request *pb.CreateChallengeRequest) error {
+	if request.FullManagement && (request.Purpose != "device.register" || request.PairingId == "" || !request.Administrative || request.Recovery) {
+		return status.Error(codes.InvalidArgument, "Полный режим выдаётся root только через сопряжение")
+	}
 	if request.RecoveryGrantId != "" || (request.Recovery && request.Purpose != "device.register") {
 		return status.Error(codes.InvalidArgument, "Неверное использование recovery fields")
 	}
@@ -68,6 +71,7 @@ func (s *AuthService) prepareRegistrationChallenge(ctx context.Context, transact
 	if request.Administrative {
 		transcript.Scopes = append(transcript.Scopes, "space.manage")
 	}
+	if request.FullManagement { transcript.Scopes = append(transcript.Scopes, "device.manage") }
 	transcript.PrincipalID, transcript.AuthEpoch, err = principalForRoot(ctx, transaction, request.RootPublicKey)
 	if err != nil {
 		return err

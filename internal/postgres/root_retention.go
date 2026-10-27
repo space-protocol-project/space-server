@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const retainableGrant = `g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND NOT ('identity.recover'=ANY(g.scopes))` + activeParentCondition + ` AND NOT EXISTS(SELECT 1 FROM device_pairings pairing WHERE pairing.grant_id=g.id AND pairing.state<>'claimed')`
+const retainableGrant = `g.revoked_at IS NULL AND g.expires_at>now() AND g.auth_epoch=p.auth_epoch AND NOT (g.scopes && ARRAY['identity.recover','device.manage']::text[])` + activeParentCondition + ` AND NOT EXISTS(SELECT 1 FROM device_pairings pairing WHERE pairing.grant_id=g.id AND pairing.state<>'claimed')`
 
 func retentionSnapshot(ctx context.Context, tx pgx.Tx, principal string, ids []string) ([]rotation.RetainedDevice, error) {
 	if len(ids) == 0 {

@@ -59,6 +59,24 @@ func outside(source, destination string) error {
 	if err != nil {
 		return err
 	}
+	if err := outsidePaths(from, to); err != nil {
+		return err
+	}
+	from, err = canonicalBackupPath(from)
+	if err != nil {
+		return err
+	}
+	to, err = canonicalBackupPath(to)
+	if err != nil {
+		return err
+	}
+	return outsidePaths(from, to)
+}
+
+func outsidePaths(from, to string) error {
+	if !strings.EqualFold(filepath.VolumeName(from), filepath.VolumeName(to)) {
+		return nil
+	}
 	relative, err := filepath.Rel(from, to)
 	if err != nil {
 		return err
@@ -67,6 +85,32 @@ func outside(source, destination string) error {
 		return errors.New("Копия должна находиться вне исходного каталога")
 	}
 	return nil
+}
+
+// Разрешаем существующий предок, не создавая назначение. Неразрешимые ссылки
+// и ошибки доступа отклоняются; ещё не созданный хвост сохраняется.
+func canonicalBackupPath(path string) (string, error) {
+	var tail []string
+	for {
+		_, err := os.Lstat(path)
+		if err == nil {
+			break
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return "", err
+		}
+		tail = append([]string{filepath.Base(path)}, tail...)
+		path = parent
+	}
+	resolved, err := finalBackupPath(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(append([]string{resolved}, tail...)...), nil
 }
 
 // Не следуем ссылкам: tablespace и внешние файлы требуют отдельного сценария.

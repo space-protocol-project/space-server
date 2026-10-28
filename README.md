@@ -42,11 +42,11 @@ Runtime v0.7.16 включает `CommunitySearchService`, capability `core.comm
 
 В runtime v0.7.10 голосовые комнаты поддерживают настраиваемый лимит от 2 до 32 участников (по умолчанию 8) на компьютерах и Android: схема 27, голосовой профиль 3, WebRTC/Opus, STUN/TURN и временный доступ к ретранслятору. Для изменения лимита и форума обновите клиент до v0.7.13. Для Android используйте клиент v0.7.10; рамки речи доступны начиная с v0.7.9: сервер передаёт стабильное audio_slot, а клиент связывает его с аудиодорожкой. Старые клиенты подключаются только при лимите 8. Уменьшение лимита не отключает активных участников. Вложения выключены по умолчанию только в новых пространствах; миграция сохраняет прежние значения. [Настройка своего TURN для интернета и CGNAT](deploy/turn/README.md).
 
-Запуск с нуля одной командой (приложение v0.7.29 и runtime v0.7.23):
+Запуск с нуля одной командой (приложение v0.8.0 и runtime v0.8.0):
 [инструкция для Linux-сервера и первого входа с телефона](https://github.com/space-protocol-project/space-app/blob/main/docs/STANDALONE-SERVER.md).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.7.23/packaging/install.sh | SPACE_VERSION=v0.7.23 sh
+curl -fsSL https://raw.githubusercontent.com/space-protocol-project/space-server/v0.8.0/packaging/install.sh | SPACE_VERSION=v0.8.0 sh
 ```
 
 Первый вошедший по одноразовой ссылке из терминала становится владельцем.

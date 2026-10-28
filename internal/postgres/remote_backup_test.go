@@ -128,18 +128,60 @@ func TestRemoteBackupConcurrentCASAndVersionLimits(t *testing.T) {
 		t.Fatal(got, err)
 	}
 	parent := h.Head.Digest
-	for revision := int64(2); revision <= 32; revision++ {
+	for revision := int64(2); revision <= 256; revision++ {
 		req := backupRequest(id, revision, parent, []byte{byte(revision)})
 		if _, err = api.PutBackup(f.ctx, req); err != nil {
 			t.Fatal(err)
 		}
 		parent = req.Head.Digest
 	}
-	_, err = api.PutBackup(f.ctx, backupRequest(id, 33, parent, []byte{33}))
+	_, err = api.PutBackup(f.ctx, backupRequest(id, 257, parent, []byte{33}))
 	requireCode(t, err, codes.ResourceExhausted)
 	_, err = api.GetBackup(f.ctx, &pb.GetBackupRequest{Id: id, Token: backupToken(1), Revision: 1})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRemoteBackupRetentionConfirmationAndPending(t *testing.T) {
+	f := newChannelFixture(t)
+	id := backupID(22)
+	api := backupCreate(t, f, id)
+	var previous, stale *pb.PutBackupRequest
+	parent := ""
+	for revision := int64(1); revision <= 6; revision++ {
+		req := backupRequest(id, revision, parent, []byte{byte(revision)})
+		if _, err := api.PutBackup(f.ctx, req); err != nil {
+			t.Fatal(err)
+		}
+		if revision <= 4 {
+			req.Confirm = true
+			if result, err := api.PutBackup(f.ctx, req); err != nil || !result.GetConfirmed() {
+				t.Fatal(result, err)
+			}
+		}
+		if revision == 4 {
+			stale = proto.Clone(req).(*pb.PutBackupRequest)
+		}
+		previous, parent = req, req.Head.Digest
+	}
+	if _, err := f.store.pool.Exec(f.ctx, "UPDATE remote_backup_versions SET created_at=now()-interval '31 days' WHERE slot_id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.PutBackup(f.ctx, stale); status.Code(err) != codes.Aborted {
+		t.Fatal(err)
+	}
+	previous.Confirm = true
+	for range 2 {
+		if _, err := api.PutBackup(f.ctx, previous); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for revision := int64(1); revision <= 6; revision++ {
+		_, err := api.GetBackup(f.ctx, &pb.GetBackupRequest{Id: id, Token: backupToken(1), Revision: revision})
+		if revision <= 2 && status.Code(err) != codes.NotFound || revision > 2 && err != nil {
+			t.Fatalf("revision %d: %v", revision, err)
+		}
 	}
 }
 func TestRemoteBackupConnectLargeArchiveAndCreationRevocation(t *testing.T) {

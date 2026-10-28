@@ -145,7 +145,18 @@ func (s *Store) putBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Ba
 		return nil, err
 	}
 	if sameBackup(old, req.Head) {
+		if req.Confirm {
+			if err = confirmBackup(ctx, tx, req.Head); err != nil {
+				return nil, err
+			}
+			if err = tx.Commit(ctx); err != nil {
+				return nil, databaseError(ctx, err)
+			}
+		}
 		return req.Head, nil
+	}
+	if req.Confirm {
+		return nil, status.Error(codes.Aborted, "Подтверждаемая голова изменилась")
 	}
 	if err = nextBackup(old, req.Head); err != nil {
 		return nil, err
@@ -157,10 +168,10 @@ func (s *Store) putBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Ba
 	if err = tx.QueryRow(ctx, "SELECT COALESCE(sum(octet_length(v.archive)),0) FROM remote_backup_versions v JOIN remote_backup_slots s ON s.id=v.slot_id WHERE s.owner_id=(SELECT owner_id FROM remote_backup_slots WHERE id=$1)", req.Head.Id).Scan(&own); err != nil {
 		return nil, databaseError(ctx, err)
 	}
-	if count >= 32 || own+int64(len(req.Archive)) > 64*1024*1024 || total+int64(len(req.Archive)) > 256*1024*1024 {
+	if count >= 256 || own+int64(len(req.Archive)) > 512*1024*1024 || total+int64(len(req.Archive)) > 2*1024*1024*1024 {
 		return nil, status.Error(codes.ResourceExhausted, "Квота хранения копий")
 	}
-	_, err = tx.Exec(ctx, "INSERT INTO remote_backup_versions(slot_id,revision,digest,parent,archive_digest,archive) VALUES($1,$2,$3,$4,$5,$6)", req.Head.Id, req.Head.Revision, req.Head.Digest, req.Head.Parent, req.Head.ArchiveDigest, req.Archive)
+	_, err = tx.Exec(ctx, "INSERT INTO remote_backup_versions(slot_id,revision,digest,parent,archive_digest,archive,created_at) VALUES($1,$2,$3,$4,$5,$6,now())", req.Head.Id, req.Head.Revision, req.Head.Digest, req.Head.Parent, req.Head.ArchiveDigest, req.Archive)
 	if err == nil {
 		err = saveBackupHead(ctx, tx, req.Head)
 	}
@@ -171,6 +182,24 @@ func (s *Store) putBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Ba
 		return nil, databaseError(ctx, err)
 	}
 	return req.Head, nil
+}
+
+func confirmBackup(ctx context.Context, tx pgx.Tx, head *pb.BackupHead) error {
+	tag, err := tx.Exec(ctx, "UPDATE remote_backup_versions SET confirmed=true WHERE slot_id=$1 AND revision=$2 AND digest=$3 AND archive_digest=$4", head.Id, head.Revision, head.Digest, head.ArchiveDigest)
+	if err != nil {
+		return databaseError(ctx, err)
+	}
+	if tag.RowsAffected() != 1 {
+		return status.Error(codes.FailedPrecondition, "Копия для подтверждения отсутствует")
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM remote_backup_versions WHERE slot_id=$1
+		AND confirmed AND created_at < now() - interval '30 days'
+		AND revision NOT IN (SELECT revision FROM remote_backup_versions
+		WHERE slot_id=$1 AND confirmed ORDER BY revision DESC LIMIT 3)`, head.Id)
+	if err != nil {
+		return databaseError(ctx, err)
+	}
+	return nil
 }
 
 func (s *Store) GetBackup(ctx context.Context, req *pb.GetBackupRequest) (*pb.GetBackupResponse, error) {
@@ -233,7 +262,7 @@ func (s *Store) PutBackup(ctx context.Context, req *pb.PutBackupRequest) (*pb.Pu
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PutBackupResponse{Head: h}, nil
+	return &pb.PutBackupResponse{Head: h, Confirmed: req.Confirm}, nil
 }
 func (s *Store) ReadBackupHead(ctx context.Context, req *pb.ReadBackupHeadRequest) (*pb.ReadBackupHeadResponse, error) {
 	if !backupBytes(req.Challenge, 32) {

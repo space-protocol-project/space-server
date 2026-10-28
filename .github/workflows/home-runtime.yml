@@ -38,10 +38,6 @@ jobs:
     needs: validate
     uses: ./.github/workflows/server.yml
     with:
-      macos_only:
-        description: Проверить только macOS-кандидат; теги проверяются на всех ОС
-        type: boolean
-        default: false
       app_ref: ${{ inputs.app_ref || '' }}
   runtime:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'

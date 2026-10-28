@@ -30,7 +30,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: python3 packaging/check-release.py "$GITHUB_REF_NAME"
   verify-release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '' && !inputs.macos_only)
     needs: validate
     uses: ./.github/workflows/server.yml
     with:
@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2025, macos-14, ubuntu-22.04]
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.macos_only && '["macos-14"]' || '["windows-2025","macos-14","ubuntu-22.04"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +106,7 @@ jobs:
           executable=space-server
           if [ "$RUNNER_OS" = Windows ]; then executable=space-server.exe; fi
           export SPACE_RESTORE_EXECUTABLE="$SPACE_HOME_RUNTIME/$executable"
-          flutter test --no-pub test/live/mls_restore_test.dart test/live/device_full_migration_test.dart
+          flutter test --no-pub --concurrency 1 test/live/mls_restore_test.dart test/live/device_full_migration_test.dart
       - uses: actions/upload-artifact@v4
         with:
           name: home-runtime-${{ matrix.os }}

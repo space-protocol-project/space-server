@@ -1,0 +1,24 @@
+name: Границы резервных копий
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['internal/home/backup*.go', '.github/workflows/backup-paths.yml']
+permissions:
+  contents: read
+jobs:
+  paths:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod, cache-dependency-path: go.sum}
+      - name: Пути, диски и подстановка каталогов
+        run: go test ./internal/home -run '^TestBackup(DestinationBoundaries|WindowsVolumes|RejectsSubstAlias)$' -count=1 -v
+      - name: Анализ пакета
+        run: go vet ./internal/home

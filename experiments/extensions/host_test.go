@@ -145,7 +145,7 @@ func TestCompilationQuota(t *testing.T) {
 	h := host(t, false)
 	source := fixture(t, "echo")
 	for i := 0; i <= MaxCompiled; i++ {
-		binary := append(append([]byte(nil), source...), 0, 2, 1, byte('a'+i))
+		binary := append(append([]byte(nil), source...), 0, 3, 1, byte('a'+i), 0)
 		_, err := h.Load(context.Background(), binary)
 		if i < MaxCompiled && err != nil {
 			t.Fatal(err)

@@ -20,7 +20,7 @@ jobs:
           --health-interval 3s --health-timeout 3s --health-retries 20
     env:
       SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_baseline?sslmode=disable
-      SPACE_BASELINE_OUTPUT: ${{ runner.temp }}/plugin-baseline
+      SPACE_BASELINE_OUTPUT: ${{ github.workspace }}/.local/plugin-baseline
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -30,8 +30,7 @@ jobs:
           PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           mkdir -p "$SPACE_BASELINE_OUTPUT" "$RUNNER_TEMP/pg-tools"
-          printf '#!/bin/bash\nexec docker exec "$PG_CONTAINER" pg_dump "$@"\n' > "$RUNNER_TEMP/pg-tools/pg_dump"
-          # pg_dump пишет в контейнере; используем stdout на хосте в обёртке ниже.
+          # pg_dump пишет в контейнере; сохраняем stdout на хосте.
           cat > "$RUNNER_TEMP/pg-tools/pg_dump" <<'PY'
           #!/usr/bin/env python3
           import os, subprocess, sys
@@ -65,5 +64,5 @@ jobs:
           name: plugin-baseline
           retention-days: 30
           path: |
-            ${{ runner.temp }}/plugin-baseline
+            ${{ env.SPACE_BASELINE_OUTPUT }}
             internal/postgres/plugin_baseline_test.go

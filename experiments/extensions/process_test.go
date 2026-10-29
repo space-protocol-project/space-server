@@ -1,10 +1,19 @@
 package extensions
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"testing"
 )
+
+func TestProcessZeroValueRejectsLaunch(t *testing.T) {
+	h := &ProcessHost{}
+	_, err := h.CompileAndCall(context.Background(), []byte("fixture"), []byte(`{}`), false, false)
+	if !errors.Is(err, ErrIsolation) {
+		t.Fatal(err)
+	}
+}
 
 func TestProcessUnavailable(t *testing.T) {
 	h, err := NewProcessHost(t.TempDir(), "/not-a-worker")

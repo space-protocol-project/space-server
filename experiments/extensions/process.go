@@ -48,7 +48,7 @@ type workerRequest struct {
 func (h *ProcessHost) reserve() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.closed {
+	if h.closed || h.group == "" || h.executable == "" {
 		return ErrIsolation
 	}
 	if h.active >= MaxCalls || uint64(h.active+1)*WorkerMemory > TotalMemory {

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-type processPlatform struct{}
+type processPlatform struct{ lock *os.File }
 
 func configureGroup(path string, memory uint64) error {
 	if _, err := os.Stat(filepath.Join(path, "cgroup.kill")); err != nil {
@@ -42,6 +42,23 @@ func NewProcessHost(root, executable string) (*ProcessHost, error) {
 	var fs syscall.Statfs_t
 	if err := syscall.Statfs(root, &fs); err != nil || fs.Type != 0x63677270 {
 		return nil, ErrIsolation
+	}
+	lock, err := lockRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ownership: %v", ErrIsolation, err)
+	}
+	h, err := newLinuxHost(root, executable)
+	if err != nil {
+		_ = lock.Close()
+		return nil, fmt.Errorf("%w: recovery: %v", ErrIsolation, err)
+	}
+	h.platform.lock = lock
+	return h, nil
+}
+
+func newLinuxHost(root, executable string) (*ProcessHost, error) {
+	if err := recoverGroups(root); err != nil {
+		return nil, err
 	}
 	group, err := os.MkdirTemp(root, "space-p1-")
 	if err != nil {
@@ -167,5 +184,12 @@ func (h *ProcessHost) Close() error {
 	if h.active != 0 {
 		return ErrQuota
 	}
-	return os.Remove(h.group)
+	if !h.ready {
+		return nil
+	}
+	if err := os.Remove(h.group); err != nil {
+		return err
+	}
+	h.ready = false
+	return h.platform.lock.Close()
 }

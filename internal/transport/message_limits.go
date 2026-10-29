@@ -12,7 +12,13 @@ import (
 // MaxRPCRequestBytes ограничивает выделение памяти при декодировании внутренним мостом.
 const MaxRPCRequestBytes = 1024 * 1024
 
+// SDP до 64 КиБ вместе с полями запроса и JSON-экранированием CRLF.
+const voiceJoinRequestBytes = 96 * 1024
+
 func requestMessageLimit(method string) int {
+	if method == rpc.VoiceServiceJoinVoiceRoomProcedure {
+		return voiceJoinRequestBytes
+	}
 	if method == rpc.RemoteBackupServicePutBackupProcedure {
 		return 6 * 1024 * 1024
 	}
@@ -45,7 +51,7 @@ func checkMessageSize(method string, request any) error {
 	return nil
 }
 
-// MessageSizeLimit сохраняет предел 16 КиБ для всех unary RPC, кроме UploadChunk.
+// MessageSizeLimit применяет предел метода до вызова прикладной службы.
 func MessageSizeLimit(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	if err := checkMessageSize(info.FullMethod, request); err != nil {
 		return nil, err

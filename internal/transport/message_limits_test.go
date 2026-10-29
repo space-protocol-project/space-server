@@ -18,6 +18,9 @@ func TestUnaryMessageLimit(t *testing.T) {
 		message      proto.Message
 		want         codes.Code
 	}{
+		{"Голосовой SDP", rpc.VoiceServiceJoinVoiceRoomProcedure, &pb.JoinVoiceRoomRequest{OfferSdp: strings.Repeat("x", 64*1024)}, codes.OK},
+		{"Слишком большой голосовой запрос", rpc.VoiceServiceJoinVoiceRoomProcedure, &pb.JoinVoiceRoomRequest{OfferSdp: strings.Repeat("x", 96*1024)}, codes.ResourceExhausted},
+		{"Предел остальных голосовых запросов", rpc.VoiceServiceUpdateVoiceRoomProcedure, &pb.UpdateVoiceRoomRequest{ChannelId: strings.Repeat("x", 17*1024)}, codes.ResourceExhausted},
 		{"MLS Commit", rpc.MlsServicePublishMlsProcedure, &pb.PublishMlsRequest{Ciphertext: make([]byte, 256*1024)}, codes.OK},
 		{"Слишком большой MLS", rpc.MlsServicePublishMlsProcedure, &pb.PublishMlsRequest{Ciphertext: make([]byte, MaxRPCRequestBytes)}, codes.ResourceExhausted},
 		{"MLS KeyPackage", rpc.MlsServiceRegisterMlsDeviceProcedure, &pb.RegisterMlsDeviceRequest{KeyPackage: make([]byte, 64*1024)}, codes.OK},

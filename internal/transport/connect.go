@@ -302,7 +302,7 @@ func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.
 	mux.Handle(mlsPath, mlsHandler)
 	assetPath, assetHandler := rpc.NewAssetServiceHandler(connectAsset{client: pb.NewAssetServiceClient(connection)}, connect.WithReadMaxBytes(384*1024), connect.WithSendMaxBytes(1024*1024))
 	mux.Handle(assetPath, assetHandler)
-	voicePath, voiceHandler := rpc.NewVoiceServiceHandler(connectVoice{client: pb.NewVoiceServiceClient(connection)}, options...)
+	voicePath, voiceHandler := rpc.NewVoiceServiceHandler(connectVoice{client: pb.NewVoiceServiceClient(connection)}, connect.WithReadMaxBytes(voiceJoinRequestBytes), connect.WithSendMaxBytes(1024*1024))
 	mux.Handle(voicePath, voiceHandler)
 	forumPath, forumHandler := rpc.NewForumServiceHandler(connectForum{client: pb.NewForumServiceClient(connection)}, connect.WithReadMaxBytes(64*1024), connect.WithSendMaxBytes(4*1024*1024))
 	mux.Handle(forumPath, forumHandler)

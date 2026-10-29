@@ -4,6 +4,7 @@ package extensions
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,7 +210,7 @@ func TestWindowsIsolationNativeMemory(t *testing.T) {
 
 func namedEvent(t *testing.T) (windows.Handle, string) {
 	t.Helper()
-	name := fmt.Sprintf("Local\\space-p1-%d-%d", os.Getpid(), time.Now().UnixNano())
+	name := fmt.Sprintf("Local\\space-p1-%d-%s", os.Getpid(), rand.Text())
 	pointer, err := windows.UTF16PtrFromString(name)
 	if err != nil {
 		t.Fatal(err)

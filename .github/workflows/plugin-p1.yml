@@ -38,7 +38,8 @@ jobs:
           go-version-file: experiments/extensions/go.mod
           cache-dependency-path: experiments/extensions/go.sum
       - run: go mod tidy && go mod verify
-      - run: gofmt -w *.go && go vet ./...
+      - run: gofmt -w *.go cmd/*/*.go && go vet ./...
+      - run: go test -count=1 -timeout=120s ./...
       - run: go test -race -count=1 -timeout=60s -json ./... > results.json
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - uses: actions/upload-artifact@v4
@@ -50,3 +51,39 @@ jobs:
             experiments/extensions/go.mod
             experiments/extensions/go.sum
             experiments/extensions/*.go
+  isolation:
+    needs: fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p1-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Сборка worker и стенда отказов
+        run: |
+          go build -o /tmp/space-p1-worker ./cmd/p1-worker
+          go build -o /tmp/space-p1-pressure ./cmd/p1-pressure
+          go test -race -c -o /tmp/space-p1-isolation.test .
+      - name: Жёсткие ограничения cgroup v2
+        run: |
+          test "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo mkdir /sys/fs/cgroup/space-p1-ci
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-ci/cgroup.subtree_control'
+          sudo env P1_CGROUP=/sys/fs/cgroup/space-p1-ci P1_WORKER=/tmp/space-p1-worker P1_PRESSURE=/tmp/space-p1-pressure /tmp/space-p1-isolation.test -test.v -test.run '^TestIsolation' -test.timeout 120s | tee isolation.txt
+          sudo rmdir /sys/fs/cgroup/space-p1-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-process-isolation
+          path: experiments/extensions/isolation.txt

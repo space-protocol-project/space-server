@@ -1,0 +1,52 @@
+name: P1 WASM host prototype
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y wabt
+      - run: python3 experiments/extensions/fixtures.py
+      - run: wat2wasm --version > experiments/extensions/testdata/wabt-version.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p1-wasm-fixtures
+          path: experiments/extensions/testdata
+  host:
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p1-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - run: go mod tidy && go mod verify
+      - run: gofmt -w *.go && go vet ./...
+      - run: go test -race -count=1 -timeout=60s -json ./... > results.json
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-host-${{ matrix.os }}
+          path: |
+            experiments/extensions/results.json
+            experiments/extensions/go.mod
+            experiments/extensions/go.sum
+            experiments/extensions/*.go

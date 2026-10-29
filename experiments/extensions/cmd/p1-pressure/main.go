@@ -19,6 +19,9 @@ func main() {
 	if json.NewDecoder(os.Stdin).Decode(&request) != nil {
 		os.Exit(2)
 	}
+	if nativeProbe(request.Request) {
+		return
+	}
 	var marker struct{ Marker string }
 	if json.Unmarshal(request.Request, &marker) == nil && marker.Marker != "" {
 		if os.WriteFile(marker.Marker, []byte("started"), 0600) != nil {

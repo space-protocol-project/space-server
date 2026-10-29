@@ -132,14 +132,18 @@ func Worker(input io.Reader, output io.Writer) error {
 }
 
 type cappedOutput struct {
-	data     []byte
-	limit    int
-	exceeded bool
+	data       []byte
+	limit      int
+	exceeded   bool
+	onOverflow func()
 }
 
 func (w *cappedOutput) Write(p []byte) (int, error) {
 	if len(p) > w.limit-len(w.data) {
 		w.exceeded = true
+		if w.onOverflow != nil {
+			w.onOverflow()
+		}
 		return 0, ErrQuota
 	}
 	w.data = append(w.data, p...)

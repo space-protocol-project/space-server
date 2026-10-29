@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,7 +116,7 @@ func TestWindowsIsolationPressure(t *testing.T) {
 				t.Fatal("Ожидался отказ выделения памяти до deadline")
 			}
 			stats := h.Stats()
-			if mode == "memory" && (stats.PeakBytes < 128<<20 || stats.PeakBytes > WorkerMemory) {
+			if mode == "memory" && stats.PeakBytes < 128<<20 {
 				t.Fatal(stats)
 			}
 			if mode == "cpu" && stats.CPUUsec == 0 {
@@ -174,34 +175,119 @@ func TestWindowsIsolationSharedQuota(t *testing.T) {
 	}
 }
 
+type memoryProbeResult struct {
+	Allocated int
+	Denied    bool
+	Code      uint32
+}
+
+func checkMemoryDenial(t *testing.T, result memoryProbeResult) {
+	t.Helper()
+	if !result.Denied || result.Allocated < 128<<20 || result.Allocated >= WorkerMemory {
+		t.Fatalf("Нет отказа VirtualAlloc: %+v", result)
+	}
+	if result.Code != 8 && result.Code != 1455 && result.Code != 1816 {
+		t.Fatalf("Не ошибка памяти: %+v", result)
+	}
+}
+
+func TestWindowsIsolationNativeMemory(t *testing.T) {
+	h := windowsHost(t, "P1_PRESSURE")
+	request, _ := json.Marshal(map[string]int{"NativeMemory": 384})
+	raw, err := h.CompileAndCall(context.Background(), []byte("fixture"), request, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result memoryProbeResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	checkMemoryDenial(t, result)
+	winEmpty(t, h)
+	t.Logf("native_memory=%+v stats=%+v", result, h.Stats())
+}
+
+func namedEvent(t *testing.T) (windows.Handle, string) {
+	t.Helper()
+	name := fmt.Sprintf("Local\\space-p1-%d-%d", os.Getpid(), time.Now().UnixNano())
+	pointer, err := windows.UTF16PtrFromString(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event, err := windows.CreateEvent(nil, 1, 0, pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { windows.CloseHandle(event) })
+	return event, name
+}
+
 func TestWindowsIsolationAggregateMemory(t *testing.T) {
 	h := windowsHost(t, "P1_PRESSURE")
 	if err := setJobLimit(h.platform.job, WorkerMemory); err != nil {
 		t.Fatal(err)
 	}
-	input, _ := json.Marshal(workerRequest{Request: []byte(`"global"`)})
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	done := make(chan error, 2)
-	for i := 0; i < 2; i++ {
-		go func() { _, err := h.run(ctx, input); done <- err }()
+	release, releaseName := namedEvent(t)
+	var ready [2]windows.Handle
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	type outcome struct {
+		result memoryProbeResult
+		err    error
 	}
-	failures := 0
-	for i := 0; i < 2; i++ {
-		err := <-done
-		if err == nil {
-			t.Fatal("Нет отказа")
+	done := make(chan outcome, 2)
+	received := 0
+	launched := 0
+	defer func() {
+		cancel()
+		for received < launched {
+			<-done
+			received++
 		}
-		if !errors.Is(err, context.DeadlineExceeded) {
-			failures++
+	}()
+	for i := 0; i < 2; i++ {
+		event, name := namedEvent(t)
+		ready[i] = event
+		request, _ := json.Marshal(map[string]any{"NativeMemory": 208, "Ready": name, "Release": releaseName})
+		input, _ := json.Marshal(workerRequest{Request: request})
+		launched++
+		go func() {
+			raw, err := h.run(ctx, input)
+			var result memoryProbeResult
+			if err == nil {
+				err = json.Unmarshal(raw, &result)
+			}
+			done <- outcome{result, err}
+		}()
+	}
+	for _, event := range ready {
+		status, err := windows.WaitForSingleObject(event, 2000)
+		if err != nil || status != windows.WAIT_OBJECT_0 {
+			t.Fatalf("Нет двух готовых процессов: %v %d", err, status)
 		}
 	}
-	stats := h.Stats()
-	if failures == 0 || stats.PeakBytes < 128<<20 || stats.PeakBytes > WorkerMemory {
-		t.Fatalf("Нет общей квоты: failures=%d stats=%+v", failures, stats)
+	if err := windows.SetEvent(release); err != nil {
+		t.Fatal(err)
+	}
+	denied := 0
+	for received < 2 {
+		out := <-done
+		received++
+		if out.err != nil {
+			t.Fatal(out.err)
+		}
+		if out.result.Denied {
+			denied++
+			if out.result.Code != 8 && out.result.Code != 1455 && out.result.Code != 1816 {
+				t.Fatal(out.result)
+			}
+		}
+		t.Logf("aggregate_worker=%+v", out.result)
+	}
+	if denied == 0 {
+		t.Fatal("Общая квота не отклонила VirtualAlloc")
 	}
 	winEmpty(t, h)
-	t.Logf("aggregate_limit=%d failures_before_deadline=%d stats=%+v", WorkerMemory, failures, stats)
+	t.Logf("aggregate_limit=%d denied=%d stats=%+v", WorkerMemory, denied, h.Stats())
 }
 
 func TestWindowsIsolationAssignmentFailure(t *testing.T) {

@@ -91,6 +91,8 @@ func (h *ProcessHost) run(ctx context.Context, input []byte) (result []byte, fai
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW | windows.CREATE_SUSPENDED}
 	cmd.Stdin = bytes.NewReader(input)
 	stdout, stderr := &cappedOutput{limit: MaxJSON}, &cappedOutput{limit: 4096}
+	stopOutput := func() { _ = windows.TerminateJobObject(job, 1) }
+	stdout.onOverflow, stderr.onOverflow = stopOutput, stopOutput
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	cmd.Cancel = func() error {
 		// Отмена возможна и до назначения приостановленного процесса в Job.

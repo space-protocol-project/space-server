@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-func host(t *testing.T, interpreter bool) *Host {
+func host(t *testing.T, interpreter bool) *localHost {
 	t.Helper()
-	h, err := New(context.Background(), interpreter)
+	h, err := newLocalHost(context.Background(), interpreter)
 	if err != nil {
 		t.Fatal(err)
 	}

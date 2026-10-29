@@ -24,21 +24,22 @@ var ErrABI = errors.New("extension ABI")
 
 type grantKey struct{}
 
-// Host не хранит principal: право вызова передаёт доверенный вызывающий код.
-type Host struct {
+// localHost используется только внутри worker и в тестах ABI.
+// Серверный вызывающий код должен использовать ProcessHost.
+type localHost struct {
 	runtime  wazero.Runtime
 	slots    chan struct{}
 	mu       sync.Mutex
 	compiled map[[32]byte]wazero.CompiledModule
 }
 
-func New(ctx context.Context, interpreter bool) (*Host, error) {
+func newLocalHost(ctx context.Context, interpreter bool) (*localHost, error) {
 	config := wazero.NewRuntimeConfigCompiler()
 	if interpreter {
 		config = wazero.NewRuntimeConfigInterpreter()
 	}
 	config = config.WithMemoryLimitPages(MemoryPages).WithCloseOnContextDone(true)
-	h := &Host{runtime: wazero.NewRuntimeWithConfig(ctx, config), slots: make(chan struct{}, MaxCalls), compiled: make(map[[32]byte]wazero.CompiledModule)}
+	h := &localHost{runtime: wazero.NewRuntimeWithConfig(ctx, config), slots: make(chan struct{}, MaxCalls), compiled: make(map[[32]byte]wazero.CompiledModule)}
 	_, err := h.runtime.NewHostModuleBuilder("space_host_p1").NewFunctionBuilder().WithFunc(wait).Export("wait").Instantiate(ctx)
 	if err != nil {
 		_ = h.Close(ctx)
@@ -65,10 +66,10 @@ func wait(ctx context.Context, milliseconds uint32) uint32 {
 	}
 }
 
-func (h *Host) Close(ctx context.Context) error { return h.runtime.Close(ctx) }
+func (h *localHost) Close(ctx context.Context) error { return h.runtime.Close(ctx) }
 
-// Load ограничивает байты и число компиляций. CPU компилятора ещё требует отдельной границы процесса.
-func (h *Host) Load(ctx context.Context, wasm []byte) (wazero.CompiledModule, error) {
+// Load ограничивает локальный кеш; границу CPU и памяти обеспечивает ProcessHost.
+func (h *localHost) Load(ctx context.Context, wasm []byte) (wazero.CompiledModule, error) {
 	if len(wasm) == 0 || len(wasm) > MaxModule {
 		return nil, ErrQuota
 	}
@@ -123,7 +124,7 @@ func signature(f api.FunctionDefinition, parameters, results []api.ValueType) bo
 	return fmt.Sprint(f.ParamTypes()) == fmt.Sprint(parameters) && fmt.Sprint(f.ResultTypes()) == fmt.Sprint(results)
 }
 
-func (h *Host) Call(ctx context.Context, module wazero.CompiledModule, request []byte, allowWait bool) ([]byte, error) {
+func (h *localHost) Call(ctx context.Context, module wazero.CompiledModule, request []byte, allowWait bool) ([]byte, error) {
 	if err := CheckJSON(request); err != nil {
 		return nil, err
 	}

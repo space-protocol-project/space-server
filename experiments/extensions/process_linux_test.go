@@ -122,11 +122,16 @@ func TestIsolationSharedQuota(t *testing.T) {
 		}()
 	}
 	waitActive(t, h, 2)
+	waitRunning(t, h, 2)
 	if _, err := h.CompileAndCall(ctx, []byte("fixture"), []byte(`{}`), false, false); !errors.Is(err, ErrQuota) {
 		t.Fatal(err)
 	}
 	if h.Stats().ReservedBytes != TotalMemory {
 		t.Fatal(h.Stats())
+	}
+	t.Logf("two_running_workers stats=%+v", h.Stats())
+	if err := h.Close(); !errors.Is(err, ErrQuota) {
+		t.Fatal(err)
 	}
 	cancel()
 	for i := 0; i < 2; i++ {
@@ -139,11 +144,57 @@ func TestIsolationSharedQuota(t *testing.T) {
 		t.Fatal(h.Stats())
 	}
 	// Закрытый supervisor не принимает новые вызовы.
-	h.mu.Lock()
-	h.closed = true
-	h.mu.Unlock()
 	if _, err := h.CompileAndCall(context.Background(), []byte("fixture"), []byte(`{}`), false, false); !errors.Is(err, ErrIsolation) {
 		t.Fatal(err)
+	}
+}
+
+func waitRunning(t *testing.T, h *ProcessHost, count int) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for {
+		entries, err := os.ReadDir(h.group)
+		if err != nil {
+			t.Fatal(err)
+		}
+		running := 0
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			raw, _ := os.ReadFile(filepath.Join(h.group, entry.Name(), "cgroup.events"))
+			if strings.Contains(string(raw), "populated 1") {
+				running++
+			}
+		}
+		if running == count {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("Worker не запущены в cgroup")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestIsolationRejectBeforeLaunch(t *testing.T) {
+	h := processHost(t, "P1_WORKER")
+	for _, input := range [][]byte{nil, make([]byte, MaxModule+1)} {
+		if _, err := h.CompileAndCall(context.Background(), input, []byte(`{}`), false, false); !errors.Is(err, ErrQuota) {
+			t.Fatal(err)
+		}
+	}
+	if _, err := h.CompileAndCall(context.Background(), []byte("fixture"), []byte(`{"a":1,"a":2}`), false, false); !errors.Is(err, ErrJSON) {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := h.CompileAndCall(ctx, []byte("fixture"), []byte(`{}`), false, false); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	emptyGroups(t, h)
+	if h.Stats().Active != 0 {
+		t.Fatal(h.Stats())
 	}
 }
 

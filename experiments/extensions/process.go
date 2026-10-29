@@ -111,7 +111,7 @@ func Worker(input io.Reader, output io.Writer) error {
 	if decoder.Decode(new(any)) != io.EOF {
 		return ErrJSON
 	}
-	h, err := New(context.Background(), request.Interpreter)
+	h, err := newLocalHost(context.Background(), request.Interpreter)
 	if err != nil {
 		return err
 	}

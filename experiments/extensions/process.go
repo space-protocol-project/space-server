@@ -1,7 +1,6 @@
 package extensions
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -41,7 +40,10 @@ type ProcessStats struct {
 	OSProcesses   uint32
 }
 
+const workerProtocol = "space.worker.p1"
+
 type workerRequest struct {
+	Protocol    string `json:"protocol"`
 	WASM        []byte `json:"wasm"`
 	Request     []byte `json:"request"`
 	Interpreter bool   `json:"interpreter"`
@@ -83,7 +85,7 @@ func (h *ProcessHost) CompileAndCall(ctx context.Context, wasm, request []byte, 
 		return nil, err
 	}
 	defer h.release()
-	input, err := json.Marshal(workerRequest{wasm, request, interpreter, allowWait})
+	input, err := json.Marshal(workerRequest{Protocol: workerProtocol, WASM: wasm, Request: request, Interpreter: interpreter, AllowWait: allowWait})
 	if err != nil {
 		return nil, err
 	}
@@ -101,18 +103,9 @@ func (h *ProcessHost) CompileAndCall(ctx context.Context, wasm, request []byte, 
 
 // Worker обслуживает ровно один запрос. Кеш и все данные исчезают с процессом.
 func Worker(input io.Reader, output io.Writer) error {
-	raw, err := io.ReadAll(io.LimitReader(input, maxWire+1))
-	if err != nil || len(raw) > maxWire {
-		return ErrQuota
-	}
-	var request workerRequest
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&request); err != nil {
+	request, err := readWorkerRequest(input)
+	if err != nil {
 		return err
-	}
-	if decoder.Decode(new(any)) != io.EOF {
-		return ErrJSON
 	}
 	h, err := newLocalHost(context.Background(), request.Interpreter)
 	if err != nil {

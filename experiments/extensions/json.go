@@ -12,7 +12,11 @@ import (
 var ErrJSON = errors.New("extension JSON")
 
 func CheckJSON(raw []byte) error {
-	if len(raw) == 0 || len(raw) > MaxJSON || !utf8.Valid(raw) {
+	return checkJSONLimit(raw, MaxJSON)
+}
+
+func checkJSONLimit(raw []byte, limit int) error {
+	if len(raw) == 0 || len(raw) > limit || !utf8.Valid(raw) {
 		return ErrJSON
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))

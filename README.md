@@ -2,6 +2,8 @@
 
 Исходный этап **P0 системы расширений завершён**: [отчёт B01–B10 и измерений](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P0-RESULTS.md), [TODO](https://github.com/space-protocol-project/space-protocol/blob/main/TODO.md). При проверке B07 исправлен транспортный предел SDP: вход через Connect больше не отклоняется общим ограничением 16 КиБ. Исправление проверено полным CI сервера и двумя нативными Flutter-клиентами через TURN TCP с ненулевым виртуальным аудио и восстановлением; пока находится в `main`, без нового выпуска runtime.
 
+Начат [P1 расширений](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1.md): `experiments/extensions` — отдельный Go module с WASM-хостом wazero 1.12.0 и ограниченным ABI. Рабочий сервер его не импортирует. Workflow `plugin-p1.yml` проверяет compiler/interpreter на Linux, Windows и macOS; общая память процесса и CPU компиляции ещё требуют отдельной изоляции.
+
 В `main` реализуются режимы сопряжения для приложения 0.8.0: полный режим
 получает `device.manage`, ограниченный — рабочие разрешения выбранных пространств.
 Сервер фиксирует режим до подписи, проверяет полномочия, срок и отзыв родителя,

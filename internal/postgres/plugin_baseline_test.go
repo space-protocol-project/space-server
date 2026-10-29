@@ -200,7 +200,7 @@ func TestPluginBaseline(t *testing.T) {
 			private := f.create(t, "baseline_private")
 			f.acl(t, private, roleRule("member", permissions(false, false, false, false)))
 			_, err = f.contents.GetHistoryPage(restricted, &pb.GetHistoryPageRequest{ChannelId: private.Id})
-			requireCode(t, err, codes.PermissionDenied)
+			requireCode(t, err, codes.NotFound)
 			operations := baselineOperations(t, f)
 			names := make([]string, 0, len(operations))
 			for name := range operations {

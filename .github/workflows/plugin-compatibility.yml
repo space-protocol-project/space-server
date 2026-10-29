@@ -1,0 +1,63 @@
+name: Матрица совместимости P0
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ['v0.7.29', '35b0a9e73666f9d91d650a5b23e75da1441539bf']
+        server: ['v0.7.23', '78303322c4d99475fafcc6c03cca84aa58462764']
+    services:
+      postgres:
+        image: postgres:17.11
+        env: {POSTGRES_DB: space_test, POSTGRES_USER: space, POSTGRES_PASSWORD: ci-only-password}
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: harness}
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-server
+          ref: ${{ matrix.server }}
+          path: server
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-app
+          ref: ${{ matrix.app }}
+          path: app
+      - uses: actions/setup-go@v5
+        with: {go-version-file: server/go.mod}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.47.8', channel: stable, cache: true}
+      - run: flutter pub get
+        working-directory: app/client
+      - run: go build -o "$RUNNER_TEMP/space-server" ./cmd/space-server
+        working-directory: server
+      - name: Сценарии на реальных Dart/Connect, runtime и PostgreSQL с перезапуском
+        env:
+          PGPASSWORD: ci-only-password
+        run: |
+          mkdir -p "$RUNNER_TEMP/p0-compat"
+          git -C server rev-parse HEAD > "$RUNNER_TEMP/p0-compat/server-sha.txt"
+          git -C app rev-parse HEAD > "$RUNNER_TEMP/p0-compat/app-sha.txt"
+          for scenario in reactions favorites space_search feed_social participant_follows user_export; do
+            psql -h 127.0.0.1 -U space -d space_test -v ON_ERROR_STOP=1 -c "CREATE DATABASE p0_$scenario"
+            SPACE_DATABASE_URL="postgres://space:ci-only-password@127.0.0.1:5432/p0_$scenario?sslmode=disable" \
+              python3 harness/tools/p0_process_metrics.py --output "$RUNNER_TEMP/p0-compat/$scenario-memory.json" -- \
+              python3 app/tools/check_community_interop.py --server "$RUNNER_TEMP/space-server" \
+              --client app/client --scenario "$scenario" --output "$RUNNER_TEMP/p0-compat/$scenario"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p0-compat-${{ matrix.app }}-${{ matrix.server }}
+          path: ${{ runner.temp }}/p0-compat
+          retention-days: 30

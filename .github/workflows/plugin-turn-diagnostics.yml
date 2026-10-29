@@ -1,0 +1,30 @@
+name: Частный интерфейс TURN P0
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  turn:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      SPACE_TURN_PRIVATE_CHECK: '1'
+      PION_LOG_DEBUG: ice,turn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - name: Два клиента и сервер через TURN TCP на частном интерфейсе
+        shell: bash
+        run: |
+          set -o pipefail
+          go test ./internal/voice -run '^TestPrivateInterfaceTURN$' -count=1 -v -timeout=2m 2>&1 | tee turn.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: turn-${{ matrix.os }}
+          path: turn.log

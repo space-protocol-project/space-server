@@ -19,6 +19,13 @@ func main() {
 	if json.NewDecoder(os.Stdin).Decode(&request) != nil {
 		os.Exit(2)
 	}
+	var marker struct{ Marker string }
+	if json.Unmarshal(request.Request, &marker) == nil && marker.Marker != "" {
+		if os.WriteFile(marker.Marker, []byte("started"), 0600) != nil {
+			os.Exit(4)
+		}
+		return
+	}
 	switch string(request.Request) {
 	case `"memory"`:
 		memory(384)
@@ -48,7 +55,7 @@ func main() {
 	case `"crash"`:
 		panic("synthetic compiler crash")
 	case `"identity"`:
-		fmt.Printf(`{"uid":%d,"environment":%d}`, os.Getuid(), len(os.Environ()))
+		fmt.Printf(`{"uid":%d,"environment":%d,"secret":%q}`, os.Getuid(), len(os.Environ()), os.Getenv("P1_SECRET_SENTINEL"))
 	}
 }
 
@@ -59,12 +66,16 @@ func spin() {
 }
 
 func memory(megabytes int) {
-	data := make([]byte, megabytes<<20)
-	for i := range data {
-		data[i] = 1
+	var blocks [][]byte
+	for allocated := 0; allocated < megabytes; allocated += 16 {
+		data := make([]byte, 16<<20)
+		for i := range data {
+			data[i] = 1
+		}
+		blocks = append(blocks, data)
 	}
 	for {
 		time.Sleep(time.Second)
-		runtime.KeepAlive(data)
+		runtime.KeepAlive(blocks)
 	}
 }

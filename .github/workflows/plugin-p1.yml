@@ -87,3 +87,36 @@ jobs:
         with:
           name: p1-process-isolation
           path: experiments/extensions/isolation.txt
+  windows-isolation:
+    needs: fixtures
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p1-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Изоляция Windows Job Objects
+        run: |
+          go build -o p1-worker.exe ./cmd/p1-worker
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -o p1-pressure.exe ./cmd/p1-pressure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:P1_WORKER = Join-Path $PWD 'p1-worker.exe'
+          $env:P1_PRESSURE = Join-Path $PWD 'p1-pressure.exe'
+          go test -race -count=1 -timeout=120s -json -run '^TestWindowsIsolation' . > windows-isolation.jsonl
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-windows-isolation
+          path: experiments/extensions/windows-isolation.jsonl

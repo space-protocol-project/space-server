@@ -26,6 +26,8 @@ type ProcessHost struct {
 	mu         sync.Mutex
 	active     int
 	closed     bool
+	ready      bool
+	platform   processPlatform
 }
 
 type ProcessStats struct {
@@ -36,6 +38,7 @@ type ProcessStats struct {
 	OOMKills      uint64
 	CPUUsec       uint64
 	Throttled     uint64
+	OSProcesses   uint32
 }
 
 type workerRequest struct {
@@ -48,7 +51,7 @@ type workerRequest struct {
 func (h *ProcessHost) reserve() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.closed || h.group == "" || h.executable == "" {
+	if h.closed || !h.ready || h.executable == "" {
 		return ErrIsolation
 	}
 	if h.active >= MaxCalls || uint64(h.active+1)*WorkerMemory > TotalMemory {

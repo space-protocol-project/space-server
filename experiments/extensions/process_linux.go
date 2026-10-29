@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+type processPlatform struct{}
+
 func configureGroup(path string, memory uint64) error {
 	if _, err := os.Stat(filepath.Join(path, "cgroup.kill")); err != nil {
 		return err
@@ -52,7 +54,7 @@ func NewProcessHost(root, executable string) (*ProcessHost, error) {
 		_ = os.Remove(group)
 		return nil, fmt.Errorf("%w: %v", ErrIsolation, err)
 	}
-	return &ProcessHost{executable: executable, group: group}, nil
+	return &ProcessHost{executable: executable, group: group, ready: true}, nil
 }
 
 func (h *ProcessHost) run(ctx context.Context, input []byte) (result []byte, failure error) {

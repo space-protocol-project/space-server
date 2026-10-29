@@ -20,7 +20,7 @@ func TestProcessUnavailable(t *testing.T) {
 	if h != nil || !errors.Is(err, ErrIsolation) {
 		t.Fatal("Нельзя запускать без изоляции", h, err)
 	}
-	t.Logf("platform=%s: fail closed without cgroup v2", runtime.GOOS)
+	t.Logf("platform=%s: fail closed for unavailable launch configuration", runtime.GOOS)
 }
 
 func TestProcessOutputBound(t *testing.T) {

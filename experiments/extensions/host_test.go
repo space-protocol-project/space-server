@@ -134,7 +134,7 @@ func TestValidation(t *testing.T) {
 	if _, err := h.Load(context.Background(), []byte("not wasm")); err == nil {
 		t.Fatal("Некорректный бинарник принят")
 	}
-	for _, raw := range [][]byte{[]byte(`{"a":1,"a":2}`), []byte(`{"a":1,"\u0061":2}`), []byte(`{"n":NaN}`), []byte(`{} {}`), {255}, []byte(strings.Repeat("[", 10) + "0" + strings.Repeat("]", 10)), make([]byte, MaxJSON+1)} {
+	for _, raw := range [][]byte{[]byte(`{"a":1,"a":2}`), []byte(`{"a":1,"\u0061":2}`), []byte(`{"n":NaN}`), []byte(`{"n":1e999}`), []byte(`{} {}`), {255}, []byte(strings.Repeat("[", 10) + "0" + strings.Repeat("]", 10)), make([]byte, MaxJSON+1)} {
 		if CheckJSON(raw) == nil {
 			t.Fatalf("Некорректный JSON принят: %q", raw)
 		}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"unicode/utf8"
 )
 
@@ -35,6 +36,12 @@ func value(decoder *json.Decoder, depth int) error {
 	}
 	delimiter, structured := token.(json.Delim)
 	if !structured {
+		if number, ok := token.(json.Number); ok {
+			value, err := number.Float64()
+			if err != nil || math.IsInf(value, 0) {
+				return ErrJSON
+			}
+		}
 		return nil
 	}
 	if delimiter != '{' && delimiter != '[' {

@@ -1,0 +1,69 @@
+name: Исходные замеры расширений P0
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_baseline
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_baseline"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_baseline?sslmode=disable
+      SPACE_BASELINE_OUTPUT: ${{ runner.temp }}/plugin-baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - name: Параметры стенда и pg_dump той же версии
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          mkdir -p "$SPACE_BASELINE_OUTPUT" "$RUNNER_TEMP/pg-tools"
+          printf '#!/bin/bash\nexec docker exec "$PG_CONTAINER" pg_dump "$@"\n' > "$RUNNER_TEMP/pg-tools/pg_dump"
+          # pg_dump пишет в контейнере; используем stdout на хосте в обёртке ниже.
+          cat > "$RUNNER_TEMP/pg-tools/pg_dump" <<'PY'
+          #!/usr/bin/env python3
+          import os, subprocess, sys
+          args = sys.argv[1:]
+          i = args.index('--file')
+          output = args[i + 1]
+          del args[i:i+2]
+          with open(output, 'wb') as f:
+              subprocess.run(['docker', 'exec', os.environ['PG_CONTAINER'], 'pg_dump', *args], stdout=f, check=True)
+          PY
+          chmod +x "$RUNNER_TEMP/pg-tools/pg_dump"
+          echo "$RUNNER_TEMP/pg-tools" >> "$GITHUB_PATH"
+          echo "PG_CONTAINER=$PG_CONTAINER" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$SPACE_BASELINE_OUTPUT/server-sha.txt"
+          uname -a > "$SPACE_BASELINE_OUTPUT/system.txt"
+          lscpu >> "$SPACE_BASELINE_OUTPUT/system.txt"
+          free -b >> "$SPACE_BASELINE_OUTPUT/system.txt"
+          docker exec "$PG_CONTAINER" psql -U space -d space_baseline -c 'SELECT version()' >> "$SPACE_BASELINE_OUTPUT/system.txt"
+      - name: Оформление и анализ нового стенда
+        run: |
+          gofmt -w internal/postgres/plugin_baseline_test.go
+          go vet ./internal/postgres
+          go mod verify
+      - name: Три прогона после прогрева, 1000 и 10000 объектов каждого типа
+        run: |
+          set -o pipefail
+          go test ./internal/postgres -run '^TestPluginBaseline$' -count=1 -v -timeout=35m | tee "$SPACE_BASELINE_OUTPUT/test.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-baseline
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/plugin-baseline
+            internal/postgres/plugin_baseline_test.go

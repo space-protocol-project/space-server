@@ -70,9 +70,8 @@ func testExtensionDatabaseFault(t *testing.T, mode string) {
 	}
 	select {
 	case err := <-done:
-		if err == nil {
-			t.Fatal("Оборванная запись ошибочно вернула успех")
-		}
+		// Тайм-аут SQL (Aborted/DeadlineExceeded) не считается аварией соединения.
+		requireCode(t, err, codes.Internal)
 	case <-time.After(5 * time.Second):
 		t.Fatal("Оборванный RPC не завершился")
 	}

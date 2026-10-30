@@ -3,13 +3,10 @@
 package extensions
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -85,92 +82,7 @@ func (h *ProcessHost) run(ctx context.Context, input []byte) (result []byte, fai
 			result, failure = nil, fmt.Errorf("%w: cleanup: %v", ErrIsolation, err)
 		}
 	}()
-	cmd := exec.CommandContext(ctx, h.executable)
-	cmd.Dir = h.group
-	cmd.Env = []string{"GOMAXPROCS=2", "GOMEMLIMIT=64MiB"}
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW | windows.CREATE_SUSPENDED}
-	cmd.Stdin = bytes.NewReader(input)
-	stdout, stderr := &cappedOutput{limit: MaxJSON}, &cappedOutput{limit: 4096}
-	stopOutput := func() { _ = windows.TerminateJobObject(job, 1) }
-	stdout.onOverflow, stderr.onOverflow = stopOutput, stopOutput
-	cmd.Stdout, cmd.Stderr = stdout, stderr
-	cmd.Cancel = func() error {
-		// Отмена возможна и до назначения приостановленного процесса в Job.
-		_ = windows.TerminateJobObject(job, 1)
-		return cmd.Process.Kill()
-	}
-	cmd.WaitDelay = 250 * time.Millisecond
-	err = startAssigned(cmd, h.platform.job, job)
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	if stdout.exceeded || stderr.exceeded {
-		return nil, ErrQuota
-	}
-	if err != nil {
-		return nil, err
-	}
-	return stdout.data, nil
-}
-
-func startAssigned(cmd *exec.Cmd, parent, child windows.Handle) error {
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("%w: start: %v", ErrIsolation, err)
-	}
-	if err := assignAndResume(uint32(cmd.Process.Pid), parent, child); err != nil {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		return fmt.Errorf("%w: assign: %v", ErrIsolation, err)
-	}
-	if err := cmd.Wait(); err != nil {
-		return ErrWorker
-	}
-	return nil
-}
-
-func assignAndResume(pid uint32, parent, child windows.Handle) error {
-	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE, false, pid)
-	if err != nil {
-		return err
-	}
-	defer windows.CloseHandle(process)
-	if err = windows.AssignProcessToJobObject(parent, process); err != nil {
-		return err
-	}
-	if err = windows.AssignProcessToJobObject(child, process); err != nil {
-		return err
-	}
-	return resumePrimary(pid)
-}
-
-// CREATE_SUSPENDED не позволяет primary thread выполнить код до назначения Job.
-func resumePrimary(pid uint32) error {
-	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPTHREAD, 0)
-	if err != nil {
-		return err
-	}
-	defer windows.CloseHandle(snapshot)
-	entry := windows.ThreadEntry32{}
-	entry.Size = uint32(unsafe.Sizeof(entry))
-	for err = windows.Thread32First(snapshot, &entry); err == nil; err = windows.Thread32Next(snapshot, &entry) {
-		if entry.OwnerProcessID == pid {
-			return resumeThread(entry.ThreadID)
-		}
-	}
-	return err
-}
-
-func resumeThread(id uint32) error {
-	thread, err := windows.OpenThread(windows.THREAD_SUSPEND_RESUME, false, id)
-	if err != nil {
-		return err
-	}
-	defer windows.CloseHandle(thread)
-	previous, err := windows.ResumeThread(thread)
-	if err == nil && previous != 1 {
-		return ErrIsolation
-	}
-	return err
+	return h.runAssigned(ctx, input, job)
 }
 
 func accounting(job windows.Handle) (jobAccounting, error) {

@@ -1,6 +1,12 @@
 name: P1 резервное копирование расширений
 on:
   workflow_dispatch:
+  push:
+    branches: [codex/p1-mutations-ci]
+    paths:
+      - '.github/workflows/plugin-p1-backup.yml'
+      - 'internal/home/**'
+      - 'internal/postgres/extensions_p1_backup*'
 permissions:
   contents: read
 jobs:

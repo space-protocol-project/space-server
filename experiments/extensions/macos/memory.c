@@ -16,14 +16,25 @@ struct result {
     int set_error;
     int map_error;
     int task_error;
+    uint64_t requested_limit;
+    uint64_t baseline_virtual;
+    uint64_t baseline_resident;
     uint64_t limit;
     uint64_t allocated;
     uint64_t resident;
 };
 
-static struct result allocate(int resource, size_t bytes) {
+static struct result allocate(int resource, size_t bytes, uint64_t requested) {
     struct result r = {0};
-    struct rlimit limit = {64 * MIB, 64 * MIB};
+    mach_task_basic_info_data_t baseline;
+    mach_msg_type_number_t initial_count = MACH_TASK_BASIC_INFO_COUNT;
+    r.task_error = task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                            (task_info_t)&baseline, &initial_count);
+    if (r.task_error != KERN_SUCCESS) return r;
+    r.baseline_virtual = baseline.virtual_size;
+    r.baseline_resident = baseline.resident_size;
+    r.requested_limit = requested ? requested : baseline.virtual_size + 64 * MIB;
+    struct rlimit limit = {r.requested_limit, r.requested_limit};
     if (setrlimit(resource, &limit) != 0) {
         r.set_error = errno;
         return r;
@@ -59,13 +70,15 @@ static struct result allocate(int resource, size_t bytes) {
 
 static void print_result(struct result r) {
     printf("{\"set_errno\":%d,\"mmap_errno\":%d,\"task_error\":%d,"
+           "\"requested_limit\":%llu,\"baseline_virtual\":%llu,\"baseline_resident\":%llu,"
            "\"limit\":%llu,\"allocated\":%llu,\"resident\":%llu}",
            r.set_error, r.map_error, r.task_error,
-           (unsigned long long)r.limit, (unsigned long long)r.allocated,
+           (unsigned long long)r.requested_limit, (unsigned long long)r.baseline_virtual,
+           (unsigned long long)r.baseline_resident, (unsigned long long)r.limit, (unsigned long long)r.allocated,
            (unsigned long long)r.resident);
 }
 
-static int aggregate(void) {
+static int aggregate(uint64_t requested) {
     int results[2], release[2];
     if (pipe(results) != 0 || pipe(release) != 0) return 2;
     pid_t children[2];
@@ -75,7 +88,7 @@ static int aggregate(void) {
         if (children[i] == 0) {
             close(results[0]);
             close(release[1]);
-            struct result r = allocate(RLIMIT_AS, 48 * MIB);
+            struct result r = allocate(RLIMIT_AS, 48 * MIB, requested);
             if (write(results[1], &r, sizeof(r)) != (ssize_t)sizeof(r)) _exit(4);
             char token;
             if (read(release[0], &token, 1) != 1) _exit(5);
@@ -102,15 +115,21 @@ static int aggregate(void) {
 
 int main(int argc, char **argv) {
     alarm(10);
-    if (argc != 2) return 1;
-    if (strcmp(argv[1], "aggregate") == 0) return aggregate();
+    if (argc != 3) return 1;
+    uint64_t requested;
+    if (strcmp(argv[2], "64") == 0) requested = 64 * MIB;
+    else if (strcmp(argv[2], "256") == 0) requested = 256 * MIB;
+    else if (strcmp(argv[2], "512") == 0) requested = 512 * MIB;
+    else if (strcmp(argv[2], "baseline") == 0) requested = 0;
+    else return 1;
+    if (strcmp(argv[1], "aggregate") == 0) return aggregate(requested);
     int resource;
     if (strcmp(argv[1], "as") == 0) resource = RLIMIT_AS;
     else if (strcmp(argv[1], "data") == 0) resource = RLIMIT_DATA;
     else return 1;
     printf("{\"mode\":\"%s\",\"rss_alias_as\":%s,\"sample\":", argv[1],
            RLIMIT_RSS == RLIMIT_AS ? "true" : "false");
-    print_result(allocate(resource, 96 * MIB));
+    print_result(allocate(resource, 96 * MIB, requested));
     printf("}\n");
     return 0;
 }

@@ -34,21 +34,8 @@ func TestExtensionP1CrashProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	host := &mutationProbe{run: func(context.Context) ([]byte, error) {
-		file, err := os.OpenFile(os.Getenv("SPACE_P1_CRASH_CALLS"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-		if _, err = file.WriteString("invoke\n"); err != nil {
-			return nil, err
-		}
-		if err = file.Sync(); err != nil {
-			return nil, err
-		}
-		return mutationOutput(0), nil
-	}}
-	svc, err := store.NewExtensionP1MutationService(ctx, host, mutationBindings("mut_crash", []byte{1}))
+	host, module := extensionCrashRuntime(t)
+	svc, err := store.NewExtensionP1MutationService(ctx, host, mutationBindings("mut_crash", module))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +71,7 @@ type extensionCrashProcess struct {
 	stopped bool
 }
 
-func startExtensionCrashProcess(t *testing.T, f *channelFixture, directory, calls, committed string, hold bool) *extensionCrashProcess {
+func startExtensionCrashProcess(t *testing.T, f *channelFixture, directory, calls, committed string, hold bool, environment ...string) *extensionCrashProcess {
 	t.Helper()
 	executable, err := os.Executable()
 	if err != nil {
@@ -102,6 +89,7 @@ func startExtensionCrashProcess(t *testing.T, f *channelFixture, directory, call
 		mode = "yes"
 	}
 	command.Env = append(os.Environ(), "SPACE_P1_CRASH_DATABASE="+f.url, "SPACE_P1_CRASH_CALLS="+calls, "SPACE_P1_CRASH_COMMITTED="+committed, "SPACE_P1_CRASH_ADDRESS="+address, "SPACE_P1_CRASH_HOLD="+mode)
+	command.Env = append(command.Env, environment...)
 	command.Stdout, command.Stderr = log, log
 	if err = command.Start(); err != nil {
 		t.Fatal(err)
@@ -157,17 +145,18 @@ func extensionCrashClient(t *testing.T, address string) (*grpc.ClientConn, pb.Ex
 
 func TestExtensionP1MutationCrashRecovery(t *testing.T) {
 	for _, mode := range []string{"before_commit", "after_commit", "lost_response"} {
-		t.Run(mode, func(t *testing.T) { testExtensionCrashRecovery(t, mode) })
+		t.Run(mode, func(t *testing.T) { testExtensionCrashRecovery(t, mode, false) })
 	}
 }
 
-func testExtensionCrashRecovery(t *testing.T, mode string) {
+func testExtensionCrashRecovery(t *testing.T, mode string, wasm bool) {
 	t.Helper()
 	f := newChannelFixture(t)
 	f.create(t, "mut_crash")
 	directory := t.TempDir()
 	calls, committed := filepath.Join(directory, "calls"), filepath.Join(directory, "committed")
-	p := startExtensionCrashProcess(t, f, t.TempDir(), calls, committed, mode != "before_commit")
+	environment := extensionCrashEnvironment(t, wasm, mode)
+	p := startExtensionCrashProcess(t, f, t.TempDir(), calls, committed, mode == "after_commit" || mode == "lost_response", environment...)
 	conn, api := extensionCrashClient(t, p.address)
 	release := func() {}
 	if mode == "before_commit" {
@@ -177,7 +166,9 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 	done := make(chan error, 1)
 	go func() { _, err := api.ExecuteExtensionCommand(f.owner, request); done <- err }()
 	var eventBefore string
-	if mode == "before_commit" {
+	if mode == "during_worker" {
+		waitExtensionStoppedWorker(t)
+	} else if mode == "before_commit" {
 		waitExtensionSQLLock(t, f, "INSERT INTO extension_p1_outbox")
 	} else {
 		waitExtensionCrashFile(t, committed)
@@ -189,6 +180,9 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 		}
 	} else {
 		p.kill(t)
+		if wasm {
+			waitExtensionWorkerEmpty(t)
+		}
 	}
 	select {
 	case err := <-done:
@@ -205,15 +199,17 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 			t.Fatal(err)
 		}
 		mutationCounts(t, f, 0, 0, 0, 0)
+	} else if mode == "during_worker" {
+		mutationCounts(t, f, 0, 0, 0, 0)
 	} else {
 		mutationCounts(t, f, 1, 1, 1, 1)
 	}
 	if mode != "lost_response" {
-		p = startExtensionCrashProcess(t, f, t.TempDir(), calls, committed, false)
+		p = startExtensionCrashProcess(t, f, t.TempDir(), calls, committed, false, extensionCrashEnvironment(t, wasm, "restart")...)
 	}
 	_, api = extensionCrashClient(t, p.address)
 	response, err := api.ExecuteExtensionCommand(f.owner, request)
-	if err != nil || response.GetStateRevision() != 1 || response.GetReplayed() != (mode != "before_commit") {
+	if err != nil || response.GetStateRevision() != 1 || response.GetReplayed() != (mode == "after_commit" || mode == "lost_response") {
 		t.Fatal(response, err)
 	}
 	mutationCounts(t, f, 1, 1, 1, 1)
@@ -222,7 +218,7 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 		t.Fatal("Повтор заменил сохранённое событие")
 	}
 	wantCalls := "invoke\n"
-	if mode == "before_commit" {
+	if mode == "before_commit" || mode == "during_worker" {
 		wantCalls += "invoke\n"
 	}
 	if got := string(waitExtensionCrashFile(t, calls)); got != wantCalls {

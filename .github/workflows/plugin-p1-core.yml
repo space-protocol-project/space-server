@@ -49,6 +49,7 @@ jobs:
           python3 demo/build.py
           python3 demo/build.py --mutation
           go build -o /tmp/space-p1-core-worker ./cmd/p1-worker
+          go build -o /tmp/space-p1-crash-worker ./testdata/crash-worker
           go test -race ./demo
       - name: Настоящие сессии, ACL, RPC и изолированный WASM
         run: |
@@ -56,10 +57,16 @@ jobs:
           sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
           sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-core/cgroup.subtree_control'
           sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_CRASH_STOP_WORKER=/tmp/space-p1-crash-worker \
             SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
             SPACE_P1_MODULE="$PWD/experiments/extensions/testdata/demo.wasm" \
             SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
             go test -race -json ./internal/postgres -run '^TestExtensionP1' -count=1 > .local/p1-core/isolated.jsonl
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_CRASH_STOP_WORKER=/tmp/space-p1-crash-worker \
+            SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
+            SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1MutationWorkerCrashRecovery$' -count=5 > .local/p1-core/worker-crash.jsonl
           sudo rmdir /sys/fs/cgroup/space-p1-core
           python3 - <<'PY'
           import json
@@ -68,6 +75,10 @@ jobs:
           assert not any(e['Action']=='skip' for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1RealIsolatedWASM' for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1MutationRealWASM' for e in events)
+          events=[json.loads(line) for line in Path('.local/p1-core/worker-crash.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          for mode in ('during_worker','before_commit','after_commit'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1MutationWorkerCrashRecovery/'+mode for e in events)==5
           PY
       - uses: actions/upload-artifact@v4
         if: always()

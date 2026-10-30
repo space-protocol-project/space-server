@@ -22,6 +22,13 @@ jobs:
       SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: 8c0c7bf7408e2d5f856d8ec4b4b2875c523f0e3d
+          path: .local/p1-protocol
+      - name: Shared retry contract
+        run: cmp internal/extensionp1/testdata/retry.json .local/p1-protocol/docs/extensions/p1/retry.json
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -30,6 +37,7 @@ jobs:
         run: |
           mkdir -p .local/p1-core
           go mod tidy
+          go test -race -json ./internal/extensionp1 -run '^TestRetry' -count=1 > .local/p1-core/retry.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation(Access|Expiry)' -count=5 > .local/p1-core/access-races.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Backup' -count=3 > .local/p1-core/backup-validation.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation' -count=1 > .local/p1-core/mutations.jsonl

@@ -1,0 +1,725 @@
+{
+  "version": "space.retry.p1",
+  "cases": [
+    {
+      "name": "confirmed",
+      "input": {
+        "code": "OK",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "confirmed",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "confirmed_after_unknown",
+      "input": {
+        "code": "OK",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": true
+      },
+      "expected": {
+        "action": "confirmed",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "confirmed_after_cancel",
+      "input": {
+        "code": "OK",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": true,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "confirmed",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "ambiguous_Unknown",
+      "input": {
+        "code": "Unknown",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "ambiguous_Internal",
+      "input": {
+        "code": "Internal",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "ambiguous_Unavailable",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "ambiguous_DeadlineExceeded",
+      "input": {
+        "code": "DeadlineExceeded",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "ambiguous_TransportLost",
+      "input": {
+        "code": "TransportLost",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "terminal_InvalidArgument",
+      "input": {
+        "code": "InvalidArgument",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_NotFound",
+      "input": {
+        "code": "NotFound",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_AlreadyExists",
+      "input": {
+        "code": "AlreadyExists",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_PermissionDenied",
+      "input": {
+        "code": "PermissionDenied",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_ResourceExhausted",
+      "input": {
+        "code": "ResourceExhausted",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_FailedPrecondition",
+      "input": {
+        "code": "FailedPrecondition",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_Aborted",
+      "input": {
+        "code": "Aborted",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_OutOfRange",
+      "input": {
+        "code": "OutOfRange",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_Unimplemented",
+      "input": {
+        "code": "Unimplemented",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "terminal_DataLoss",
+      "input": {
+        "code": "DataLoss",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "auth",
+      "input": {
+        "code": "Unauthenticated",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "reauthenticate",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "auth_after_unknown",
+      "input": {
+        "code": "Unauthenticated",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": true
+      },
+      "expected": {
+        "action": "reauthenticate",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "denied_after_unknown",
+      "input": {
+        "code": "PermissionDenied",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": true
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "cancel_rpc",
+      "input": {
+        "code": "Canceled",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "cancel_local",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": true,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "cancel_auth",
+      "input": {
+        "code": "Unauthenticated",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": true,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": false,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "missing_window",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": false,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "changed_request",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": false,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "mismatched_success",
+      "input": {
+        "code": "OK",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": false,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "second_attempt",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 2,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 500
+      }
+    },
+    {
+      "name": "third_attempt",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 3,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 1000
+      }
+    },
+    {
+      "name": "last_attempt",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 4,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "budget_boundary",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 3,
+        "elapsed_ms": 24000,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 1000
+      }
+    },
+    {
+      "name": "budget_exceeded",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 3,
+        "elapsed_ms": 24001,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "window_boundary",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 5250,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "retry_same_request",
+        "unknown": true,
+        "delay_ms": 250
+      }
+    },
+    {
+      "name": "window_exhausted",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 5249,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "future_code",
+      "input": {
+        "code": "FutureCode",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "attempt_zero",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 0,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "attempt_overflow",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 5,
+        "elapsed_ms": 0,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "negative_elapsed",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": -1,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "negative_remaining",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 0,
+        "remaining_ms": -1,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    },
+    {
+      "name": "large_elapsed",
+      "input": {
+        "code": "Unavailable",
+        "attempt": 1,
+        "elapsed_ms": 9007199254740991,
+        "remaining_ms": 30000,
+        "window_known": true,
+        "same_request": true,
+        "cancelled": false,
+        "previous_unknown": false
+      },
+      "expected": {
+        "action": "stop",
+        "unknown": true,
+        "delay_ms": 0
+      }
+    }
+  ]
+}

@@ -15,6 +15,8 @@ func TestMutationPlanRejectsUntrustedOperations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, raw := range [][]byte{
+		[]byte(strings.Replace(string(wrap(valid)), `"plan":`, `"PLAN":`, 1)),
+		[]byte(strings.Replace(string(wrap(valid)), `"plan":`, `"PLAN":{},"plan":`, 1)),
 		wrap(strings.Replace(valid, `"expectedStateRevision":"0"`, `"expectedStateRevision":"1"`, 1)),
 		wrap(strings.Replace(valid, `"key":"note"`, `"key":"bad\u0000key"`, 1)),
 		wrap(strings.Replace(valid, `"putJson":"e30="`, `"delete":false`, 1)),

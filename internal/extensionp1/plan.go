@@ -22,7 +22,7 @@ type MutationResult struct {
 // ParseMutation принимает ограниченный результат гостя; ничего не записывает.
 func ParseMutation(raw []byte, revision uint64, events map[string]bool) ([]byte, *pb.ExtensionMutationPlan, error) {
 	fail := status.Error(codes.InvalidArgument, "invalid_mutation_plan")
-	if len(raw) > extensions.MaxJSON || extensions.CheckJSON(raw) != nil {
+	if len(raw) > extensions.MaxJSON || extensions.CheckJSON(raw) != nil || !exactMutationFields(raw) {
 		return nil, nil, fail
 	}
 	var result MutationResult
@@ -50,6 +50,19 @@ func ParseMutation(raw []byte, revision uint64, events map[string]bool) ([]byte,
 		}
 	}
 	return bytes.Clone(result.Document), plan, nil
+}
+
+func exactMutationFields(raw []byte) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || len(fields) != 3 {
+		return false
+	}
+	for _, key := range []string{"ui_api", "document", "plan"} {
+		if _, ok := fields[key]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func validOperations(ops []*pb.ExtensionMutationOperation) bool {

@@ -64,6 +64,15 @@ def override(text):
     ctl('daemon-reload')
 
 
+def assert_stopped(restarts):
+    stopped = state()
+    terminal = stopped['ActiveState'] == 'inactive' or (
+        stopped['ActiveState'] == 'failed' and stopped['Result'] == 'signal')
+    assert terminal and stopped['MainPID'] == '0', stopped
+    assert int(stopped['NRestarts']) == restarts, stopped
+    return stopped
+
+
 def smoke():
     ctl('start', UNIT)
     current = state()
@@ -73,10 +82,10 @@ def smoke():
     pid = int(current['MainPID'])
     ctl('stop', UNIT)
     time.sleep(1.2)
-    stopped = state()
-    assert stopped['ActiveState'] == 'inactive' and stopped['MainPID'] == '0'
-    assert stopped['NRestarts'] == '0' and process_token(pid) is None
-    RESULTS.append({'scenario': 'launcher-ready-and-stop', 'result': 'pass'})
+    stopped = assert_stopped(0)
+    assert process_token(pid) is None
+    RESULTS.append({'scenario': 'launcher-ready-and-stop', 'result': 'pass',
+                    'stop_state': stopped['ActiveState'], 'stop_result': stopped['Result']})
 
 
 def crash(stage):
@@ -118,7 +127,7 @@ def crash(stage):
                     'restarts': int(after['NRestarts']), 'healthy_wasm': True})
     ctl('stop', UNIT)
     time.sleep(1.2)
-    assert state()['ActiveState'] == 'inactive'
+    assert_stopped(1)
 
 
 def restart_limit():

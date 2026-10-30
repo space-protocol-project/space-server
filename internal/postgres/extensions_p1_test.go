@@ -42,6 +42,11 @@ func extensionP1Client(t *testing.T, f *channelFixture, host extensions.Runtime,
 	if err != nil {
 		t.Fatal(err)
 	}
+	return extensionP1RPCClient(t, f, svc)
+}
+
+func extensionP1RPCClient(t *testing.T, f *channelFixture, svc pb.ExtensionP1ServiceServer) pb.ExtensionP1ServiceClient {
+	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

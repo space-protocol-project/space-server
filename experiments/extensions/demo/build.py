@@ -1,5 +1,6 @@
 """Генерация демонстрационного WAT; только CI, без SDK для сторонних авторов."""
 import json
+import sys
 from pathlib import Path
 import subprocess
 
@@ -21,6 +22,14 @@ query = b'{"abi":"space_plugin_p1","kind":"query","name":"overview",'
 command = b'{"abi":"space_plugin_p1","kind":"command","name":"acknowledge",'
 initial = document(("Ready", "Готово к проверке"))
 result = document(("Command completed", "Команда выполнена"))
+name = "demo"
+if "--mutation" in sys.argv:
+    name = "mutation"
+    result = json.dumps({"ui_api":"space.ui.p1", "document":json.loads(result), "plan":{
+        "expectedStateRevision":"0",
+        "operations":[{"key":"note", "putJson":"eyJ2YWx1ZSI6MX0="}],
+        "events":[{"type":"note_changed", "payloadJson":"e30="}]}}
+        ,ensure_ascii=False,separators=(",",":")).encode()
 wat = f'''(module
  (memory (export "memory") 2)
  (data (i32.const 32768) {literal(query)})
@@ -43,5 +52,5 @@ wat = f'''(module
   (if (call $prefix (local.get $p) (local.get $n) (i32.const 33024) (i32.const {len(command)}))
    (then (return (i64.const {(81920<<32)|len(result)}))))
   unreachable))'''
-(root / "demo.wat").write_text(wat)
-subprocess.run(["wat2wasm", str(root / "demo.wat"), "-o", str(root / "demo.wasm")], check=True)
+(root / f"{name}.wat").write_text(wat)
+subprocess.run(["wat2wasm", str(root / f"{name}.wat"), "-o", str(root / f"{name}.wasm")], check=True)

@@ -17,6 +17,22 @@ import (
 type Service struct {
 	pb.UnimplementedExtensionP1ServiceServer
 	dispatcher *demo.Dispatcher
+	mutations  MutationExecutor
+}
+
+// MutationExecutor выбирается доверенным ядром, не полем effect клиента.
+type MutationExecutor interface {
+	Handles(instance, command string) bool
+	Execute(context.Context, *pb.ExecuteExtensionCommandRequest, func(context.Context) ([]byte, error)) (*pb.ExecuteExtensionCommandResponse, error)
+}
+
+func NewWithMutations(host extensions.Runtime, authorize demo.Authorize, registrations map[string]demo.Registration, executor MutationExecutor) (*Service, error) {
+	s, err := New(host, authorize, registrations)
+	if err != nil {
+		return nil, err
+	}
+	s.mutations = executor
+	return s, nil
 }
 
 func New(host extensions.Runtime, authorize demo.Authorize, registrations map[string]demo.Registration) (*Service, error) {
@@ -42,8 +58,13 @@ func (s *Service) ExecuteExtensionCommand(ctx context.Context, r *pb.ExecuteExte
 	if r == nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid_request")
 	}
-	// Единственная доверенная команда этого среза — stateless acknowledge.
-	// Нельзя превращать предложение гостя в запись до появления транзакционного host API.
+	if s.mutations != nil && s.mutations.Handles(r.InstanceId, r.Command) {
+		return s.mutations.Execute(ctx, r, func(ctx context.Context) ([]byte, error) {
+			return s.invoke(ctx, r.InstanceId, "command", r.Command, r.PayloadJson)
+		})
+	}
+	// Прежний конструктор сохраняет только stateless acknowledge.
+	// Без явно подключённого исполнителя мутации запрещены.
 	if r.Effect != pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_NONE || r.IdempotencyKey != "" || r.ExpectedStateRevision != 0 {
 		return nil, status.Error(codes.FailedPrecondition, "mutation_not_supported")
 	}

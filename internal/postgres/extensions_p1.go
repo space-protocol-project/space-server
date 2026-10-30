@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
 	"github.com/space-protocol-project/space-server/internal/authn"
 )
@@ -38,11 +40,23 @@ func (s *Store) extensionP1Principal(ctx context.Context, channel, instance stri
 		return p, err
 	}
 	defer tx.Rollback(ctx)
+	p, err = s.extensionP1PrincipalTx(ctx, tx, channel, instance, command)
+	if err != nil {
+		return p, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return demo.Principal{}, err
+	}
+	return p, nil
+}
+
+func (s *Store) extensionP1PrincipalTx(ctx context.Context, tx pgx.Tx, channel, instance string, command bool) (demo.Principal, error) {
+	var p demo.Principal
 	// Запрещаем внутренний demo-обход, push-only и подмену actor в context.
 	hash := sha256.Sum256([]byte(authn.Token(ctx)))
 	query := strings.Replace(sessionQuery, "SELECT p.id", "SELECT p.id,g.id,p.auth_epoch", 1)
 	var epoch int64
-	err = tx.QueryRow(ctx, query+" AND NOT s.push_only FOR SHARE OF s,g,p", hash[:]).Scan(&p.User, &p.Device, &epoch)
+	err := tx.QueryRow(ctx, query+" AND NOT s.push_only FOR SHARE OF s,g,p", hash[:]).Scan(&p.User, &p.Device, &epoch)
 	if err != nil || p.User != authn.Actor(ctx) {
 		return p, denied()
 	}
@@ -75,8 +89,5 @@ func (s *Store) extensionP1Principal(ctx context.Context, channel, instance stri
 	stamp := sha256.Sum256(snapshot)
 	p.AccessStamp = hex.EncodeToString(stamp[:])
 	p.Instance, p.Revision = instance, strconv.FormatInt(c.Revision, 10)
-	if err = tx.Commit(ctx); err != nil {
-		return demo.Principal{}, err
-	}
 	return p, nil
 }

@@ -72,7 +72,8 @@ func memory(megabytes int) {
 	var blocks [][]byte
 	for allocated := 0; allocated < megabytes; allocated += 16 {
 		data := make([]byte, 16<<20)
-		for i := range data {
+		// Запись в каждую страницу создаёт реальную нагрузку памяти без побайтного цикла.
+		for i := 0; i < len(data); i += os.Getpagesize() {
 			data[i] = 1
 		}
 		blocks = append(blocks, data)

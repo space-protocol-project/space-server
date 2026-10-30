@@ -30,7 +30,7 @@ func TestExtensionP1MutationConcurrentRevisions(t *testing.T) {
 		}(key)
 	}
 	waitMutationSignal(t, f.ctx, entered)
-	<-entered
+	waitMutationSignal(t, f.ctx, entered)
 	close(release)
 	a, b := <-results, <-results
 	if !((a == nil && status.Code(b) == codes.Aborted) || (b == nil && status.Code(a) == codes.Aborted)) {

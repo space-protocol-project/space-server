@@ -15,14 +15,18 @@ import (
 )
 
 type extensionAuthorityFixture struct {
-	member context.Context
-	revoke func() error
-	lock   string
+	member              context.Context
+	revoke              func() error
+	lock                string
+	grant, parent, pair string
 }
 
 // Настоящие подписанные регистрации, делегирование, pairing и RPC отзыва.
 func extensionAuthority(t *testing.T, f *channelFixture, kind string) extensionAuthorityFixture {
 	t.Helper()
+	if kind == "claimed_parent" {
+		return extensionClaimedParent(t, f)
+	}
 	root, private, _ := ed25519.GenerateKey(rand.Reader)
 	device, devicePrivate, _ := ed25519.GenerateKey(rand.Reader)
 	original := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "device.register", RootPublicKey: root, DevicePublicKey: device, Administrative: true}, private)
@@ -40,7 +44,7 @@ func extensionAuthority(t *testing.T, f *channelFixture, kind string) extensionA
 	}
 	grant := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "device.delegate", RecoveryGrantId: parent.GrantId, DevicePublicKey: child, Administrative: true, PairingId: pair.Pairing.Id}, recoveryPrivate)
 	session := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "auth.login", GrantId: grant.GrantId}, childPrivate)
-	result := extensionAuthorityFixture{member: metadata.AppendToOutgoingContext(f.ctx, "authorization", "Bearer "+session.AccessToken)}
+	result := extensionAuthorityFixture{member: metadata.AppendToOutgoingContext(f.ctx, "authorization", "Bearer "+session.AccessToken), grant: grant.GrantId, parent: parent.GrantId, pair: pair.Pairing.Id}
 	switch kind {
 	case "pairing":
 		result.lock = "FROM device_pairings"
@@ -90,7 +94,7 @@ func extensionRotation(t *testing.T, f *channelFixture, source context.Context, 
 }
 
 func TestExtensionP1MutationAuthorityBeforeCommit(t *testing.T) {
-	for _, kind := range []string{"parent", "pairing", "rotation"} {
+	for _, kind := range []string{"parent", "pairing", "rotation", "claimed_parent"} {
 		t.Run(kind, func(t *testing.T) {
 			f := newChannelFixture(t)
 			c := f.create(t, "mut_authority")
@@ -111,7 +115,7 @@ func TestExtensionP1MutationAuthorityBeforeCommit(t *testing.T) {
 }
 
 func TestExtensionP1MutationAuthorityAfterCommit(t *testing.T) {
-	for _, kind := range []string{"parent", "pairing", "rotation"} {
+	for _, kind := range []string{"parent", "pairing", "rotation", "claimed_parent"} {
 		t.Run(kind, func(t *testing.T) {
 			f := newChannelFixture(t)
 			c := f.create(t, "mut_authority")

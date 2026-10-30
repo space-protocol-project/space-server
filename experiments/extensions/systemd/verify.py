@@ -134,11 +134,20 @@ def restart_limit():
     reset()
     override('ExecStart=/opt/space-p1/p1-supervisor -worker /missing-p1-worker\n')
     ctl('start', '--no-block', UNIT)
-    failed = wait(lambda: state() if state()['Result'] == 'start-limit-hit' else None,
-                  'ограничение повторных отказов')
-    assert failed['ActiveState'] == 'failed' and failed['MainPID'] == '0'
+    failed = wait(restart_exhausted, 'ограничение повторных отказов')
+    time.sleep(2.2)
+    assert restart_exhausted(), state()
     RESULTS.append({'scenario': 'invalid-worker-restart-limit', 'result': 'pass',
-                    'restarts': int(failed['NRestarts']), 'ready': False})
+                    'restarts': int(failed['NRestarts']), 'ready': False,
+                    'terminal_result': failed['Result']})
+
+
+def restart_exhausted():
+    current = state()
+    if (current['ActiveState'] == 'failed' and current['SubState'] == 'failed'
+            and current['MainPID'] == '0' and current['NRestarts'] == '5'):
+        return current
+    return None
 
 
 try:

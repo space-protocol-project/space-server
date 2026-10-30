@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 )
@@ -76,6 +77,11 @@ func Decode(raw []byte) (Request, error) {
 	if json.Unmarshal(raw, &fields) != nil || len(fields) != 5 {
 		return request, ErrRequest
 	}
+	for _, key := range []string{"protocol", "instance", "kind", "name", "payload"} {
+		if _, exists := fields[key]; !exists {
+			return request, ErrRequest
+		}
+	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&request) != nil || request.Payload == nil || len(request.Payload) != 0 {
@@ -108,7 +114,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	if err != nil {
 		return nil, ErrDenied
 	}
-	if principal.Instance != request.Instance || principal.Space == "" || principal.User == "" || principal.Device == "" || principal.Revision == "" {
+	if !validPrincipal(principal, request.Instance) {
 		return nil, ErrDenied
 	}
 	ctx, cancel := context.WithTimeout(ctx, extensions.ProcessTimeout)
@@ -148,4 +154,9 @@ func executionError(err error) error {
 		}
 	}
 	return ErrExtension
+}
+
+func validPrincipal(p Principal, instance string) bool {
+	revision, err := strconv.ParseUint(p.Revision, 10, 64)
+	return p.Instance == instance && p.Space != "" && p.User != "" && p.Device != "" && err == nil && revision > 0 && strconv.FormatUint(revision, 10) == p.Revision
 }

@@ -43,6 +43,7 @@ func grant(context.Context, string, string, bool) (Principal, error) {
 
 func TestDecodeRejectsUntrustedContext(t *testing.T) {
 	for _, raw := range []string{
+		`{"Protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{}}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{},"context":{}}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{"principal_id":"admin"}}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":null}`,
@@ -111,5 +112,19 @@ func TestVersionAndCommandBeforeWASM(t *testing.T) {
 	}
 	if h.calls != 0 {
 		t.Fatal(h.calls)
+	}
+}
+
+func TestRejectInvalidAccessRevision(t *testing.T) {
+	for _, revision := range []string{"0", "01", "-1", "18446744073709551616"} {
+		h := &fakeHost{}
+		d := setup(t, h, func(context.Context, string, string, bool) (Principal, error) {
+			p, _ := grant(context.Background(), "", "", false)
+			p.Revision = revision
+			return p, nil
+		})
+		if _, err := d.Dispatch(context.Background(), "", request()); !errors.Is(err, ErrDenied) || h.calls != 0 {
+			t.Fatal(revision, err, h.calls)
+		}
 	}
 }

@@ -66,6 +66,9 @@ func preparePortableDump(runtime, data, staging string) (result error) {
 	if err != nil {
 		return err
 	}
+	if err := postgres.CheckExtensionP1Backup(ctx, address, false); err != nil {
+		return err
+	}
 	if err := portableDatabaseTool(runtime, "pg_dump", address, staging, "--format=custom", "--no-owner", "--no-privileges", "--exclude-table-data=auth_sessions", "--file="+filepath.Join(staging, "database.dump")); err != nil {
 		return err
 	}
@@ -323,6 +326,9 @@ func restorePortableDatabase(runtime, staging, unpacked string, manifest *portab
 	}
 	if identity.ServerID != manifest.ServerID || identity.SchemaVersion != manifest.SchemaVersion {
 		return errors.New("Идентичность импортированного пространства не совпадает")
+	}
+	if err := postgres.CheckExtensionP1Backup(ctx, address, true); err != nil {
+		return err
 	}
 	if err := copyFile(filepath.Join(unpacked, "config.json"), filepath.Join(staging, "config.json")); err != nil {
 		return err

@@ -1,0 +1,43 @@
+name: P1 резервное копирование расширений
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2025, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Зависимости
+        run: go mod tidy
+      - name: Настоящий runtime и все домашние проверки
+        run: python packaging/build-home-runtime.py
+      - name: Повторные проверки расширений, старых копий и переноса
+        shell: bash
+        run: |
+          mkdir -p .local/p1-backup
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          go test -race -json ./internal/home -run '^(TestExtensionP1BackupRoundTrip|TestStoppedDatabaseBackupAndRestore|TestPortableSpaceRoundTrip)$' -count=3 -timeout=10m > .local/p1-backup/backup.jsonl
+          go vet ./internal/home
+          go mod verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-backup-${{ matrix.os }}
+          include-hidden-files: true
+          path: |
+            .local/p1-backup
+            dist/home/GO-VERSION.txt
+            dist/home/SOURCE.txt

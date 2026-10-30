@@ -331,6 +331,16 @@ func RestoreBackup(runtime, source, destination string) error {
 		if err := VerifyBackup(staging); err != nil {
 			return err
 		}
+		if err := prepareRestoredExtensions(runtime, filepath.Join(staging, "data")); err != nil {
+			return err
+		}
+		// Запуск временной БД и отзыв аренд меняют файлы только новой копии.
+		if err := writeBackupManifest(staging); err != nil {
+			return err
+		}
+		if err := VerifyBackup(staging); err != nil {
+			return err
+		}
 		return CheckStoppedDatabase(runtime, filepath.Join(staging, "data"))
 	})
 }

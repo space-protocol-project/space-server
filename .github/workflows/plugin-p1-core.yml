@@ -30,6 +30,7 @@ jobs:
         run: |
           mkdir -p .local/p1-core
           go mod tidy
+          go test -race -json ./internal/postgres -run '^TestExtensionP1Backup' -count=3 > .local/p1-core/backup-validation.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation' -count=1 > .local/p1-core/mutations.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation(Authority|CommitOrders)' -count=10 > .local/p1-core/locks.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1MutationCrashRecovery$' -count=10 > .local/p1-core/crash.jsonl
@@ -38,7 +39,7 @@ jobs:
           go test -race -json ./... > .local/p1-core/race.jsonl
           go vet ./...
           go mod verify
-          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/extensionp1 ./internal/postgres
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/extensionp1 ./internal/postgres ./internal/home
       - name: Сборка настоящего WASM и worker
         run: |
           sudo apt-get update

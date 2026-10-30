@@ -127,6 +127,42 @@ jobs:
             experiments/extensions/service-results.json
             experiments/extensions/service-journal.txt
             experiments/extensions/systemd-version.txt
+  macos-memory-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Исследование лимитов памяти и доступности VM
+        run: |
+          clang -O2 -Wall -Wextra -Werror macos/memory.c -o memory-probe
+          swiftc macos/virtualization.swift -framework Virtualization -o virtualization-probe
+          codesign --force --sign - --entitlements macos/probe.entitlements virtualization-probe
+          codesign --verify --strict virtualization-probe
+          codesign -d --entitlements :- virtualization-probe > virtualization-entitlements.plist
+          sw_vers > macos-version.txt
+          python3 macos/verify.py
+          go test -race -count=1 -json -run '^TestDarwinIsolationRejectsValidPaths$' . > darwin-rejection.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-macos-probe-${{ matrix.os }}
+          path: |
+            experiments/extensions/macos-probe.json
+            experiments/extensions/macos-version.txt
+            experiments/extensions/virtualization-entitlements.plist
+            experiments/extensions/darwin-rejection.jsonl
   windows-isolation:
     needs: fixtures
     runs-on: windows-2025

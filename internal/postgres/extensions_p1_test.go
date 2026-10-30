@@ -152,7 +152,7 @@ func TestExtensionP1RecheckAfterWASM(t *testing.T) {
 				t.Error(err)
 			}
 			if trusted["principal_id"] != id || trusted["space_id"] != f.identity.ServerID || trusted["device_id"] == "" {
-				t.Error("Недоверенный context", envelope)
+				t.Error("Недоверенный context")
 			}
 			if _, err := f.store.pool.Exec(f.ctx, sql, id); err != nil {
 				t.Error(err)

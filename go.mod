@@ -12,6 +12,7 @@ require (
 	github.com/pion/stun/v4 v4.0.1
 	github.com/pion/turn/v5 v5.1.2
 	github.com/pion/webrtc/v4 v4.2.25
+	github.com/space-protocol-project/space-server/experiments/extensions v0.0.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
 	golang.org/x/time v0.16.0
@@ -36,15 +37,12 @@ require (
 	github.com/pion/sctp v1.12.0 // indirect
 	github.com/pion/srtp/v3 v3.1.3 // indirect
 	github.com/pion/transport/v5 v5.1.1 // indirect
+	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 )
-
-require github.com/space-protocol-project/space-server/experiments/extensions v0.0.0
-
-require github.com/tetratelabs/wazero v1.12.0 // indirect
 
 replace github.com/space-protocol-project/space-server/experiments/extensions => ./experiments/extensions

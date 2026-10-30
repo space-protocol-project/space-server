@@ -88,7 +88,7 @@ func (p *extensionDatabaseProxy) serve(client net.Conn, target string) {
 	if _, err = server.Write(startup); err != nil {
 		return
 	}
-	var selected atomic.Bool
+	var selected atomic.Int32
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -121,7 +121,7 @@ func extensionDatabaseFrame(r io.Reader, typed bool) ([]byte, error) {
 	return frame, err
 }
 
-func (p *extensionDatabaseProxy) forward(source, target net.Conn, frontend bool, selected *atomic.Bool) {
+func (p *extensionDatabaseProxy) forward(source, target net.Conn, frontend bool, selected *atomic.Int32) {
 	for {
 		frame, err := extensionDatabaseFrame(source, true)
 		if err != nil {
@@ -136,16 +136,19 @@ func (p *extensionDatabaseProxy) forward(source, target net.Conn, frontend bool,
 	}
 }
 
-func (p *extensionDatabaseProxy) drop(frame []byte, frontend bool, selected *atomic.Bool) bool {
+func (p *extensionDatabaseProxy) drop(frame []byte, frontend bool, selected *atomic.Int32) bool {
 	payload := strings.TrimSuffix(string(frame[5:]), "\x00")
-	if frontend && frame[0] == 'Q' && strings.EqualFold(strings.TrimSpace(payload), "commit") && p.armed.CompareAndSwap(true, false) {
-		selected.Store(true)
+	if frontend && (frame[0] == 'P' || frame[0] == 'Q') && p.armed.Load() && strings.Contains(strings.ToUpper(payload), "INSERT INTO EXTENSION_P1_OUTBOX") {
+		selected.Store(1)
+	}
+	if frontend && selected.Load() == 1 && frame[0] == 'Q' && strings.EqualFold(strings.TrimSpace(payload), "commit") && p.armed.CompareAndSwap(true, false) {
+		selected.Store(2)
 		if p.mode == "before_commit" {
 			p.hit <- "COMMIT not forwarded"
 			return true
 		}
 	}
-	if !frontend && selected.Load() && frame[0] == 'C' && payload == "COMMIT" {
+	if !frontend && selected.Load() == 2 && frame[0] == 'C' && payload == "COMMIT" {
 		p.hit <- "CommandComplete COMMIT withheld"
 		return true
 	}

@@ -100,7 +100,7 @@ jobs:
           POSTGRES_DB: space_test
           POSTGRES_USER: space
           POSTGRES_PASSWORD: ci-only-password
-        ports: ['5432/tcp']
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U space -d space_test"
           --health-interval 3s --health-timeout 3s --health-retries 20

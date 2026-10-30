@@ -59,7 +59,7 @@ func (m *extensionMutations) commit(ctx context.Context, conn *pgxpool.Conn, b e
 
 func extensionMutationCapacity(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, instance string, events int) error {
 	var receipts, outbox int64
-	err := tx.QueryRow(ctx, `SELECT (SELECT count(*) FROM extension_p1.receipts WHERE installation=$1 AND instance=$2),(SELECT count(*) FROM extension_p1.outbox WHERE installation=$1 AND instance=$2)`, b.installation, instance).Scan(&receipts, &outbox)
+	err := tx.QueryRow(ctx, `SELECT (SELECT count(*) FROM extension_p1_receipts WHERE installation=$1 AND instance=$2),(SELECT count(*) FROM extension_p1_outbox WHERE installation=$1 AND instance=$2)`, b.installation, instance).Scan(&receipts, &outbox)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func extensionMutationCapacity(ctx context.Context, tx pgx.Tx, b extensionMutati
 }
 func extensionDataCapacity(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, instance string) error {
 	var keys, size int64
-	err := tx.QueryRow(ctx, `SELECT count(*),COALESCE(sum(octet_length(key)+octet_length(value)),0) FROM extension_p1.data WHERE installation=$1 AND instance=$2`, b.installation, instance).Scan(&keys, &size)
+	err := tx.QueryRow(ctx, `SELECT count(*),COALESCE(sum(octet_length(key)+octet_length(value)),0) FROM extension_p1_data WHERE installation=$1 AND instance=$2`, b.installation, instance).Scan(&keys, &size)
 	if err != nil {
 		return err
 	}
@@ -85,9 +85,9 @@ func applyExtensionOperations(ctx context.Context, tx pgx.Tx, b extensionMutatio
 		var err error
 		switch change := op.Change.(type) {
 		case *pb.ExtensionMutationOperation_PutJson:
-			_, err = tx.Exec(ctx, `INSERT INTO extension_p1.data VALUES($1,$2,$3,$4) ON CONFLICT(installation,instance,key) DO UPDATE SET value=EXCLUDED.value`, b.installation, instance, op.Key, change.PutJson)
+			_, err = tx.Exec(ctx, `INSERT INTO extension_p1_data VALUES($1,$2,$3,$4) ON CONFLICT(installation,instance,key) DO UPDATE SET value=EXCLUDED.value`, b.installation, instance, op.Key, change.PutJson)
 		case *pb.ExtensionMutationOperation_Delete:
-			_, err = tx.Exec(ctx, `DELETE FROM extension_p1.data WHERE installation=$1 AND instance=$2 AND key=$3`, b.installation, instance, op.Key)
+			_, err = tx.Exec(ctx, `DELETE FROM extension_p1_data WHERE installation=$1 AND instance=$2 AND key=$3`, b.installation, instance, op.Key)
 		default:
 			return mutationError(codes.InvalidArgument, "invalid_operation")
 		}
@@ -101,16 +101,16 @@ func applyExtensionOperations(ctx context.Context, tx pgx.Tx, b extensionMutatio
 func saveExtensionMutation(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, r *pb.ExecuteExtensionCommandRequest, digest [32]byte, result *pb.ExecuteExtensionCommandResponse, events []*pb.ExtensionMutationEvent) error {
 	for ordinal, event := range events {
 		hash := sha256.Sum256([]byte(fmt.Sprintf("%s/%s/%d/%d", b.installation, r.InstanceId, result.StateRevision, ordinal)))
-		_, err := tx.Exec(ctx, `INSERT INTO extension_p1.outbox VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, int64(result.StateRevision), ordinal, hex.EncodeToString(hash[:]), event.Type, event.PayloadJson)
+		_, err := tx.Exec(ctx, `INSERT INTO extension_p1_outbox VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, int64(result.StateRevision), ordinal, hex.EncodeToString(hash[:]), event.Type, event.PayloadJson)
 		if err != nil {
 			return err
 		}
 	}
 	response, _ := proto.Marshal(result)
-	_, err := tx.Exec(ctx, `INSERT INTO extension_p1.receipts(installation,instance,principal,command,key,digest,response) VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey, digest[:], response)
+	_, err := tx.Exec(ctx, `INSERT INTO extension_p1_receipts(installation,instance,principal,command,key,digest,response) VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey, digest[:], response)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `UPDATE extension_p1.instances SET revision=$3 WHERE installation=$1 AND instance=$2`, b.installation, r.InstanceId, int64(result.StateRevision))
+	_, err = tx.Exec(ctx, `UPDATE extension_p1_instances SET revision=$3 WHERE installation=$1 AND instance=$2`, b.installation, r.InstanceId, int64(result.StateRevision))
 	return err
 }

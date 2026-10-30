@@ -87,20 +87,20 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 		return err
 	}
 	var version int
-	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1.meta WHERE singleton=true").Scan(&version); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
 		return err
 	}
 	if version != 1 {
 		return mutationError(codes.FailedPrecondition, "storage_version")
 	}
 	for instance, b := range m.bindings {
-		_, err = tx.Exec(ctx, `INSERT INTO extension_p1.instances(installation,instance,channel,package_hash) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`, b.installation, instance, b.channel, b.packageHash[:])
+		_, err = tx.Exec(ctx, `INSERT INTO extension_p1_instances(installation,instance,channel,package_hash) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`, b.installation, instance, b.channel, b.packageHash[:])
 		if err != nil {
 			return err
 		}
 		var channel string
 		var hash []byte
-		err = tx.QueryRow(ctx, "SELECT channel,package_hash FROM extension_p1.instances WHERE installation=$1 AND instance=$2 FOR SHARE", b.installation, instance).Scan(&channel, &hash)
+		err = tx.QueryRow(ctx, "SELECT channel,package_hash FROM extension_p1_instances WHERE installation=$1 AND instance=$2 FOR SHARE", b.installation, instance).Scan(&channel, &hash)
 		if err != nil {
 			return err
 		}

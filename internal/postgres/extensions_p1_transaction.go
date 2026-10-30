@@ -76,7 +76,7 @@ func loadExtensionInstance(ctx context.Context, tx pgx.Tx, b extensionMutationBi
 	var revision int64
 	var channel string
 	var hash []byte
-	err := tx.QueryRow(ctx, `SELECT revision,channel,package_hash FROM extension_p1.instances WHERE installation=$1 AND instance=$2 FOR UPDATE`, b.installation, instance).Scan(&revision, &channel, &hash)
+	err := tx.QueryRow(ctx, `SELECT revision,channel,package_hash FROM extension_p1_instances WHERE installation=$1 AND instance=$2 FOR UPDATE`, b.installation, instance).Scan(&revision, &channel, &hash)
 	if err != nil {
 		return 0, err
 	}
@@ -88,7 +88,7 @@ func loadExtensionInstance(ctx context.Context, tx pgx.Tx, b extensionMutationBi
 
 func extensionReceipt(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, r *pb.ExecuteExtensionCommandRequest, digest [32]byte) (*pb.ExecuteExtensionCommandResponse, error) {
 	var oldHash, response []byte
-	err := tx.QueryRow(ctx, `SELECT digest,response FROM extension_p1.receipts WHERE installation=$1 AND instance=$2 AND principal=$3 AND command=$4 AND key=$5`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey).Scan(&oldHash, &response)
+	err := tx.QueryRow(ctx, `SELECT digest,response FROM extension_p1_receipts WHERE installation=$1 AND instance=$2 AND principal=$3 AND command=$4 AND key=$5`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey).Scan(&oldHash, &response)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

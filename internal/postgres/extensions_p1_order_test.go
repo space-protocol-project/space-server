@@ -26,15 +26,15 @@ func TestExtensionP1MutationCommitOrdersLogout(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer gate.Exec(context.Background(), "SELECT pg_advisory_unlock(974421)")
-	_, err = f.store.pool.Exec(f.ctx, `CREATE FUNCTION extension_p1.wait_commit() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_advisory_xact_lock(974421); RETURN NEW; END$$;
- CREATE TRIGGER wait_commit BEFORE INSERT ON extension_p1.outbox FOR EACH ROW EXECUTE FUNCTION extension_p1.wait_commit()`)
+	_, err = f.store.pool.Exec(f.ctx, `CREATE FUNCTION extension_p1_wait_commit() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN PERFORM pg_advisory_xact_lock(974421); RETURN NEW; END$$;
+ CREATE TRIGGER wait_commit BEFORE INSERT ON extension_p1_outbox FOR EACH ROW EXECUTE FUNCTION extension_p1_wait_commit()`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	done := make(chan error, 1)
 	request := mutationRequest("ordered-command-001", 0)
 	go func() { _, err := api.ExecuteExtensionCommand(member, request); done <- err }()
-	waitExtensionSQLLock(t, f, "INSERT INTO extension_p1.outbox")
+	waitExtensionSQLLock(t, f, "INSERT INTO extension_p1_outbox")
 	logout := make(chan error, 1)
 	go func() { _, err := f.auth.Logout(member, &pb.LogoutRequest{}); logout <- err }()
 	waitExtensionSQLLock(t, f, "DELETE FROM auth_sessions")

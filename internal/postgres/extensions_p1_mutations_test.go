@@ -57,7 +57,7 @@ func mutationOutput(revision uint64) []byte {
 func mutationCounts(t *testing.T, f *channelFixture, wantRevision, wantData, wantReceipts, wantEvents int) {
 	t.Helper()
 	var revision, data, receipts, events int
-	err := f.store.pool.QueryRow(f.ctx, `SELECT revision,(SELECT count(*) FROM extension_p1.data),(SELECT count(*) FROM extension_p1.receipts),(SELECT count(*) FROM extension_p1.outbox) FROM extension_p1.instances WHERE installation='install' AND instance='demo'`).Scan(&revision, &data, &receipts, &events)
+	err := f.store.pool.QueryRow(f.ctx, `SELECT revision,(SELECT count(*) FROM extension_p1_data),(SELECT count(*) FROM extension_p1_receipts),(SELECT count(*) FROM extension_p1_outbox) FROM extension_p1_instances WHERE installation='install' AND instance='demo'`).Scan(&revision, &data, &receipts, &events)
 	if err != nil || revision != wantRevision || data != wantData || receipts != wantReceipts || events != wantEvents {
 		t.Fatalf("state=%d/%d/%d/%d err=%v", revision, data, receipts, events, err)
 	}
@@ -172,26 +172,26 @@ func TestExtensionP1MutationRollbackAndQuota(t *testing.T) {
 	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
 	api := mutationClient(t, f, h, []byte{1}, c.Id)
 	r := mutationRequest("rollback-command-001", 0)
-	_, err := f.store.pool.Exec(f.ctx, `CREATE FUNCTION extension_p1.reject_event() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'CI injected outbox failure'; END$$;
- CREATE TRIGGER reject_event BEFORE INSERT ON extension_p1.outbox FOR EACH ROW EXECUTE FUNCTION extension_p1.reject_event()`)
+	_, err := f.store.pool.Exec(f.ctx, `CREATE FUNCTION extension_p1_reject_event() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'CI injected outbox failure'; END$$;
+ CREATE TRIGGER reject_event BEFORE INSERT ON extension_p1_outbox FOR EACH ROW EXECUTE FUNCTION extension_p1_reject_event()`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = api.ExecuteExtensionCommand(f.owner, r)
 	requireCode(t, err, codes.Internal)
 	mutationCounts(t, f, 0, 0, 0, 0)
-	if _, err = f.store.pool.Exec(f.ctx, "DROP TRIGGER reject_event ON extension_p1.outbox"); err != nil {
+	if _, err = f.store.pool.Exec(f.ctx, "DROP TRIGGER reject_event ON extension_p1_outbox"); err != nil {
 		t.Fatal(err)
 	}
 	// Лимит ключей проверяется после применения плана, но откатывает весь commit.
-	_, err = f.store.pool.Exec(f.ctx, `INSERT INTO extension_p1.data SELECT 'install','demo','key_'||n,'{}'::bytea FROM generate_series(1,256) n`)
+	_, err = f.store.pool.Exec(f.ctx, `INSERT INTO extension_p1_data SELECT 'install','demo','key_'||n,'{}'::bytea FROM generate_series(1,256) n`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = api.ExecuteExtensionCommand(f.owner, r)
 	requireCode(t, err, codes.ResourceExhausted)
 	mutationCounts(t, f, 0, 256, 0, 0)
-	if _, err = f.store.pool.Exec(f.ctx, "DELETE FROM extension_p1.data"); err != nil {
+	if _, err = f.store.pool.Exec(f.ctx, "DELETE FROM extension_p1_data"); err != nil {
 		t.Fatal(err)
 	}
 	_, err = api.ExecuteExtensionCommand(f.owner, r)
@@ -254,4 +254,30 @@ func TestExtensionP1MutationRealWASM(t *testing.T) {
 		t.Fatal(b, err)
 	}
 	mutationCounts(t, f, 1, 1, 1, 1)
+}
+
+func TestExtensionP1MutationInstanceIsolation(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "mut_instances")
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
+	bindings := mutationBindings(c.Id, []byte{1})
+	bindings["other"] = bindings["demo"]
+	svc, err := f.store.NewExtensionP1MutationService(f.ctx, h, bindings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := extensionP1RPCClient(t, f, svc)
+	for _, instance := range []string{"demo", "other"} {
+		r := mutationRequest("instance-command-001", 0)
+		r.InstanceId = instance
+		result, err := api.ExecuteExtensionCommand(f.owner, r)
+		if err != nil || result.GetReplayed() || result.GetStateRevision() != 1 {
+			t.Fatal(result, err)
+		}
+	}
+	var data, receipts, events int
+	err = f.store.pool.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM extension_p1_data),(SELECT count(*) FROM extension_p1_receipts),(SELECT count(*) FROM extension_p1_outbox)`).Scan(&data, &receipts, &events)
+	if err != nil || data != 2 || receipts != 2 || events != 2 || h.calls.Load() != 2 {
+		t.Fatal(data, receipts, events, err)
+	}
 }

@@ -176,10 +176,12 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 	request := mutationRequest("crash-recovery-001", 0)
 	done := make(chan error, 1)
 	go func() { _, err := api.ExecuteExtensionCommand(f.owner, request); done <- err }()
+	var eventBefore string
 	if mode == "before_commit" {
 		waitExtensionSQLLock(t, f, "INSERT INTO extension_p1_outbox")
 	} else {
 		waitExtensionCrashFile(t, committed)
+		eventBefore = verifyExtensionCrashData(t, f)
 	}
 	if mode == "lost_response" {
 		if err := conn.Close(); err != nil {
@@ -216,6 +218,9 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 	}
 	mutationCounts(t, f, 1, 1, 1, 1)
 	verifyExtensionCrashReceipt(t, f, response)
+	if event := verifyExtensionCrashData(t, f); eventBefore != "" && event != eventBefore {
+		t.Fatal("Повтор заменил сохранённое событие")
+	}
 	wantCalls := "invoke\n"
 	if mode == "before_commit" {
 		wantCalls += "invoke\n"
@@ -230,6 +235,18 @@ func testExtensionCrashRecovery(t *testing.T, mode string) {
 	_, err = api.ExecuteExtensionCommand(f.owner, request)
 	requireCode(t, err, codes.Unauthenticated)
 	t.Logf("mode=%s revision=1 data=1 receipts=1 outbox=1 replayed=%v", mode, response.GetReplayed())
+}
+
+func verifyExtensionCrashData(t *testing.T, f *channelFixture) string {
+	t.Helper()
+	var value, event, kind, payload string
+	err := f.store.pool.QueryRow(f.ctx, `SELECT convert_from(d.value,'UTF8'),o.event_id,o.type,convert_from(o.payload,'UTF8')
+ FROM extension_p1_data d JOIN extension_p1_outbox o USING(installation,instance)
+ WHERE d.instance='demo' AND d.key='note' AND o.revision=1 AND o.ordinal=0`).Scan(&value, &event, &kind, &payload)
+	if err != nil || value != `{"value":1}` || event == "" || kind != "note_changed" || payload != "{}" {
+		t.Fatal("Данные или событие повреждены", value, event, kind, payload, err)
+	}
+	return event
 }
 
 func verifyExtensionCrashReceipt(t *testing.T, f *channelFixture, response *pb.ExecuteExtensionCommandResponse) {

@@ -321,7 +321,7 @@
       },
       "expected": {
         "action": "stop",
-        "unknown": false,
+        "unknown": true,
         "delay_ms": 0
       }
     },

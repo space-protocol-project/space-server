@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-protocol
-          ref: 8c0c7bf7408e2d5f856d8ec4b4b2875c523f0e3d
+          ref: 6e458849e356ff88ac9306bfb288fab1c4e19ee0
           path: .local/p1-protocol
       - name: Shared retry contract
         run: cmp internal/extensionp1/testdata/retry.json .local/p1-protocol/docs/extensions/p1/retry.json

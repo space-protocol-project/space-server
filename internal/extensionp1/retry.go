@@ -30,7 +30,7 @@ func DecideRetry(o RetryObservation) RetryDecision {
 	}
 	ambiguous, known := retryCode(o.Code)
 	d := RetryDecision{Action: "stop", Unknown: o.PreviousUnknown || ambiguous || !known}
-	if o.Cancelled || !known || o.Code == "Canceled" {
+	if o.Cancelled || !known || o.Code == "Canceled" || o.Code == "DataLoss" {
 		return d
 	}
 	if o.Code == "Unauthenticated" {
@@ -51,9 +51,9 @@ func DecideRetry(o RetryObservation) RetryDecision {
 
 func retryCode(code string) (ambiguous, known bool) {
 	switch code {
-	case "Unknown", "Internal", "Unavailable", "DeadlineExceeded", "TransportLost", "Canceled":
+	case "Unknown", "Internal", "Unavailable", "DeadlineExceeded", "TransportLost", "Canceled", "DataLoss":
 		return true, true
-	case "InvalidArgument", "NotFound", "AlreadyExists", "PermissionDenied", "ResourceExhausted", "FailedPrecondition", "Aborted", "OutOfRange", "Unimplemented", "DataLoss", "Unauthenticated":
+	case "InvalidArgument", "NotFound", "AlreadyExists", "PermissionDenied", "ResourceExhausted", "FailedPrecondition", "Aborted", "OutOfRange", "Unimplemented", "Unauthenticated":
 		return false, true
 	default:
 		return false, false

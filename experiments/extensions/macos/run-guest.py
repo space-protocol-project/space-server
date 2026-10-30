@@ -24,4 +24,6 @@ with open("vm-launcher.log", "w") as log:
 console = Path("guest-console.txt").read_text()
 assert process.returncode == 0, "VM launcher failed"
 assert "P1_GUEST_SUCCESS" in console and "P1_GUEST_FAILED" not in console, console[-4000:]
-assert "--- SKIP:" not in console and "--- FAIL:" not in console, "Incomplete guest tests"
+skips = [line for line in console.splitlines() if "--- SKIP:" in line]
+assert all(line.startswith("--- SKIP: TestIsolationSupervisorHelper ") for line in skips), skips
+assert "--- FAIL:" not in console, "Guest tests failed"

@@ -2,12 +2,12 @@
 set -euo pipefail
 # Выполняется только на одноразовом Ubuntu runner GitHub CI.
 sudo apt-get update
-sudo apt-get install -y linux-image-generic busybox-static cpio zstd wabt
+sudo apt-get install -y --no-install-recommends linux-image-generic busybox-static cpio zstd wabt
 python3 fixtures.py
 mkdir -p guest/{bin,dev,proc,sys,tmp,modules,suite/testdata} vm-image
 cp /bin/busybox guest/bin/
 for app in sh mount chmod insmod mkdir cat uname rmdir poweroff sleep; do ln -s busybox "guest/bin/$app"; done
-kernel=$(find /boot -name 'vmlinuz-*-generic' | sort -V | tail -1)
+kernel=$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' | sort -V | tail -1)
 version=${kernel##*/vmlinuz-}
 sudo cp "$kernel" vm-image/vmlinuz
 sudo chmod 644 vm-image/vmlinuz

@@ -39,16 +39,18 @@ jobs:
       - name: Проверка образа и сборка launcher
         run: |
           (cd vm-image && shasum -a 256 -c SHA256SUMS)
+          clang -O2 -Wall -Wextra -Werror macos/process-memory.c -o process-memory
           swiftc macos/guest.swift -framework Virtualization -o guest-launcher
           codesign --force --sign - --entitlements macos/probe.entitlements guest-launcher
           codesign --verify --strict guest-launcher
           sw_vers > vm-macos-version.txt
-      - run: python3 macos/run-guest.py
+      - run: python3 macos/vm-lifecycle.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: p1-macos-linux-guest
           path: |
+            experiments/extensions/vm-lifecycle
             experiments/extensions/guest-console.txt
             experiments/extensions/vm-launcher.log
             experiments/extensions/vm-memory.json

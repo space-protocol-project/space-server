@@ -22,6 +22,15 @@ cd /suite
 echo P1_GUEST_READY
 uname -a
 cat /proc/meminfo
+case "$(cat /proc/cmdline)" in
+  *p1_hold=1*)
+    # Несжимаемая нагрузка гостевой памяти для аварии всей VM, вне worker cgroup.
+    dd if=/dev/urandom of=/tmp/vm-pressure bs=1048576 count=256
+    echo P1_VM_HOLD_READY
+    cat /proc/meminfo
+    while true; do echo P1_VM_HEARTBEAT; sleep 1; done
+    ;;
+esac
 ./isolation.test -test.v -test.run '^TestIsolation' -test.timeout 180s
 rmdir /sys/fs/cgroup/p1
 echo P1_GUEST_SUCCESS

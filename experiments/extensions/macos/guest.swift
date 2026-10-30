@@ -10,13 +10,17 @@ final class GuestDelegate: NSObject, VZVirtualMachineDelegate {
     }
 }
 
-guard CommandLine.arguments.count == 4, VZVirtualMachine.isSupported else {
+guard (CommandLine.arguments.count == 4 || CommandLine.arguments.count == 5), VZVirtualMachine.isSupported else {
     fputs("Virtualization unavailable or invalid arguments\n", stderr)
     exit(2)
 }
 let loader = VZLinuxBootLoader(kernelURL: URL(fileURLWithPath: CommandLine.arguments[1]))
 loader.initialRamdiskURL = URL(fileURLWithPath: CommandLine.arguments[2])
 loader.commandLine = "console=hvc0 rdinit=/init panic=-1 cgroup_no_v1=all"
+if CommandLine.arguments.count == 5 {
+    guard CommandLine.arguments[4] == "hold" else { exit(2) }
+    loader.commandLine += " p1_hold=1"
+}
 let serial = VZVirtioConsoleDeviceSerialPortConfiguration()
 serial.attachment = try VZFileSerialPortAttachment(url: URL(fileURLWithPath: CommandLine.arguments[3]), append: false)
 let configuration = VZVirtualMachineConfiguration()

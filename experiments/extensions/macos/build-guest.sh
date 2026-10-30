@@ -6,7 +6,7 @@ sudo apt-get install -y --no-install-recommends linux-image-generic busybox-stat
 python3 fixtures.py
 mkdir -p guest/{bin,dev,proc,sys,tmp,modules,suite/testdata} vm-image
 cp /bin/busybox guest/bin/
-for app in sh mount chmod insmod mkdir cat uname rmdir poweroff sleep; do ln -s busybox "guest/bin/$app"; done
+for app in sh mount chmod insmod mkdir cat uname rmdir poweroff sleep dd; do ln -s busybox "guest/bin/$app"; done
 kernel=$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' | sort -V | tail -1)
 version=${kernel##*/vmlinuz-}
 sudo cp "$kernel" vm-image/vmlinuz

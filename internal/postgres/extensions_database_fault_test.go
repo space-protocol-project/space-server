@@ -15,6 +15,7 @@ import (
 
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestExtensionDatabaseFaults(t *testing.T) {
@@ -96,9 +97,9 @@ func verifyExtensionDatabaseRecovery(t *testing.T, f *channelFixture, api pb.Ext
 		event = verifyExtensionCrashData(t, f)
 	}
 	// Повтор проходит через прежний экземпляр Store: пул обязан восстановить соединения.
-	response, err := api.ExecuteExtensionCommand(f.owner, request)
-	if err != nil || response.GetReplayed() != (want == 1) || response.GetStateRevision() != 1 {
-		t.Fatal(response, err)
+	response := retryExtensionDatabaseCommand(t, f.owner, api, request)
+	if response.GetReplayed() != (want == 1) || response.GetStateRevision() != 1 {
+		t.Fatal(response)
 	}
 	mutationCounts(t, f, 1, 1, 1, 1)
 	verifyExtensionCrashReceipt(t, f, response)
@@ -108,7 +109,7 @@ func verifyExtensionDatabaseRecovery(t *testing.T, f *channelFixture, api pb.Ext
 	if host.calls.Load() != int32(2-want) {
 		t.Fatal("Повторное выполнение гостя", host.calls.Load())
 	}
-	_, err = f.auth.Logout(f.owner, &pb.LogoutRequest{})
+	_, err := f.auth.Logout(f.owner, &pb.LogoutRequest{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,4 +179,24 @@ func extensionDocker(t *testing.T, args ...string) string {
 		t.Fatalf("docker %v: %s %v", args, data, err)
 	}
 	return string(data)
+}
+
+// После перезапуска пул может ещё содержать оборванные соединения. Повторяется
+// только клиентская команда с прежним ключом, не отдельная SQL-транзакция.
+func retryExtensionDatabaseCommand(t *testing.T, ctx context.Context, api pb.ExtensionP1ServiceClient, request *pb.ExecuteExtensionCommandRequest) *pb.ExecuteExtensionCommandResponse {
+	t.Helper()
+	for attempt := 1; attempt <= 9; attempt++ {
+		response, err := api.ExecuteExtensionCommand(ctx, request)
+		if err == nil {
+			t.Logf("recovery_attempts=%d", attempt)
+			return response
+		}
+		if status.Code(err) != codes.Internal {
+			t.Fatal("Неожиданный отказ повтора", err)
+		}
+		t.Logf("recovery_attempt=%d code=%s", attempt, status.Code(err))
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("Пул не восстановился за ограниченное число повторов")
+	return nil
 }

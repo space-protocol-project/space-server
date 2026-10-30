@@ -1,0 +1,27 @@
+[Unit]
+Description=Space P1 experimental extension supervisor
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/opt/space-p1/p1-supervisor -worker /opt/space-p1/p1-worker
+User=root
+Delegate=memory pids cpu
+DelegateSubgroup=supervisor
+KillMode=control-group
+KillSignal=SIGKILL
+SendSIGKILL=yes
+Restart=on-failure
+RestartSec=1s
+TimeoutStartSec=10s
+TimeoutStopSec=2s
+MemoryMax=768M
+MemorySwapMax=0
+TasksMax=128
+UMask=0077
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

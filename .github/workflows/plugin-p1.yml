@@ -87,6 +87,46 @@ jobs:
         with:
           name: p1-process-isolation
           path: experiments/extensions/isolation.txt
+  linux-service:
+    needs: fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p1-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Сборка экспериментальной службы
+        run: |
+          go build -o p1-supervisor ./cmd/p1-supervisor
+          go build -o p1-worker ./cmd/p1-worker
+          go build -o p1-pressure ./cmd/p1-pressure
+          go test -race -c -o isolation.test .
+          sudo mkdir -p /opt/space-p1
+          sudo install -m 0755 p1-supervisor p1-worker p1-pressure isolation.test /opt/space-p1/
+          sudo cp -r testdata /opt/space-p1/testdata
+          sudo install -m 0644 systemd/space-p1-supervisor.service /run/systemd/system/
+      - name: Аварии и восстановление под настоящим systemd
+        run: |
+          systemd --version > systemd-version.txt
+          sudo python3 systemd/verify.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-linux-service
+          path: |
+            experiments/extensions/service-results.json
+            experiments/extensions/service-journal.txt
+            experiments/extensions/systemd-version.txt
   windows-isolation:
     needs: fixtures
     runs-on: windows-2025

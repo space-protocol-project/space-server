@@ -45,16 +45,16 @@ func (m *extensionMutations) lockCommand(ctx context.Context, b extensionMutatio
 	return conn, release, nil
 }
 
-// Короткая консервативная граница P1: отзыв/ACL не могут commit одновременно
-// с проверкой и записью. WASM исполняется вне этой транзакции. Перед production
-// нужны более узкие блокировки и измерение влияния на обычные операции ядра.
+// WASM исполняется вне транзакции; запись удерживает только связанные строки.
 func beginExtensionMutation(ctx context.Context, conn *pgxpool.Conn) (pgx.Tx, error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	_, err = tx.Exec(ctx, `SET LOCAL lock_timeout='1s'; SET LOCAL statement_timeout='1500ms';
- LOCK TABLE device_pairings,principals,device_grants,auth_sessions,memberships,space_settings,channels,channel_access IN SHARE MODE`)
+	_, err = tx.Exec(ctx, `SET LOCAL lock_timeout='1s'; SET LOCAL statement_timeout='1500ms'`)
+	if err == nil {
+		err = lockExtensionAuthority(ctx, tx)
+	}
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return nil, err

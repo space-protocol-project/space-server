@@ -15,6 +15,7 @@ func TestExtensionP1MutationCommitOrdersLogout(t *testing.T) {
 	c := f.create(t, "mut_order")
 	f.acl(t, c, roleRule("member", permissions(true, true, true, false)))
 	member, _ := f.enroll(t, true)
+	unrelated, _ := f.enroll(t, true)
 	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
 	api := mutationClient(t, f, h, []byte{1}, c.Id)
 	gate, err := f.store.pool.Acquire(f.ctx)
@@ -35,6 +36,14 @@ func TestExtensionP1MutationCommitOrdersLogout(t *testing.T) {
 	request := mutationRequest("ordered-command-001", 0)
 	go func() { _, err := api.ExecuteExtensionCommand(member, request); done <- err }()
 	waitExtensionSQLLock(t, f, "INSERT INTO extension_p1_outbox")
+	// Выход другой сессии должен завершиться при удерживаемом SQL-барьере.
+	independent, cancel := context.WithTimeout(unrelated, 500*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	if _, err = f.auth.Logout(independent, &pb.LogoutRequest{}); err != nil {
+		t.Fatal("Мутация заблокировала чужую сессию", err)
+	}
+	t.Logf("unrelated_logout_ms=%.3f", float64(time.Since(started).Microseconds())/1000)
 	logout := make(chan error, 1)
 	go func() { _, err := f.auth.Logout(member, &pb.LogoutRequest{}); logout <- err }()
 	waitExtensionSQLLock(t, f, "DELETE FROM auth_sessions")

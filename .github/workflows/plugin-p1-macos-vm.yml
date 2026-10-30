@@ -1,0 +1,58 @@
+name: P1 macOS Linux guest prototype
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - run: bash macos/build-guest.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p1-linux-guest-image
+          path: experiments/extensions/vm-image
+  guest:
+    needs: image
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: p1-linux-guest-image
+          path: experiments/extensions/vm-image
+      - name: Проверка образа и сборка launcher
+        run: |
+          (cd vm-image && shasum -a 256 -c SHA256SUMS)
+          swiftc macos/guest.swift -framework Virtualization -o guest-launcher
+          codesign --force --sign - --entitlements macos/probe.entitlements guest-launcher
+          codesign --verify --strict guest-launcher
+          sw_vers > vm-macos-version.txt
+      - run: python3 macos/run-guest.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-macos-linux-guest
+          path: |
+            experiments/extensions/guest-console.txt
+            experiments/extensions/vm-launcher.log
+            experiments/extensions/vm-memory.json
+            experiments/extensions/vm-macos-version.txt
+            experiments/extensions/vm-image/SHA256SUMS
+            experiments/extensions/vm-image/packages.txt
+            experiments/extensions/vm-image/kernel-config.txt

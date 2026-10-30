@@ -84,7 +84,6 @@ func TestIsolationPressure(t *testing.T) {
 	for _, mode := range []string{"memory", "hang", "cpu", "child", "output", "crash"} {
 		t.Run(mode, func(t *testing.T) {
 			h := processHost(t, "P1_PRESSURE")
-			before := h.Stats()
 			started := time.Now()
 			request, _ := json.Marshal(mode)
 			_, err := h.CompileAndCall(context.Background(), []byte("fixture"), request, false, false)
@@ -92,9 +91,6 @@ func TestIsolationPressure(t *testing.T) {
 				t.Fatalf("Нет ограниченного отказа: %v", err)
 			}
 			stats := h.Stats()
-			if mode == "memory" && stats.OOMKills <= before.OOMKills {
-				t.Fatalf("Не подтверждён OOM: %+v", stats)
-			}
 			if mode == "cpu" && (stats.CPUUsec == 0 || stats.Throttled == 0) {
 				t.Fatalf("Нет ограничения CPU: %+v", stats)
 			}
@@ -209,6 +205,23 @@ func waitActive(t *testing.T, h *ProcessHost, count int) {
 	}
 }
 
+// Квота ядра проверяется независимо от двухсекундного срока публичного вызова.
+func TestIsolationKernelWorkerLimit(t *testing.T) {
+	h := processHost(t, "P1_PRESSURE")
+	input, _ := json.Marshal(workerRequest{Request: []byte(`"memory"`)})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err := h.run(ctx, input)
+	stats := h.Stats()
+	if err == nil || ctx.Err() != nil || stats.OOMKills == 0 {
+		t.Fatalf("Не подтверждён OOM worker: err=%v context=%v stats=%+v", err, ctx.Err(), stats)
+	}
+	t.Logf("worker_fault_injection limit=%d stats=%+v", WorkerMemory, stats)
+	emptyGroups(t, h)
+	h.executable = os.Getenv("P1_WORKER")
+	healthy(t, h)
+}
+
 func TestIsolationKernelAggregateLimit(t *testing.T) {
 	h := processHost(t, "P1_PRESSURE")
 	// Аварийная инъекция обходит admission, проверяя независимую границу ядра ОС.
@@ -217,7 +230,7 @@ func TestIsolationKernelAggregateLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	input, _ := json.Marshal(workerRequest{Request: []byte(`"global"`)})
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	done := make(chan error, 2)
 	for i := 0; i < 2; i++ {
@@ -229,7 +242,7 @@ func TestIsolationKernelAggregateLimit(t *testing.T) {
 		}
 	}
 	stats := h.Stats()
-	if stats.OOMKills == 0 {
+	if ctx.Err() != nil || stats.OOMKills == 0 {
 		t.Fatalf("Общая квота не сработала: %+v", stats)
 	}
 	t.Logf("aggregate_fault_injection limit=268435456 stats=%+v", stats)

@@ -33,5 +33,13 @@ func lockExtensionAuthority(ctx context.Context, tx pgx.Tx) error {
 	if _, err = tx.Exec(ctx, `SELECT token_hash FROM auth_sessions WHERE token_hash=$1 FOR SHARE`, hash[:]); err != nil {
 		return err
 	}
+	// membership сначала читает owner_id без блокировки. Закрепляем обе строки
+	// до вычисления роли, сохраняя порядок ядра membership → settings → channel.
+	if _, err = tx.Exec(ctx, `SELECT principal_id FROM memberships WHERE principal_id=$1 FOR SHARE`, principal); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `SELECT singleton FROM space_settings WHERE singleton=true FOR SHARE`); err != nil {
+		return err
+	}
 	return currentExtensionSession(ctx, tx)
 }

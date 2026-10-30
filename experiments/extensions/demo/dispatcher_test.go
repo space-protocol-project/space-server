@@ -38,7 +38,7 @@ func request() Request {
 	return Request{Protocol, "demo", "query", "overview", map[string]json.RawMessage{}}
 }
 func grant(context.Context, string, string, bool) (Principal, error) {
-	return Principal{"space_demo", "demo", "user", "device", "1"}, nil
+	return Principal{Space: "space_demo", Instance: "demo", User: "user", Device: "device", Revision: "1"}, nil
 }
 
 func TestDecodeRejectsUntrustedContext(t *testing.T) {

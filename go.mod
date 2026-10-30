@@ -42,3 +42,9 @@ require (
 	golang.org/x/sync v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 )
+
+require github.com/space-protocol-project/space-server/experiments/extensions v0.0.0
+
+require github.com/tetratelabs/wazero v1.12.0 // indirect
+
+replace github.com/space-protocol-project/space-server/experiments/extensions => ./experiments/extensions

@@ -1,0 +1,71 @@
+name: P1 dispatcher с сессиями и ACL ядра
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Зависимости, анализ и проверки ядра
+        run: |
+          mkdir -p .local/p1-core
+          go mod tidy
+          go test -json ./... > .local/p1-core/core.jsonl
+          go test -race -json ./... > .local/p1-core/race.jsonl
+          go vet ./...
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/extensionp1 ./internal/postgres
+      - name: Сборка настоящего WASM и worker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          cd experiments/extensions
+          python3 demo/build.py
+          go build -o /tmp/space-p1-core-worker ./cmd/p1-worker
+          go test -race ./demo
+      - name: Настоящие сессии, ACL, RPC и изолированный WASM
+        run: |
+          sudo mkdir /sys/fs/cgroup/space-p1-core
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-core/cgroup.subtree_control'
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
+            SPACE_P1_MODULE="$PWD/experiments/extensions/testdata/demo.wasm" \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1' -count=1 > .local/p1-core/isolated.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-core
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(line) for line in Path('.local/p1-core/isolated.jsonl').read_text().splitlines()]
+          assert not any(e['Action']=='skip' for e in events)
+          assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1RealIsolatedWASM' for e in events)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-core
+          include-hidden-files: true
+          path: |
+            .local/p1-core
+            go.mod
+            go.sum

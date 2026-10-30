@@ -19,7 +19,11 @@ var ErrVersion = errors.New("unsupported_version")
 var ErrExtension = errors.New("extension_failed")
 
 // Principal формирует только доверенный адаптер авторизации.
-type Principal struct{ Space, Instance, User, Device, Revision string }
+type Principal struct {
+	Space, Instance, User, Device, Revision string
+	// AccessStamp сравнивает полный снимок доступа; не передаётся гостю.
+	AccessStamp string
+}
 type Authorize func(context.Context, string, string, bool) (Principal, error)
 type Request struct {
 	Protocol string                     `json:"protocol"`

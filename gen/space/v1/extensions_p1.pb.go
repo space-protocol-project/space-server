@@ -70,6 +70,56 @@ func (ExtensionCommandEffect) EnumDescriptor() ([]byte, []int) {
 	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{0}
 }
 
+type ExtensionCommandOutcome int32
+
+const (
+	ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_UNSPECIFIED ExtensionCommandOutcome = 0
+	// Квитанция отсутствует; это НЕ доказательство отсутствия эффекта.
+	ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_UNKNOWN   ExtensionCommandOutcome = 1
+	ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_CONFIRMED ExtensionCommandOutcome = 2
+)
+
+// Enum value maps for ExtensionCommandOutcome.
+var (
+	ExtensionCommandOutcome_name = map[int32]string{
+		0: "EXTENSION_COMMAND_OUTCOME_UNSPECIFIED",
+		1: "EXTENSION_COMMAND_OUTCOME_UNKNOWN",
+		2: "EXTENSION_COMMAND_OUTCOME_CONFIRMED",
+	}
+	ExtensionCommandOutcome_value = map[string]int32{
+		"EXTENSION_COMMAND_OUTCOME_UNSPECIFIED": 0,
+		"EXTENSION_COMMAND_OUTCOME_UNKNOWN":     1,
+		"EXTENSION_COMMAND_OUTCOME_CONFIRMED":   2,
+	}
+)
+
+func (x ExtensionCommandOutcome) Enum() *ExtensionCommandOutcome {
+	p := new(ExtensionCommandOutcome)
+	*p = x
+	return p
+}
+
+func (x ExtensionCommandOutcome) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExtensionCommandOutcome) Descriptor() protoreflect.EnumDescriptor {
+	return file_space_v1_extensions_p1_proto_enumTypes[1].Descriptor()
+}
+
+func (ExtensionCommandOutcome) Type() protoreflect.EnumType {
+	return &file_space_v1_extensions_p1_proto_enumTypes[1]
+}
+
+func (x ExtensionCommandOutcome) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExtensionCommandOutcome.Descriptor instead.
+func (ExtensionCommandOutcome) EnumDescriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{1}
+}
+
 type QueryExtensionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	InstanceId    string                 `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
@@ -335,6 +385,122 @@ func (x *ExecuteExtensionCommandResponse) GetReplayed() bool {
 	return false
 }
 
+// Проверяет точный исходный запрос, не исполняя команду и не вызывая WASM.
+type ReconcileExtensionCommandRequest struct {
+	state         protoimpl.MessageState          `protogen:"open.v1"`
+	Command       *ExecuteExtensionCommandRequest `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReconcileExtensionCommandRequest) Reset() {
+	*x = ReconcileExtensionCommandRequest{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReconcileExtensionCommandRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReconcileExtensionCommandRequest) ProtoMessage() {}
+
+func (x *ReconcileExtensionCommandRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReconcileExtensionCommandRequest.ProtoReflect.Descriptor instead.
+func (*ReconcileExtensionCommandRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ReconcileExtensionCommandRequest) GetCommand() *ExecuteExtensionCommandRequest {
+	if x != nil {
+		return x.Command
+	}
+	return nil
+}
+
+type ReconcileExtensionCommandResponse struct {
+	state   protoimpl.MessageState  `protogen:"open.v1"`
+	Outcome ExtensionCommandOutcome `protobuf:"varint,1,opt,name=outcome,proto3,enum=space.v1.ExtensionCommandOutcome" json:"outcome,omitempty"`
+	// Только для CONFIRMED; выдача требует текущих прав исполнения команды.
+	Receipt *ExecuteExtensionCommandResponse `protobuf:"bytes,2,opt,name=receipt,proto3" json:"receipt,omitempty"`
+	// P1 пока возвращает false/0: срок хранения и tombstone ещё не реализованы.
+	// UNKNOWN никогда не разрешает повторную отправку сам по себе.
+	RetryWindowKnown       bool   `protobuf:"varint,3,opt,name=retry_window_known,json=retryWindowKnown,proto3" json:"retry_window_known,omitempty"`
+	RetryWindowRemainingMs uint64 `protobuf:"varint,4,opt,name=retry_window_remaining_ms,json=retryWindowRemainingMs,proto3" json:"retry_window_remaining_ms,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *ReconcileExtensionCommandResponse) Reset() {
+	*x = ReconcileExtensionCommandResponse{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReconcileExtensionCommandResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReconcileExtensionCommandResponse) ProtoMessage() {}
+
+func (x *ReconcileExtensionCommandResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReconcileExtensionCommandResponse.ProtoReflect.Descriptor instead.
+func (*ReconcileExtensionCommandResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ReconcileExtensionCommandResponse) GetOutcome() ExtensionCommandOutcome {
+	if x != nil {
+		return x.Outcome
+	}
+	return ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_UNSPECIFIED
+}
+
+func (x *ReconcileExtensionCommandResponse) GetReceipt() *ExecuteExtensionCommandResponse {
+	if x != nil {
+		return x.Receipt
+	}
+	return nil
+}
+
+func (x *ReconcileExtensionCommandResponse) GetRetryWindowKnown() bool {
+	if x != nil {
+		return x.RetryWindowKnown
+	}
+	return false
+}
+
+func (x *ReconcileExtensionCommandResponse) GetRetryWindowRemainingMs() uint64 {
+	if x != nil {
+		return x.RetryWindowRemainingMs
+	}
+	return 0
+}
+
 // Недоверенное предложение WASM, не SQL и не разрешение записи.
 // Приёмка требует новой проверки сессии/ACL внутри транзакции записи.
 type ExtensionMutationPlan struct {
@@ -348,7 +514,7 @@ type ExtensionMutationPlan struct {
 
 func (x *ExtensionMutationPlan) Reset() {
 	*x = ExtensionMutationPlan{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -360,7 +526,7 @@ func (x *ExtensionMutationPlan) String() string {
 func (*ExtensionMutationPlan) ProtoMessage() {}
 
 func (x *ExtensionMutationPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -373,7 +539,7 @@ func (x *ExtensionMutationPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationPlan.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationPlan) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{4}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ExtensionMutationPlan) GetExpectedStateRevision() uint64 {
@@ -411,7 +577,7 @@ type ExtensionMutationOperation struct {
 
 func (x *ExtensionMutationOperation) Reset() {
 	*x = ExtensionMutationOperation{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +589,7 @@ func (x *ExtensionMutationOperation) String() string {
 func (*ExtensionMutationOperation) ProtoMessage() {}
 
 func (x *ExtensionMutationOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,7 +602,7 @@ func (x *ExtensionMutationOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationOperation.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationOperation) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{5}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ExtensionMutationOperation) GetKey() string {
@@ -497,7 +663,7 @@ type ExtensionMutationEvent struct {
 
 func (x *ExtensionMutationEvent) Reset() {
 	*x = ExtensionMutationEvent{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +675,7 @@ func (x *ExtensionMutationEvent) String() string {
 func (*ExtensionMutationEvent) ProtoMessage() {}
 
 func (x *ExtensionMutationEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +688,7 @@ func (x *ExtensionMutationEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationEvent.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationEvent) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{6}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ExtensionMutationEvent) GetType() string {
@@ -564,7 +730,14 @@ const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\rdocument_json\x18\x01 \x01(\fR\fdocumentJson\x128\n" +
 	"\x06effect\x18\x02 \x01(\x0e2 .space.v1.ExtensionCommandEffectR\x06effect\x12%\n" +
 	"\x0estate_revision\x18\x03 \x01(\x04R\rstateRevision\x12\x1a\n" +
-	"\breplayed\x18\x04 \x01(\bR\breplayed\"\xcf\x01\n" +
+	"\breplayed\x18\x04 \x01(\bR\breplayed\"f\n" +
+	" ReconcileExtensionCommandRequest\x12B\n" +
+	"\acommand\x18\x01 \x01(\v2(.space.v1.ExecuteExtensionCommandRequestR\acommand\"\x8e\x02\n" +
+	"!ReconcileExtensionCommandResponse\x12;\n" +
+	"\aoutcome\x18\x01 \x01(\x0e2!.space.v1.ExtensionCommandOutcomeR\aoutcome\x12C\n" +
+	"\areceipt\x18\x02 \x01(\v2).space.v1.ExecuteExtensionCommandResponseR\areceipt\x12,\n" +
+	"\x12retry_window_known\x18\x03 \x01(\bR\x10retryWindowKnown\x129\n" +
+	"\x19retry_window_remaining_ms\x18\x04 \x01(\x04R\x16retryWindowRemainingMs\"\xcf\x01\n" +
 	"\x15ExtensionMutationPlan\x126\n" +
 	"\x17expected_state_revision\x18\x01 \x01(\x04R\x15expectedStateRevision\x12D\n" +
 	"\n" +
@@ -582,10 +755,15 @@ const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\x16ExtensionCommandEffect\x12(\n" +
 	"$EXTENSION_COMMAND_EFFECT_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dEXTENSION_COMMAND_EFFECT_NONE\x10\x01\x12%\n" +
-	"!EXTENSION_COMMAND_EFFECT_MUTATION\x10\x022\xd9\x01\n" +
+	"!EXTENSION_COMMAND_EFFECT_MUTATION\x10\x02*\x94\x01\n" +
+	"\x17ExtensionCommandOutcome\x12)\n" +
+	"%EXTENSION_COMMAND_OUTCOME_UNSPECIFIED\x10\x00\x12%\n" +
+	"!EXTENSION_COMMAND_OUTCOME_UNKNOWN\x10\x01\x12'\n" +
+	"#EXTENSION_COMMAND_OUTCOME_CONFIRMED\x10\x022\xcf\x02\n" +
 	"\x12ExtensionP1Service\x12S\n" +
 	"\x0eQueryExtension\x12\x1f.space.v1.QueryExtensionRequest\x1a .space.v1.QueryExtensionResponse\x12n\n" +
-	"\x17ExecuteExtensionCommand\x12(.space.v1.ExecuteExtensionCommandRequest\x1a).space.v1.ExecuteExtensionCommandResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
+	"\x17ExecuteExtensionCommand\x12(.space.v1.ExecuteExtensionCommandRequest\x1a).space.v1.ExecuteExtensionCommandResponse\x12t\n" +
+	"\x19ReconcileExtensionCommand\x12*.space.v1.ReconcileExtensionCommandRequest\x1a+.space.v1.ReconcileExtensionCommandResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_extensions_p1_proto_rawDescOnce sync.Once
@@ -599,32 +777,40 @@ func file_space_v1_extensions_p1_proto_rawDescGZIP() []byte {
 	return file_space_v1_extensions_p1_proto_rawDescData
 }
 
-var file_space_v1_extensions_p1_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_space_v1_extensions_p1_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_space_v1_extensions_p1_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_space_v1_extensions_p1_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_space_v1_extensions_p1_proto_goTypes = []any{
-	(ExtensionCommandEffect)(0),             // 0: space.v1.ExtensionCommandEffect
-	(*QueryExtensionRequest)(nil),           // 1: space.v1.QueryExtensionRequest
-	(*QueryExtensionResponse)(nil),          // 2: space.v1.QueryExtensionResponse
-	(*ExecuteExtensionCommandRequest)(nil),  // 3: space.v1.ExecuteExtensionCommandRequest
-	(*ExecuteExtensionCommandResponse)(nil), // 4: space.v1.ExecuteExtensionCommandResponse
-	(*ExtensionMutationPlan)(nil),           // 5: space.v1.ExtensionMutationPlan
-	(*ExtensionMutationOperation)(nil),      // 6: space.v1.ExtensionMutationOperation
-	(*ExtensionMutationEvent)(nil),          // 7: space.v1.ExtensionMutationEvent
+	(ExtensionCommandEffect)(0),               // 0: space.v1.ExtensionCommandEffect
+	(ExtensionCommandOutcome)(0),              // 1: space.v1.ExtensionCommandOutcome
+	(*QueryExtensionRequest)(nil),             // 2: space.v1.QueryExtensionRequest
+	(*QueryExtensionResponse)(nil),            // 3: space.v1.QueryExtensionResponse
+	(*ExecuteExtensionCommandRequest)(nil),    // 4: space.v1.ExecuteExtensionCommandRequest
+	(*ExecuteExtensionCommandResponse)(nil),   // 5: space.v1.ExecuteExtensionCommandResponse
+	(*ReconcileExtensionCommandRequest)(nil),  // 6: space.v1.ReconcileExtensionCommandRequest
+	(*ReconcileExtensionCommandResponse)(nil), // 7: space.v1.ReconcileExtensionCommandResponse
+	(*ExtensionMutationPlan)(nil),             // 8: space.v1.ExtensionMutationPlan
+	(*ExtensionMutationOperation)(nil),        // 9: space.v1.ExtensionMutationOperation
+	(*ExtensionMutationEvent)(nil),            // 10: space.v1.ExtensionMutationEvent
 }
 var file_space_v1_extensions_p1_proto_depIdxs = []int32{
-	0, // 0: space.v1.ExecuteExtensionCommandRequest.effect:type_name -> space.v1.ExtensionCommandEffect
-	0, // 1: space.v1.ExecuteExtensionCommandResponse.effect:type_name -> space.v1.ExtensionCommandEffect
-	6, // 2: space.v1.ExtensionMutationPlan.operations:type_name -> space.v1.ExtensionMutationOperation
-	7, // 3: space.v1.ExtensionMutationPlan.events:type_name -> space.v1.ExtensionMutationEvent
-	1, // 4: space.v1.ExtensionP1Service.QueryExtension:input_type -> space.v1.QueryExtensionRequest
-	3, // 5: space.v1.ExtensionP1Service.ExecuteExtensionCommand:input_type -> space.v1.ExecuteExtensionCommandRequest
-	2, // 6: space.v1.ExtensionP1Service.QueryExtension:output_type -> space.v1.QueryExtensionResponse
-	4, // 7: space.v1.ExtensionP1Service.ExecuteExtensionCommand:output_type -> space.v1.ExecuteExtensionCommandResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: space.v1.ExecuteExtensionCommandRequest.effect:type_name -> space.v1.ExtensionCommandEffect
+	0,  // 1: space.v1.ExecuteExtensionCommandResponse.effect:type_name -> space.v1.ExtensionCommandEffect
+	4,  // 2: space.v1.ReconcileExtensionCommandRequest.command:type_name -> space.v1.ExecuteExtensionCommandRequest
+	1,  // 3: space.v1.ReconcileExtensionCommandResponse.outcome:type_name -> space.v1.ExtensionCommandOutcome
+	5,  // 4: space.v1.ReconcileExtensionCommandResponse.receipt:type_name -> space.v1.ExecuteExtensionCommandResponse
+	9,  // 5: space.v1.ExtensionMutationPlan.operations:type_name -> space.v1.ExtensionMutationOperation
+	10, // 6: space.v1.ExtensionMutationPlan.events:type_name -> space.v1.ExtensionMutationEvent
+	2,  // 7: space.v1.ExtensionP1Service.QueryExtension:input_type -> space.v1.QueryExtensionRequest
+	4,  // 8: space.v1.ExtensionP1Service.ExecuteExtensionCommand:input_type -> space.v1.ExecuteExtensionCommandRequest
+	6,  // 9: space.v1.ExtensionP1Service.ReconcileExtensionCommand:input_type -> space.v1.ReconcileExtensionCommandRequest
+	3,  // 10: space.v1.ExtensionP1Service.QueryExtension:output_type -> space.v1.QueryExtensionResponse
+	5,  // 11: space.v1.ExtensionP1Service.ExecuteExtensionCommand:output_type -> space.v1.ExecuteExtensionCommandResponse
+	7,  // 12: space.v1.ExtensionP1Service.ReconcileExtensionCommand:output_type -> space.v1.ReconcileExtensionCommandResponse
+	10, // [10:13] is the sub-list for method output_type
+	7,  // [7:10] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_extensions_p1_proto_init() }
@@ -632,7 +818,7 @@ func file_space_v1_extensions_p1_proto_init() {
 	if File_space_v1_extensions_p1_proto != nil {
 		return
 	}
-	file_space_v1_extensions_p1_proto_msgTypes[5].OneofWrappers = []any{
+	file_space_v1_extensions_p1_proto_msgTypes[7].OneofWrappers = []any{
 		(*ExtensionMutationOperation_PutJson)(nil),
 		(*ExtensionMutationOperation_Delete)(nil),
 	}
@@ -641,8 +827,8 @@ func file_space_v1_extensions_p1_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_extensions_p1_proto_rawDesc), len(file_space_v1_extensions_p1_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   7,
+			NumEnums:      2,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

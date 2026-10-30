@@ -38,6 +38,7 @@ jobs:
           mkdir -p .local/p1-core
           go mod tidy
           go test -race -json ./internal/extensionp1 -run '^TestRetry' -count=1 > .local/p1-core/retry.jsonl
+          go test -race -json ./internal/postgres -run '^TestExtensionP1Reconcile' -count=5 > .local/p1-core/reconcile.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation(Access|Expiry)' -count=5 > .local/p1-core/access-races.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Backup' -count=3 > .local/p1-core/backup-validation.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation' -count=1 > .local/p1-core/mutations.jsonl

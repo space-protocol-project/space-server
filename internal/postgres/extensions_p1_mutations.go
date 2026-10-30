@@ -17,7 +17,6 @@ import (
 	"github.com/space-protocol-project/space-server/internal/extensionp1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 //go:embed extensions_p1_schema.sql
@@ -137,8 +136,7 @@ func (m *extensionMutations) Execute(ctx context.Context, request *pb.ExecuteExt
 	if !ok || b.command != request.Command {
 		return nil, mutationError(codes.PermissionDenied, "permission_denied")
 	}
-	encoded, _ := proto.MarshalOptions{Deterministic: true}.Marshal(request)
-	digest := sha256.Sum256(append(append([]byte("space_plugin_p1\x00"), b.packageHash[:]...), encoded...))
+	digest := mutationDigest(b, request)
 	conn, release, err := m.lockCommand(ctx, b, request)
 	if err != nil {
 		return nil, mutationDatabaseError(err)

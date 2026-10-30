@@ -26,6 +26,24 @@ type MutationExecutor interface {
 	Execute(context.Context, *pb.ExecuteExtensionCommandRequest, func(context.Context) ([]byte, error)) (*pb.ExecuteExtensionCommandResponse, error)
 }
 
+type MutationReconciler interface {
+	Reconcile(context.Context, *pb.ExecuteExtensionCommandRequest) (*pb.ReconcileExtensionCommandResponse, error)
+}
+
+func (s *Service) ReconcileExtensionCommand(ctx context.Context, r *pb.ReconcileExtensionCommandRequest) (*pb.ReconcileExtensionCommandResponse, error) {
+	if r == nil || r.Command == nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid_request")
+	}
+	if authn.Token(ctx) == "" {
+		return nil, status.Error(codes.Unauthenticated, "session_required")
+	}
+	reconciler, ok := s.mutations.(MutationReconciler)
+	if !ok {
+		return nil, status.Error(codes.FailedPrecondition, "reconciliation_not_supported")
+	}
+	return reconciler.Reconcile(ctx, r.Command)
+}
+
 func NewWithMutations(host extensions.Runtime, authorize demo.Authorize, registrations map[string]demo.Registration, executor MutationExecutor) (*Service, error) {
 	s, err := New(host, authorize, registrations)
 	if err != nil {

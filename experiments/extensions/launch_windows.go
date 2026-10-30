@@ -44,7 +44,7 @@ func createAssigned(executable, directory string, jobs [2]windows.Handle, handle
 	if err != nil {
 		return process, err
 	}
-	environment := utf16.Encode([]rune(strings.Join([]string{"GOMEMLIMIT=64MiB", "GOMAXPROCS=2", "SystemRoot=" + os.Getenv("SystemRoot"), "", ""}, "\x00")))
+	environment := utf16.Encode([]rune(strings.Join([]string{"GOMAXPROCS=2", "GOMEMLIMIT=64MiB", "SystemRoot=" + os.Getenv("SystemRoot"), "", ""}, "\x00")))
 	startup := windows.StartupInfoEx{ProcThreadAttributeList: attributes.List()}
 	startup.Cb = uint32(unsafe.Sizeof(startup))
 	startup.Flags = windows.STARTF_USESTDHANDLES

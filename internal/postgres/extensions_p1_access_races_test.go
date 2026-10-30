@@ -29,7 +29,7 @@ func extensionAccessChange(t *testing.T, f *channelFixture, c *pb.Channel, kind 
 		}
 		a.lock = "FROM memberships WHERE principal_id=$1 FOR UPDATE"
 		a.revoke = func() error {
-			_, err := pb.NewMembershipServiceClient(f.conn).UpdateMember(f.owner, &pb.UpdateMemberRequest{PrincipalId: id, Role: "member", Blocked: true, ExpectedRevision: revision})
+			_, err := f.admin.UpdateMember(f.owner, &pb.UpdateMemberRequest{PrincipalId: id, Role: "member", Blocked: true, ExpectedRevision: revision})
 			return err
 		}
 	case "owner":

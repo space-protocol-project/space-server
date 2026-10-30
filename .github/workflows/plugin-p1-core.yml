@@ -32,6 +32,7 @@ jobs:
           go mod tidy
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation' -count=1 > .local/p1-core/mutations.jsonl
           go test -race -json ./internal/postgres -run '^TestExtensionP1Mutation(Authority|CommitOrders)' -count=10 > .local/p1-core/locks.jsonl
+          go test -race -json ./internal/postgres -run '^TestExtensionP1MutationCrashRecovery$' -count=10 > .local/p1-core/crash.jsonl
           go test -json ./... > .local/p1-core/core.jsonl
           go test -race -json ./... > .local/p1-core/race.jsonl
           go vet ./...

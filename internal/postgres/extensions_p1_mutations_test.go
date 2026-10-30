@@ -126,7 +126,7 @@ func TestExtensionP1MutationConcurrentDuplicate(t *testing.T) {
 	results := make(chan result, 2)
 	call := func() { response, err := api.ExecuteExtensionCommand(f.owner, r); results <- result{response, err} }
 	go call()
-	<-entered
+	waitMutationSignal(t, f.ctx, entered)
 	go call()
 	close(release)
 	a, b := <-results, <-results

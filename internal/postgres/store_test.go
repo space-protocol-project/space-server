@@ -51,6 +51,9 @@ func isolatedDatabaseTimeout(t *testing.T, timeout time.Duration) (context.Conte
 	t.Cleanup(func() {
 		cleanup, done := context.WithTimeout(context.Background(), 5*time.Second)
 		defer done()
+		// Аварийные тесты перезапускают PostgreSQL; административное соединение
+		// создания схемы могло оборваться, даже если рабочий Store восстановился.
+		admin.Reset()
 		if _, err := admin.Exec(cleanup, "DROP SCHEMA "+quoted+" CASCADE"); err != nil {
 			t.Error(err)
 		}

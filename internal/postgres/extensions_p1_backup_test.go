@@ -1,6 +1,9 @@
 package postgres
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestExtensionP1BackupRejectsPartialState(t *testing.T) {
 	for _, sql := range []string{
@@ -44,5 +47,32 @@ func TestExtensionP1BackupLegacyAndReadOnly(t *testing.T) {
 	}
 	if err := o.Ack(f.ctx, e.Token); err != nil {
 		t.Fatal("Проверка отозвала аренду источника", err)
+	}
+}
+
+func TestExtensionP1BackupNoEventIDReuse(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "backup_branch")
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
+	api := mutationClient(t, f, h, []byte{1}, c.Id)
+	request := mutationRequest("backup-branch-001", 0)
+	var ids [2]string
+	for i := range 2 {
+		if _, err := api.ExecuteExtensionCommand(f.owner, request); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.store.pool.QueryRow(f.ctx, `SELECT event_id FROM extension_p1_outbox`).Scan(&ids[i]); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			// Моделируем состояние старой копии до команды. Сами архивы проверяет home.
+			_, err := f.store.pool.Exec(f.ctx, `TRUNCATE extension_p1_data,extension_p1_receipts,extension_p1_outbox; UPDATE extension_p1_instances SET revision=0`)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if ids[0] == ids[1] {
+		t.Fatal("Повтор ревизии повторно использовал ID события")
 	}
 }

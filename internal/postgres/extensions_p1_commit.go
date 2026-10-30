@@ -2,9 +2,8 @@ package postgres
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -100,8 +99,13 @@ func applyExtensionOperations(ctx context.Context, tx pgx.Tx, b extensionMutatio
 
 func saveExtensionMutation(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, r *pb.ExecuteExtensionCommandRequest, digest [32]byte, result *pb.ExecuteExtensionCommandResponse, events []*pb.ExtensionMutationEvent) error {
 	for ordinal, event := range events {
-		hash := sha256.Sum256([]byte(fmt.Sprintf("%s/%s/%d/%d", b.installation, r.InstanceId, result.StateRevision, ordinal)))
-		_, err := tx.Exec(ctx, `INSERT INTO extension_p1_outbox VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, int64(result.StateRevision), ordinal, hex.EncodeToString(hash[:]), event.Type, event.PayloadJson)
+		// После отката к старой копии ревизия может использоваться снова.
+		// Новый ID не должен совпасть с событием утраченной ветви истории.
+		var id [32]byte
+		if _, err := rand.Read(id[:]); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO extension_p1_outbox VALUES($1,$2,$3,$4,$5,$6,$7)`, b.installation, r.InstanceId, int64(result.StateRevision), ordinal, hex.EncodeToString(id[:]), event.Type, event.PayloadJson)
 		if err != nil {
 			return err
 		}

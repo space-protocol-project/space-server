@@ -128,6 +128,7 @@ func TestExtensionP1ReconcileConcurrentCommand(t *testing.T) {
 		result, err := api.ReconcileExtensionCommand(f.owner, &pb.ReconcileExtensionCommandRequest{Command: r})
 		checked <- observation{result, err}
 	}()
+	waitExtensionSQLLock(t, f, "SELECT pg_advisory_lock")
 	close(release)
 	if err := <-done; err != nil {
 		t.Fatal(err)

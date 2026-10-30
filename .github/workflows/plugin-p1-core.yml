@@ -104,16 +104,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U space -d space_test"
           --health-interval 3s --health-timeout 3s --health-retries 20
-    env:
-      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/space_test?sslmode=disable
-      SPACE_P1_DATABASE_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-      - name: Обрыв COMMIT и аварийное восстановление отдельной PostgreSQL
+      - name: РћР±СЂС‹РІ COMMIT Рё Р°РІР°СЂРёР№РЅРѕРµ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ РѕС‚РґРµР»СЊРЅРѕР№ PostgreSQL
+        env:
+          SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:${{ job.services.postgres.ports[5432] }}/space_test?sslmode=disable
+          SPACE_P1_DATABASE_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           mkdir -p .local/p1-database
           go mod tidy
@@ -126,7 +126,9 @@ jobs:
           for mode in ('before_commit','after_commit','database_restart','committed_restart'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionDatabaseFaults/'+mode for e in events)==5
           PY
-      - name: Журнал PostgreSQL
+      - name: Р–СѓСЂРЅР°Р» PostgreSQL
+        env:
+          SPACE_P1_DATABASE_CONTAINER: ${{ job.services.postgres.id }}
         if: always()
         run: |
           mkdir -p .local/p1-database

@@ -74,7 +74,7 @@ func run() error {
 		return err
 	}
 	defer host.Close()
-	dispatcher, err := demo.New(host, authorize, map[string]demo.Registration{"demo": {Manifest: manifest, Module: wasm}, "broken": {Manifest: manifest, Module: bad}})
+	dispatcher, err := demo.New(tracedRuntime{host}, authorize, map[string]demo.Registration{"demo": {Manifest: manifest, Module: wasm}, "broken": {Manifest: manifest, Module: bad}})
 	if err != nil {
 		return err
 	}
@@ -104,4 +104,15 @@ func run() error {
 	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return server.Shutdown(shutdown)
+}
+
+// Диагностика только стенда; HTTP-ответ содержит исключительно стабильный код.
+type tracedRuntime struct{ extensions.Runtime }
+
+func (h tracedRuntime) Invoke(ctx context.Context, call extensions.Invocation) ([]byte, error) {
+	result, err := h.Runtime.Invoke(ctx, call)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "demo invocation failed: %v\n", err)
+	}
+	return result, err
 }

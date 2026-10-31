@@ -106,6 +106,9 @@ func extensionReceipt(ctx context.Context, tx pgx.Tx, b extensionMutationBinding
 	if err = proto.Unmarshal(response, result); err != nil {
 		return nil, err
 	}
+	if !validReconciledReceipt(result, r) {
+		return nil, mutationError(codes.DataLoss, "invalid_receipt")
+	}
 	result.Replayed = true
 	return result, nil
 }

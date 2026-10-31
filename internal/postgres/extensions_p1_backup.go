@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/protobuf/proto"
 )
@@ -132,8 +133,8 @@ func checkExtensionBackupRows(ctx context.Context, tx pgx.Tx, delivery bool) err
 		if proto.Unmarshal(raw, response) != nil || revision == nil || *revision <= 0 || response.StateRevision == 0 || response.StateRevision > uint64(*revision) || response.Replayed || response.Effect != pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_MUTATION {
 			return errors.New("Несогласованная квитанция расширения в копии")
 		}
-		if retired && len(response.DocumentJson) != 0 {
-			return errors.New("Удалённый ответ присутствует в tombstone")
+		if !validExtensionReceiptBody(response, retired) {
+			return errors.New("Тело квитанции не соответствует состоянию хранения")
 		}
 		key.revision = response.StateRevision
 		if seen[key] {
@@ -142,6 +143,13 @@ func checkExtensionBackupRows(ctx context.Context, tx pgx.Tx, delivery bool) err
 		seen[key] = true
 	}
 	return rows.Err()
+}
+
+func validExtensionReceiptBody(response *pb.ExecuteExtensionCommandResponse, retired bool) bool {
+	if retired {
+		return proto.Equal(response, &pb.ExecuteExtensionCommandResponse{Effect: response.Effect, StateRevision: response.StateRevision})
+	}
+	return len(response.DocumentJson) <= extensions.MaxJSON && extensions.CheckJSON(response.DocumentJson) == nil
 }
 
 func checkExtensionBackupCursor(ctx context.Context, tx pgx.Tx) error {

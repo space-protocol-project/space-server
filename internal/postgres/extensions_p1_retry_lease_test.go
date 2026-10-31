@@ -14,13 +14,13 @@ func TestExtensionP1RetryLeaseLimits(t *testing.T) {
 	leases := extensionRetryLeases{now: func() time.Time { return now }}
 	var first string
 	for range 8 {
-		id, err := leases.issue("", "demo", "history")
+		id, err := leases.issue("legacy-demo", "demo", "history")
 		if err != nil {
 			t.Fatal(err)
 		}
 		first = id
 	}
-	_, err := leases.issue("", "demo", "history")
+	_, err := leases.issue("legacy-demo", "demo", "history")
 	requireCode(t, err, codes.ResourceExhausted)
 	r := &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", HistoryId: "history", RetryLeaseId: first}
 	if err = leases.check(context.Background(), r); err != nil {
@@ -31,7 +31,7 @@ func TestExtensionP1RetryLeaseLimits(t *testing.T) {
 	r.InstanceId = "demo"
 	now = now.Add(extensionRetryWindow)
 	requireCode(t, leases.check(context.Background(), r), codes.FailedPrecondition)
-	if _, err = leases.issue("", "demo", "history"); err != nil {
+	if _, err = leases.issue("legacy-demo", "demo", "history"); err != nil {
 		t.Fatal(err)
 	}
 	if len(leases.entries) != 1 {

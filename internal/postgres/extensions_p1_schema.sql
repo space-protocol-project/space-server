@@ -1,8 +1,8 @@
 -- Только явно включаемый прототип, не миграция рабочих пространств.
 CREATE TABLE IF NOT EXISTS extension_p1_meta (
- singleton boolean PRIMARY KEY CHECK(singleton), version integer NOT NULL CHECK(version=1)
+ singleton boolean PRIMARY KEY CHECK(singleton), version integer NOT NULL CHECK(version=2)
 );
-INSERT INTO extension_p1_meta VALUES(true,1) ON CONFLICT DO NOTHING;
+INSERT INTO extension_p1_meta SELECT true,2 WHERE NOT EXISTS(SELECT 1 FROM extension_p1_meta);
 CREATE TABLE IF NOT EXISTS extension_p1_instances (
  installation text NOT NULL, instance text NOT NULL, channel text NOT NULL,
  package_hash bytea NOT NULL CHECK(octet_length(package_hash)=32),
@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS extension_p1_receipts (
  installation text NOT NULL, instance text NOT NULL, principal text NOT NULL,
  command text NOT NULL, key text NOT NULL, digest bytea NOT NULL CHECK(octet_length(digest)=32),
  response bytea NOT NULL, created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ retired boolean NOT NULL DEFAULT false,
  PRIMARY KEY(installation,instance,principal,command,key),
  FOREIGN KEY(installation,instance) REFERENCES extension_p1_instances ON DELETE CASCADE
 );

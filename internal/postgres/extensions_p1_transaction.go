@@ -88,7 +88,8 @@ func loadExtensionInstance(ctx context.Context, tx pgx.Tx, b extensionMutationBi
 
 func extensionReceipt(ctx context.Context, tx pgx.Tx, b extensionMutationBinding, r *pb.ExecuteExtensionCommandRequest, digest [32]byte) (*pb.ExecuteExtensionCommandResponse, error) {
 	var oldHash, response []byte
-	err := tx.QueryRow(ctx, `SELECT digest,response FROM extension_p1_receipts WHERE installation=$1 AND instance=$2 AND principal=$3 AND command=$4 AND key=$5`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey).Scan(&oldHash, &response)
+	var retired bool
+	err := tx.QueryRow(ctx, `SELECT digest,response,retired FROM extension_p1_receipts WHERE installation=$1 AND instance=$2 AND principal=$3 AND command=$4 AND key=$5`, b.installation, r.InstanceId, authn.Actor(ctx), r.Command, r.IdempotencyKey).Scan(&oldHash, &response, &retired)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -97,6 +98,9 @@ func extensionReceipt(ctx context.Context, tx pgx.Tx, b extensionMutationBinding
 	}
 	if !bytes.Equal(oldHash, digest[:]) {
 		return nil, mutationError(codes.AlreadyExists, "idempotency_conflict")
+	}
+	if retired {
+		return nil, mutationError(codes.FailedPrecondition, "receipt_retired")
 	}
 	result := new(pb.ExecuteExtensionCommandResponse)
 	if err = proto.Unmarshal(response, result); err != nil {

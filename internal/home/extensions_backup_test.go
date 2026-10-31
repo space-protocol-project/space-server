@@ -82,11 +82,17 @@ func TestExtensionP1BackupRoundTrip(t *testing.T) {
 		if portable {
 			name = "portable"
 		}
-		t.Run(name, func(t *testing.T) { extensionBackupRoundTrip(t, runtime, portable) })
+		for _, retired := range []bool{false, true} {
+			suffix := "_full"
+			if retired {
+				suffix = "_retired"
+			}
+			t.Run(name+suffix, func(t *testing.T) { extensionBackupRoundTrip(t, runtime, portable, retired) })
+		}
 	}
 }
 
-func extensionBackupRoundTrip(t *testing.T, runtime string, portable bool) {
+func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bool) {
 	t.Helper()
 	ctx := context.Background()
 	root := t.TempDir()
@@ -149,6 +155,9 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable bool) {
 		t.Fatal(err)
 	}
 	s.Close()
+	if retired {
+		retireBackupExtensionReceipt(t, address)
+	}
 	if err = stop(); err != nil {
 		t.Fatal(err)
 	}
@@ -195,12 +204,18 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable bool) {
 		t.Fatal(err)
 	}
 	replay, err := svc.ExecuteExtensionCommand(member, request)
-	if err != nil || !replay.GetReplayed() || host.calls.Load() != 0 {
-		t.Fatal(replay, err, host.calls.Load())
-	}
-	replay.Replayed = false
-	if !proto.Equal(first, replay) {
-		t.Fatal("Квитанция изменилась")
+	if retired {
+		if status.Code(err) != codes.FailedPrecondition || replay != nil || host.calls.Load() != 0 {
+			t.Fatal(replay, err, host.calls.Load())
+		}
+	} else {
+		if err != nil || !replay.GetReplayed() || host.calls.Load() != 0 {
+			t.Fatal(replay, err, host.calls.Load())
+		}
+		replay.Replayed = false
+		if !proto.Equal(first, replay) {
+			t.Fatal("Квитанция изменилась")
+		}
 	}
 	outbox, err = s.NewExtensionP1Outbox(ctx, "install", "demo", "projection")
 	if err != nil {
@@ -224,7 +239,7 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable bool) {
 		t.Fatal(pending, err)
 	}
 	checkBackupExtensionData(t, address)
-	t.Logf("portable=%v receipt_replayed=true guest_calls=0 cursor_preserved=true stale_tokens_rejected=true", portable)
+	t.Logf("portable=%v retired=%v guest_calls=0 cursor_preserved=true stale_tokens_rejected=true", portable, retired)
 }
 
 func checkBackupExtensionData(t *testing.T, address string) {
@@ -240,5 +255,23 @@ func checkBackupExtensionData(t *testing.T, address string) {
 	err = conn.QueryRow(ctx, `SELECT convert_from(d.value,'UTF8'),i.revision,(SELECT count(*) FROM extension_p1_receipts),(SELECT count(*) FROM extension_p1_outbox) FROM extension_p1_data d JOIN extension_p1_instances i USING(installation,instance) WHERE d.key='note'`).Scan(&value, &revision, &receipts, &events)
 	if err != nil || value != `{"value":1}` || revision != 1 || receipts != 1 || events != 3 {
 		t.Fatal(value, revision, receipts, events, err)
+	}
+}
+
+func retireBackupExtensionReceipt(t *testing.T, address string) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = conn.Exec(ctx, `UPDATE extension_p1_receipts SET created_at=clock_timestamp()-interval '31 days'`)
+	_ = conn.Close(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count, err := postgres.RetireExtensionP1Receipts(ctx, address)
+	if err != nil || count != 1 {
+		t.Fatal(count, err)
 	}
 }

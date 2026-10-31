@@ -89,7 +89,7 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
 		return err
 	}
-	if version != 1 {
+	if version != 2 {
 		return mutationError(codes.FailedPrecondition, "storage_version")
 	}
 	for instance, b := range m.bindings {

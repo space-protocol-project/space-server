@@ -49,8 +49,7 @@ func CheckExtensionP1Backup(ctx context.Context, address string, restore bool) e
 			return err
 		}
 	}
-	var valid bool
-	err = tx.QueryRow(ctx, `SELECT count(*)=1 AND min(version)=1 FROM extension_p1_meta`).Scan(&valid)
+	valid, err := validExtensionReceiptVersion(ctx, tx)
 	if err != nil {
 		return err
 	}
@@ -111,7 +110,7 @@ func checkExtensionBackupRows(ctx context.Context, tx pgx.Tx, delivery bool) err
 			return err
 		}
 	}
-	rows, err := tx.Query(ctx, `SELECT r.installation,r.instance,r.response,i.revision FROM extension_p1_receipts r LEFT JOIN extension_p1_instances i USING(installation,instance)`)
+	rows, err := tx.Query(ctx, `SELECT r.installation,r.instance,r.response,i.revision,COALESCE((to_jsonb(r)->>'retired')::boolean,false) FROM extension_p1_receipts r LEFT JOIN extension_p1_instances i USING(installation,instance)`)
 	if err != nil {
 		return err
 	}
@@ -125,12 +124,16 @@ func checkExtensionBackupRows(ctx context.Context, tx pgx.Tx, delivery bool) err
 		var raw []byte
 		var revision *int64
 		var key receiptRevision
-		if err = rows.Scan(&key.installation, &key.instance, &raw, &revision); err != nil {
+		var retired bool
+		if err = rows.Scan(&key.installation, &key.instance, &raw, &revision, &retired); err != nil {
 			return err
 		}
 		response := new(pb.ExecuteExtensionCommandResponse)
 		if proto.Unmarshal(raw, response) != nil || revision == nil || *revision <= 0 || response.StateRevision == 0 || response.StateRevision > uint64(*revision) || response.Replayed || response.Effect != pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_MUTATION {
 			return errors.New("Несогласованная квитанция расширения в копии")
+		}
+		if retired && len(response.DocumentJson) != 0 {
+			return errors.New("Удалённый ответ присутствует в tombstone")
 		}
 		key.revision = response.StateRevision
 		if seen[key] {
@@ -155,4 +158,10 @@ func checkExtensionBackupCursor(ctx context.Context, tx pgx.Tx) error {
 		return errors.New("Курсор доставки не соответствует outbox в копии")
 	}
 	return nil
+}
+
+func validExtensionReceiptVersion(ctx context.Context, tx pgx.Tx) (bool, error) {
+	var valid bool
+	err := tx.QueryRow(ctx, `SELECT count(*)=1 AND min(version) IN (1,2) AND (min(version)=1 OR EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired' AND data_type='boolean' AND is_nullable='NO')) FROM extension_p1_meta`).Scan(&valid)
+	return valid, err
 }

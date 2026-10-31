@@ -48,7 +48,7 @@ func maintainExtensionReceipts(ctx context.Context, address string, upgrade bool
 	if err = tx.QueryRow(ctx, `SELECT version FROM extension_p1_meta WHERE singleton=true`).Scan(&version); err != nil {
 		return 0, err
 	}
-	if version != 2 && !(upgrade && version == 1) {
+	if version != 3 && !(upgrade && (version == 1 || version == 2)) {
 		return 0, errors.New("Неизвестная версия хранения квитанций")
 	}
 	valid, err := validExtensionReceiptVersion(ctx, tx)
@@ -77,13 +77,20 @@ func maintainExtensionReceipts(ctx context.Context, address string, upgrade bool
 }
 
 func upgradeExtensionReceipts(ctx context.Context, tx pgx.Tx, version int) error {
-	if version == 2 {
+	if version == 3 {
 		return nil
 	}
-	_, err := tx.Exec(ctx, `ALTER TABLE extension_p1_receipts ADD COLUMN retired boolean NOT NULL DEFAULT false;
+	if version == 1 {
+		if _, err := tx.Exec(ctx, `ALTER TABLE extension_p1_receipts ADD COLUMN retired boolean NOT NULL DEFAULT false`); err != nil {
+			return err
+		}
+	}
+	_, err := tx.Exec(ctx, `ALTER TABLE extension_p1_meta ADD COLUMN history_id text NOT NULL DEFAULT replace(gen_random_uuid()::text,'-','');
+ALTER TABLE extension_p1_meta ALTER COLUMN history_id DROP DEFAULT;
+ALTER TABLE extension_p1_meta ADD CONSTRAINT extension_p1_meta_history_id_check CHECK(history_id ~ '^[0-9a-f]{32}$');
 ALTER TABLE extension_p1_meta DROP CONSTRAINT extension_p1_meta_version_check;
-ALTER TABLE extension_p1_meta ADD CONSTRAINT extension_p1_meta_version_check CHECK(version=2) NOT VALID;
-UPDATE extension_p1_meta SET version=2;
+ALTER TABLE extension_p1_meta ADD CONSTRAINT extension_p1_meta_version_check CHECK(version=3) NOT VALID;
+UPDATE extension_p1_meta SET version=3;
 ALTER TABLE extension_p1_meta VALIDATE CONSTRAINT extension_p1_meta_version_check`)
 	return err
 }

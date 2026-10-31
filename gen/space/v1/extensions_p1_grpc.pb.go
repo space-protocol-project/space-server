@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ExtensionP1Service_QueryExtension_FullMethodName            = "/space.v1.ExtensionP1Service/QueryExtension"
-	ExtensionP1Service_ExecuteExtensionCommand_FullMethodName   = "/space.v1.ExtensionP1Service/ExecuteExtensionCommand"
-	ExtensionP1Service_ReconcileExtensionCommand_FullMethodName = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
+	ExtensionP1Service_QueryExtension_FullMethodName              = "/space.v1.ExtensionP1Service/QueryExtension"
+	ExtensionP1Service_ExecuteExtensionCommand_FullMethodName     = "/space.v1.ExtensionP1Service/ExecuteExtensionCommand"
+	ExtensionP1Service_ReconcileExtensionCommand_FullMethodName   = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
+	ExtensionP1Service_GetExtensionMutationContext_FullMethodName = "/space.v1.ExtensionP1Service/GetExtensionMutationContext"
 )
 
 // ExtensionP1ServiceClient is the client API for ExtensionP1Service service.
@@ -33,6 +34,7 @@ type ExtensionP1ServiceClient interface {
 	QueryExtension(ctx context.Context, in *QueryExtensionRequest, opts ...grpc.CallOption) (*QueryExtensionResponse, error)
 	ExecuteExtensionCommand(ctx context.Context, in *ExecuteExtensionCommandRequest, opts ...grpc.CallOption) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(ctx context.Context, in *ReconcileExtensionCommandRequest, opts ...grpc.CallOption) (*ReconcileExtensionCommandResponse, error)
+	GetExtensionMutationContext(ctx context.Context, in *GetExtensionMutationContextRequest, opts ...grpc.CallOption) (*GetExtensionMutationContextResponse, error)
 }
 
 type extensionP1ServiceClient struct {
@@ -73,6 +75,16 @@ func (c *extensionP1ServiceClient) ReconcileExtensionCommand(ctx context.Context
 	return out, nil
 }
 
+func (c *extensionP1ServiceClient) GetExtensionMutationContext(ctx context.Context, in *GetExtensionMutationContextRequest, opts ...grpc.CallOption) (*GetExtensionMutationContextResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetExtensionMutationContextResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_GetExtensionMutationContext_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ExtensionP1ServiceServer is the server API for ExtensionP1Service service.
 // All implementations must embed UnimplementedExtensionP1ServiceServer
 // for forward compatibility.
@@ -82,6 +94,7 @@ type ExtensionP1ServiceServer interface {
 	QueryExtension(context.Context, *QueryExtensionRequest) (*QueryExtensionResponse, error)
 	ExecuteExtensionCommand(context.Context, *ExecuteExtensionCommandRequest) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(context.Context, *ReconcileExtensionCommandRequest) (*ReconcileExtensionCommandResponse, error)
+	GetExtensionMutationContext(context.Context, *GetExtensionMutationContextRequest) (*GetExtensionMutationContextResponse, error)
 	mustEmbedUnimplementedExtensionP1ServiceServer()
 }
 
@@ -100,6 +113,9 @@ func (UnimplementedExtensionP1ServiceServer) ExecuteExtensionCommand(context.Con
 }
 func (UnimplementedExtensionP1ServiceServer) ReconcileExtensionCommand(context.Context, *ReconcileExtensionCommandRequest) (*ReconcileExtensionCommandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReconcileExtensionCommand not implemented")
+}
+func (UnimplementedExtensionP1ServiceServer) GetExtensionMutationContext(context.Context, *GetExtensionMutationContextRequest) (*GetExtensionMutationContextResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetExtensionMutationContext not implemented")
 }
 func (UnimplementedExtensionP1ServiceServer) mustEmbedUnimplementedExtensionP1ServiceServer() {}
 func (UnimplementedExtensionP1ServiceServer) testEmbeddedByValue()                            {}
@@ -176,6 +192,24 @@ func _ExtensionP1Service_ReconcileExtensionCommand_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExtensionP1Service_GetExtensionMutationContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExtensionMutationContextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).GetExtensionMutationContext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_GetExtensionMutationContext_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).GetExtensionMutationContext(ctx, req.(*GetExtensionMutationContextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ExtensionP1Service_ServiceDesc is the grpc.ServiceDesc for ExtensionP1Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +228,10 @@ var ExtensionP1Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReconcileExtensionCommand",
 			Handler:    _ExtensionP1Service_ReconcileExtensionCommand_Handler,
+		},
+		{
+			MethodName: "GetExtensionMutationContext",
+			Handler:    _ExtensionP1Service_GetExtensionMutationContext_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

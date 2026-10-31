@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -60,7 +61,50 @@ func extensionP1RPCClient(t *testing.T, f *channelFixture, svc pb.ExtensionP1Ser
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	return pb.NewExtensionP1ServiceClient(conn)
+	return &historyTestClient{ExtensionP1ServiceClient: pb.NewExtensionP1ServiceClient(conn), histories: map[string]string{}}
+}
+
+// Только адаптер прежних тестов: запрос получает историю при первой отправке.
+// Он сохраняется в исходном объекте; повтор никогда не обновляет привязку.
+type historyTestClient struct {
+	pb.ExtensionP1ServiceClient
+	mu        sync.Mutex
+	histories map[string]string
+}
+
+func (c *historyTestClient) bind(ctx context.Context, r *pb.ExecuteExtensionCommandRequest) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !validMutationRequest(r) || r.HistoryId != "" {
+		return nil
+	}
+	history := c.histories[r.InstanceId]
+	if history == "" {
+		result, err := c.GetExtensionMutationContext(ctx, &pb.GetExtensionMutationContextRequest{InstanceId: r.InstanceId})
+		if err != nil {
+			return err
+		}
+		history = result.HistoryId
+		c.histories[r.InstanceId] = history
+	}
+	r.HistoryId = history
+	return nil
+}
+
+func (c *historyTestClient) ExecuteExtensionCommand(ctx context.Context, r *pb.ExecuteExtensionCommandRequest, options ...grpc.CallOption) (*pb.ExecuteExtensionCommandResponse, error) {
+	if err := c.bind(ctx, r); err != nil {
+		return nil, err
+	}
+	return c.ExtensionP1ServiceClient.ExecuteExtensionCommand(ctx, r, options...)
+}
+
+func (c *historyTestClient) ReconcileExtensionCommand(ctx context.Context, r *pb.ReconcileExtensionCommandRequest, options ...grpc.CallOption) (*pb.ReconcileExtensionCommandResponse, error) {
+	if r != nil {
+		if err := c.bind(ctx, r.Command); err != nil {
+			return nil, err
+		}
+	}
+	return c.ExtensionP1ServiceClient.ReconcileExtensionCommand(ctx, r, options...)
 }
 
 func extensionP1Query() *pb.QueryExtensionRequest {

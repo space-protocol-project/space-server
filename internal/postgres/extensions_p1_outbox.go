@@ -49,7 +49,7 @@ func (s *Store) NewExtensionP1Outbox(ctx context.Context, installation, instance
 	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
 		return nil, mutationDatabaseError(err)
 	}
-	if version != 2 {
+	if version != 3 {
 		return nil, mutationError(codes.FailedPrecondition, "storage_version")
 	}
 	if _, err = tx.Exec(ctx, extensionP1OutboxSchema); err != nil {

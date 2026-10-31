@@ -30,6 +30,24 @@ type MutationReconciler interface {
 	Reconcile(context.Context, *pb.ExecuteExtensionCommandRequest) (*pb.ReconcileExtensionCommandResponse, error)
 }
 
+type MutationContextProvider interface {
+	MutationContext(context.Context, string) (*pb.GetExtensionMutationContextResponse, error)
+}
+
+func (s *Service) GetExtensionMutationContext(ctx context.Context, r *pb.GetExtensionMutationContextRequest) (*pb.GetExtensionMutationContextResponse, error) {
+	if r == nil || r.InstanceId == "" {
+		return nil, status.Error(codes.InvalidArgument, "invalid_request")
+	}
+	if authn.Token(ctx) == "" {
+		return nil, status.Error(codes.Unauthenticated, "session_required")
+	}
+	provider, ok := s.mutations.(MutationContextProvider)
+	if !ok {
+		return nil, status.Error(codes.FailedPrecondition, "mutation_not_supported")
+	}
+	return provider.MutationContext(ctx, r.InstanceId)
+}
+
 func (s *Service) ReconcileExtensionCommand(ctx context.Context, r *pb.ReconcileExtensionCommandRequest) (*pb.ReconcileExtensionCommandResponse, error) {
 	if r == nil || r.Command == nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid_request")

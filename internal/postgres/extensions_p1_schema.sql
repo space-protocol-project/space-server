@@ -1,8 +1,9 @@
 -- Только явно включаемый прототип, не миграция рабочих пространств.
 CREATE TABLE IF NOT EXISTS extension_p1_meta (
- singleton boolean PRIMARY KEY CHECK(singleton), version integer NOT NULL CHECK(version=2)
+ singleton boolean PRIMARY KEY CHECK(singleton), version integer NOT NULL CHECK(version=3),
+ history_id text NOT NULL CHECK(history_id ~ '^[0-9a-f]{32}$')
 );
-INSERT INTO extension_p1_meta SELECT true,2 WHERE NOT EXISTS(SELECT 1 FROM extension_p1_meta);
+INSERT INTO extension_p1_meta(singleton,version,history_id) SELECT true,3,replace(gen_random_uuid()::text,'-','') WHERE NOT EXISTS(SELECT 1 FROM extension_p1_meta);
 CREATE TABLE IF NOT EXISTS extension_p1_instances (
  installation text NOT NULL, instance text NOT NULL, channel text NOT NULL,
  package_hash bytea NOT NULL CHECK(octet_length(package_hash)=32),

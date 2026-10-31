@@ -42,6 +42,9 @@ const (
 	// ExtensionP1ServiceReconcileExtensionCommandProcedure is the fully-qualified name of the
 	// ExtensionP1Service's ReconcileExtensionCommand RPC.
 	ExtensionP1ServiceReconcileExtensionCommandProcedure = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
+	// ExtensionP1ServiceGetExtensionMutationContextProcedure is the fully-qualified name of the
+	// ExtensionP1Service's GetExtensionMutationContext RPC.
+	ExtensionP1ServiceGetExtensionMutationContextProcedure = "/space.v1.ExtensionP1Service/GetExtensionMutationContext"
 )
 
 // ExtensionP1ServiceClient is a client for the space.v1.ExtensionP1Service service.
@@ -49,6 +52,7 @@ type ExtensionP1ServiceClient interface {
 	QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error)
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
+	GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error)
 }
 
 // NewExtensionP1ServiceClient constructs a client for the space.v1.ExtensionP1Service service. By
@@ -80,14 +84,21 @@ func NewExtensionP1ServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(extensionP1ServiceMethods.ByName("ReconcileExtensionCommand")),
 			connect.WithClientOptions(opts...),
 		),
+		getExtensionMutationContext: connect.NewClient[v1.GetExtensionMutationContextRequest, v1.GetExtensionMutationContextResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceGetExtensionMutationContextProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionMutationContext")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // extensionP1ServiceClient implements ExtensionP1ServiceClient.
 type extensionP1ServiceClient struct {
-	queryExtension            *connect.Client[v1.QueryExtensionRequest, v1.QueryExtensionResponse]
-	executeExtensionCommand   *connect.Client[v1.ExecuteExtensionCommandRequest, v1.ExecuteExtensionCommandResponse]
-	reconcileExtensionCommand *connect.Client[v1.ReconcileExtensionCommandRequest, v1.ReconcileExtensionCommandResponse]
+	queryExtension              *connect.Client[v1.QueryExtensionRequest, v1.QueryExtensionResponse]
+	executeExtensionCommand     *connect.Client[v1.ExecuteExtensionCommandRequest, v1.ExecuteExtensionCommandResponse]
+	reconcileExtensionCommand   *connect.Client[v1.ReconcileExtensionCommandRequest, v1.ReconcileExtensionCommandResponse]
+	getExtensionMutationContext *connect.Client[v1.GetExtensionMutationContextRequest, v1.GetExtensionMutationContextResponse]
 }
 
 // QueryExtension calls space.v1.ExtensionP1Service.QueryExtension.
@@ -105,11 +116,17 @@ func (c *extensionP1ServiceClient) ReconcileExtensionCommand(ctx context.Context
 	return c.reconcileExtensionCommand.CallUnary(ctx, req)
 }
 
+// GetExtensionMutationContext calls space.v1.ExtensionP1Service.GetExtensionMutationContext.
+func (c *extensionP1ServiceClient) GetExtensionMutationContext(ctx context.Context, req *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error) {
+	return c.getExtensionMutationContext.CallUnary(ctx, req)
+}
+
 // ExtensionP1ServiceHandler is an implementation of the space.v1.ExtensionP1Service service.
 type ExtensionP1ServiceHandler interface {
 	QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error)
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
+	GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error)
 }
 
 // NewExtensionP1ServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -137,6 +154,12 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 		connect.WithSchema(extensionP1ServiceMethods.ByName("ReconcileExtensionCommand")),
 		connect.WithHandlerOptions(opts...),
 	)
+	extensionP1ServiceGetExtensionMutationContextHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceGetExtensionMutationContextProcedure,
+		svc.GetExtensionMutationContext,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionMutationContext")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/space.v1.ExtensionP1Service/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExtensionP1ServiceQueryExtensionProcedure:
@@ -145,6 +168,8 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 			extensionP1ServiceExecuteExtensionCommandHandler.ServeHTTP(w, r)
 		case ExtensionP1ServiceReconcileExtensionCommandProcedure:
 			extensionP1ServiceReconcileExtensionCommandHandler.ServeHTTP(w, r)
+		case ExtensionP1ServiceGetExtensionMutationContextProcedure:
+			extensionP1ServiceGetExtensionMutationContextHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -164,4 +189,8 @@ func (UnimplementedExtensionP1ServiceHandler) ExecuteExtensionCommand(context.Co
 
 func (UnimplementedExtensionP1ServiceHandler) ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.ReconcileExtensionCommand is not implemented"))
+}
+
+func (UnimplementedExtensionP1ServiceHandler) GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.GetExtensionMutationContext is not implemented"))
 }

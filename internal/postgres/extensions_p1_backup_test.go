@@ -2,6 +2,9 @@ package postgres
 
 import (
 	"context"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"testing"
 )
 
@@ -74,6 +77,18 @@ func TestExtensionP1BackupNoEventIDReuse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if err = CheckExtensionP1Backup(f.ctx, f.url, true); err != nil {
+				t.Fatal(err)
+			}
+			if _, err = api.ExecuteExtensionCommand(f.owner, request); status.Code(err) != codes.FailedPrecondition {
+				t.Fatal(err)
+			}
+			current, err := api.GetExtensionMutationContext(f.owner, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			request = mutationRequest("backup-branch-002", 0)
+			request.HistoryId = current.HistoryId
 		}
 	}
 	if ids[0] == ids[1] {

@@ -36,6 +36,7 @@ jobs:
           mkdir -p .local/p1-backup
           export SPACE_HOME_RUNTIME="$PWD/dist/home"
           go test -race -json ./internal/home -run '^(TestExtensionP1BackupRoundTrip|TestStoppedDatabaseBackupAndRestore|TestPortableSpaceRoundTrip)$' -count=3 -timeout=10m > .local/p1-backup/backup.jsonl
+          go test -race -json ./internal/home -run '^TestExtensionP1OldBackupRestore$' -count=1 -timeout=8m > .local/p1-backup/old-backup.jsonl
           go vet ./internal/home
           go mod verify
       - uses: actions/upload-artifact@v4

@@ -129,6 +129,11 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 		t.Fatal(err)
 	}
 	request := &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "acknowledge", PayloadJson: []byte(`{}`), Effect: pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_MUTATION, IdempotencyKey: "backup-command-001"}
+	history, err := svc.GetExtensionMutationContext(member, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.HistoryId = history.HistoryId
 	first, err := svc.ExecuteExtensionCommand(member, request)
 	if err != nil {
 		t.Fatal(err)
@@ -203,15 +208,24 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 	if err != nil {
 		t.Fatal(err)
 	}
+	current, err := svc.GetExtensionMutationContext(member, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
+	if err != nil || current.HistoryId == request.HistoryId {
+		t.Fatal("История не сменилась", current, err)
+	}
 	replay, err := svc.ExecuteExtensionCommand(member, request)
+	if status.Code(err) != codes.FailedPrecondition || replay != nil || host.calls.Load() != 0 {
+		t.Fatal(replay, err, host.calls.Load())
+	}
+	reconciled, err := svc.ReconcileExtensionCommand(member, &pb.ReconcileExtensionCommandRequest{Command: request})
 	if retired {
-		if status.Code(err) != codes.FailedPrecondition || replay != nil || host.calls.Load() != 0 {
-			t.Fatal(replay, err, host.calls.Load())
+		if status.Code(err) != codes.FailedPrecondition || reconciled != nil {
+			t.Fatal(reconciled, err)
 		}
 	} else {
-		if err != nil || !replay.GetReplayed() || host.calls.Load() != 0 {
-			t.Fatal(replay, err, host.calls.Load())
+		if err != nil || !reconciled.GetReceipt().GetReplayed() {
+			t.Fatal(reconciled, err)
 		}
+		replay = reconciled.Receipt
 		replay.Replayed = false
 		if !proto.Equal(first, replay) {
 			t.Fatal("Квитанция изменилась")

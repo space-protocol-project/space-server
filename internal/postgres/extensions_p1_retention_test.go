@@ -65,6 +65,7 @@ func TestExtensionP1RetentionUpgrade(t *testing.T) {
 	}
 	// Воспроизводим прежний формат v1 без изменения сохранённого ответа.
 	_, err := f.store.pool.Exec(f.ctx, `ALTER TABLE extension_p1_receipts DROP COLUMN retired;
+ALTER TABLE extension_p1_meta DROP COLUMN history_id;
 ALTER TABLE extension_p1_meta DROP CONSTRAINT extension_p1_meta_version_check;
 UPDATE extension_p1_meta SET version=1;
 ALTER TABLE extension_p1_meta ADD CONSTRAINT extension_p1_meta_version_check CHECK(version=1)`)

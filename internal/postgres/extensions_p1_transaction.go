@@ -124,6 +124,9 @@ func (m *extensionMutations) inspect(ctx context.Context, conn *pgxpool.Conn, b 
 	if err != nil {
 		return p, nil, err
 	}
+	if err = checkExtensionHistory(ctx, tx, r.HistoryId); err != nil {
+		return p, nil, err
+	}
 	revision, err := loadExtensionInstance(ctx, tx, b, r.InstanceId)
 	if err != nil {
 		return p, nil, err

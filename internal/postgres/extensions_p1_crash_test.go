@@ -46,7 +46,8 @@ func TestExtensionP1CrashProcess(t *testing.T) {
 	var withheld atomic.Bool
 	barrier := func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		response, err := handler(ctx, req)
-		if err == nil && os.Getenv("SPACE_P1_CRASH_HOLD") == "yes" && withheld.CompareAndSwap(false, true) {
+		_, mutation := req.(*pb.ExecuteExtensionCommandRequest)
+		if mutation && err == nil && os.Getenv("SPACE_P1_CRASH_HOLD") == "yes" && withheld.CompareAndSwap(false, true) {
 			if err = os.WriteFile(os.Getenv("SPACE_P1_CRASH_COMMITTED"), []byte("committed"), 0600); err != nil {
 				return nil, err
 			}
@@ -140,7 +141,7 @@ func extensionCrashClient(t *testing.T, address string) (*grpc.ClientConn, pb.Ex
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	return conn, pb.NewExtensionP1ServiceClient(conn)
+	return conn, &historyTestClient{ExtensionP1ServiceClient: pb.NewExtensionP1ServiceClient(conn), histories: map[string]string{}}
 }
 
 func TestExtensionP1MutationCrashRecovery(t *testing.T) {

@@ -45,8 +45,12 @@ func CheckExtensionP1Backup(ctx context.Context, address string, restore bool) e
 		ordered = append(ordered, name)
 	}
 	sort.Strings(ordered)
+	mode := " IN SHARE MODE"
+	if restore {
+		mode = " IN ACCESS EXCLUSIVE MODE"
+	}
 	for _, name := range ordered {
-		if _, err = tx.Exec(ctx, "LOCK TABLE "+pgx.Identifier{name}.Sanitize()+" IN SHARE MODE"); err != nil {
+		if _, err = tx.Exec(ctx, "LOCK TABLE "+pgx.Identifier{name}.Sanitize()+mode); err != nil {
 			return err
 		}
 	}
@@ -59,6 +63,17 @@ func CheckExtensionP1Backup(ctx context.Context, address string, restore bool) e
 	}
 	if err = checkExtensionBackupRows(ctx, tx, tables["extension_p1_delivery"]); err != nil {
 		return err
+	}
+	if restore {
+		var version int
+		if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
+			return err
+		}
+		if version == 3 {
+			if _, err = tx.Exec(ctx, `UPDATE extension_p1_meta SET history_id=replace(gen_random_uuid()::text,'-','')`); err != nil {
+				return err
+			}
+		}
 	}
 	if restore && tables["extension_p1_delivery"] {
 		// Только в новой восстановленной БД. Курсор и счётчик попыток сохраняются.
@@ -170,6 +185,15 @@ func checkExtensionBackupCursor(ctx context.Context, tx pgx.Tx) error {
 
 func validExtensionReceiptVersion(ctx context.Context, tx pgx.Tx) (bool, error) {
 	var valid bool
-	err := tx.QueryRow(ctx, `SELECT count(*)=1 AND CASE min(version) WHEN 1 THEN NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired') WHEN 2 THEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired' AND data_type='boolean' AND is_nullable='NO') ELSE false END FROM extension_p1_meta`).Scan(&valid)
+	err := tx.QueryRow(ctx, `WITH shape AS (
+      SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired' AND data_type='boolean' AND is_nullable='NO') AS retired,
+      EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired') AS any_retired,
+      EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_meta' AND column_name='history_id' AND data_type='text' AND is_nullable='NO') AS history,
+      EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_meta' AND column_name='history_id') AS any_history
+    ) SELECT count(*)=1 AND CASE min(version)
+      WHEN 1 THEN NOT (SELECT any_retired OR any_history FROM shape)
+      WHEN 2 THEN (SELECT retired AND NOT any_history FROM shape)
+      WHEN 3 THEN (SELECT retired AND history FROM shape) AND bool_and(COALESCE(to_jsonb(m)->>'history_id','') ~ '^[0-9a-f]{32}$')
+      ELSE false END FROM extension_p1_meta m`).Scan(&valid)
 	return valid, err
 }

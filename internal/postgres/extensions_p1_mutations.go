@@ -89,7 +89,7 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
 		return err
 	}
-	if version != 2 {
+	if version != 3 {
 		return mutationError(codes.FailedPrecondition, "storage_version")
 	}
 	for instance, b := range m.bindings {
@@ -125,6 +125,9 @@ func (m *extensionMutations) Execute(ctx context.Context, request *pb.ExecuteExt
 	}
 	if !validMutationRequest(request) {
 		return nil, mutationError(codes.InvalidArgument, "invalid_mutation_request")
+	}
+	if !extensionHistoryPattern.MatchString(request.HistoryId) {
+		return nil, mutationError(codes.FailedPrecondition, "history_required")
 	}
 	select {
 	case m.slots <- struct{}{}:

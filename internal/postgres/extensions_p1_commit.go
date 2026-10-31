@@ -27,6 +27,9 @@ func (m *extensionMutations) commit(ctx context.Context, conn *pgxpool.Conn, b e
 	if current != expected {
 		return nil, mutationError(codes.PermissionDenied, "access_changed")
 	}
+	if err = checkExtensionHistory(ctx, tx, r.HistoryId); err != nil {
+		return nil, err
+	}
 	revision, err := loadExtensionInstance(ctx, tx, b, r.InstanceId)
 	if err != nil {
 		return nil, err

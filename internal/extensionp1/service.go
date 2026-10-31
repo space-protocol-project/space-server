@@ -31,7 +31,7 @@ type MutationReconciler interface {
 }
 
 type MutationContextProvider interface {
-	MutationContext(context.Context, string) (*pb.GetExtensionMutationContextResponse, error)
+	MutationContext(context.Context, string, bool) (*pb.GetExtensionMutationContextResponse, error)
 }
 
 func (s *Service) GetExtensionMutationContext(ctx context.Context, r *pb.GetExtensionMutationContextRequest) (*pb.GetExtensionMutationContextResponse, error) {
@@ -45,7 +45,7 @@ func (s *Service) GetExtensionMutationContext(ctx context.Context, r *pb.GetExte
 	if !ok {
 		return nil, status.Error(codes.FailedPrecondition, "mutation_not_supported")
 	}
-	return provider.MutationContext(ctx, r.InstanceId)
+	return provider.MutationContext(ctx, r.InstanceId, r.RequestRetryWindow)
 }
 
 func (s *Service) ReconcileExtensionCommand(ctx context.Context, r *pb.ReconcileExtensionCommandRequest) (*pb.ReconcileExtensionCommandResponse, error) {

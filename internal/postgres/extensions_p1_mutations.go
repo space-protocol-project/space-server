@@ -36,6 +36,7 @@ type extensionMutations struct {
 	store    *Store
 	bindings map[string]extensionMutationBinding
 	slots    chan struct{}
+	leases   extensionRetryLeases
 }
 
 // NewExtensionP1MutationService явно создаёт только экспериментальное хранилище.

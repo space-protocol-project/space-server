@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/space-protocol-project/space-server/internal/authn"
 	"regexp"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 
 var extensionHistoryPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
-func (m *extensionMutations) MutationContext(ctx context.Context, instance string) (*pb.GetExtensionMutationContextResponse, error) {
+func (m *extensionMutations) MutationContext(ctx context.Context, instance string, window bool) (*pb.GetExtensionMutationContextResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	b, ok := m.bindings[instance]
@@ -49,7 +50,15 @@ func (m *extensionMutations) MutationContext(ctx context.Context, instance strin
 	if err = tx.Commit(ctx); err != nil {
 		return nil, mutationDatabaseError(err)
 	}
-	return &pb.GetExtensionMutationContextResponse{HistoryId: history}, nil
+	result := &pb.GetExtensionMutationContextResponse{HistoryId: history}
+	if window {
+		result.RetryLeaseId, err = m.leases.issue(authn.Actor(ctx), instance, history)
+		if err != nil {
+			return nil, err
+		}
+		result.RetryWindowRemainingMs = uint64(extensionRetryWindow.Milliseconds())
+	}
+	return result, nil
 }
 
 func loadExtensionHistory(ctx context.Context, tx pgx.Tx) (string, error) {

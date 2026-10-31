@@ -122,10 +122,12 @@ func (ExtensionCommandOutcome) EnumDescriptor() ([]byte, []int) {
 
 // Доверенный контекст получают до первой отправки и сохраняют вместе с командой.
 type GetExtensionMutationContextRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InstanceId    string                 `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	InstanceId string                 `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	// Только перед новой командой; повтор не запрашивает новое разрешение.
+	RequestRetryWindow bool `protobuf:"varint,2,opt,name=request_retry_window,json=requestRetryWindow,proto3" json:"request_retry_window,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetExtensionMutationContextRequest) Reset() {
@@ -165,12 +167,24 @@ func (x *GetExtensionMutationContextRequest) GetInstanceId() string {
 	return ""
 }
 
+func (x *GetExtensionMutationContextRequest) GetRequestRetryWindow() bool {
+	if x != nil {
+		return x.RequestRetryWindow
+	}
+	return false
+}
+
 type GetExtensionMutationContextResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 32 строчных шестнадцатеричных символа; меняется при restore, но не restart.
-	HistoryId     string `protobuf:"bytes,1,opt,name=history_id,json=historyId,proto3" json:"history_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	HistoryId string `protobuf:"bytes,1,opt,name=history_id,json=historyId,proto3" json:"history_id,omitempty"`
+	// Короткое разрешение, привязанное к principal, экземпляру и истории.
+	// Недействительно после перезапуска исполнителя. Не сохранять как новое окно при resume.
+	RetryLeaseId string `protobuf:"bytes,2,opt,name=retry_lease_id,json=retryLeaseId,proto3" json:"retry_lease_id,omitempty"`
+	// 30000 мс от выдачи; клиент отсчитывает от начала RPC монотонными часами.
+	RetryWindowRemainingMs uint64 `protobuf:"varint,3,opt,name=retry_window_remaining_ms,json=retryWindowRemainingMs,proto3" json:"retry_window_remaining_ms,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *GetExtensionMutationContextResponse) Reset() {
@@ -208,6 +222,20 @@ func (x *GetExtensionMutationContextResponse) GetHistoryId() string {
 		return x.HistoryId
 	}
 	return ""
+}
+
+func (x *GetExtensionMutationContextResponse) GetRetryLeaseId() string {
+	if x != nil {
+		return x.RetryLeaseId
+	}
+	return ""
+}
+
+func (x *GetExtensionMutationContextResponse) GetRetryWindowRemainingMs() uint64 {
+	if x != nil {
+		return x.RetryWindowRemainingMs
+	}
+	return 0
 }
 
 type QueryExtensionRequest struct {
@@ -333,7 +361,9 @@ type ExecuteExtensionCommandRequest struct {
 	ExpectedStateRevision uint64                 `protobuf:"varint,6,opt,name=expected_state_revision,json=expectedStateRevision,proto3" json:"expected_state_revision,omitempty"`
 	// Обязателен для исполнения MUTATION. При повторе менять запрещено.
 	// Для сверки старой квитанции сохраняется исходное значение, включая пустое v1/v2.
-	HistoryId     string `protobuf:"bytes,7,opt,name=history_id,json=historyId,proto3" json:"history_id,omitempty"`
+	HistoryId string `protobuf:"bytes,7,opt,name=history_id,json=historyId,proto3" json:"history_id,omitempty"`
+	// Неизменная часть команды/digest. Пустое значение не разрешает автоматический повтор.
+	RetryLeaseId  string `protobuf:"bytes,8,opt,name=retry_lease_id,json=retryLeaseId,proto3" json:"retry_lease_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -413,6 +443,13 @@ func (x *ExecuteExtensionCommandRequest) GetExpectedStateRevision() uint64 {
 func (x *ExecuteExtensionCommandRequest) GetHistoryId() string {
 	if x != nil {
 		return x.HistoryId
+	}
+	return ""
+}
+
+func (x *ExecuteExtensionCommandRequest) GetRetryLeaseId() string {
+	if x != nil {
+		return x.RetryLeaseId
 	}
 	return ""
 }
@@ -809,13 +846,16 @@ var File_space_v1_extensions_p1_proto protoreflect.FileDescriptor
 
 const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\n" +
-	"\x1cspace/v1/extensions_p1.proto\x12\bspace.v1\"E\n" +
+	"\x1cspace/v1/extensions_p1.proto\x12\bspace.v1\"w\n" +
 	"\"GetExtensionMutationContextRequest\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
-	"instanceId\"D\n" +
+	"instanceId\x120\n" +
+	"\x14request_retry_window\x18\x02 \x01(\bR\x12requestRetryWindow\"\xa5\x01\n" +
 	"#GetExtensionMutationContextResponse\x12\x1d\n" +
 	"\n" +
-	"history_id\x18\x01 \x01(\tR\thistoryId\"q\n" +
+	"history_id\x18\x01 \x01(\tR\thistoryId\x12$\n" +
+	"\x0eretry_lease_id\x18\x02 \x01(\tR\fretryLeaseId\x129\n" +
+	"\x19retry_window_remaining_ms\x18\x03 \x01(\x04R\x16retryWindowRemainingMs\"q\n" +
 	"\x15QueryExtensionRequest\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x12\x14\n" +
@@ -823,7 +863,7 @@ const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\fpayload_json\x18\x03 \x01(\fR\vpayloadJson\"T\n" +
 	"\x16QueryExtensionResponse\x12#\n" +
 	"\rdocument_json\x18\x01 \x01(\fR\fdocumentJson\x12\x15\n" +
-	"\x06ui_api\x18\x02 \x01(\tR\x05uiApi\"\xb8\x02\n" +
+	"\x06ui_api\x18\x02 \x01(\tR\x05uiApi\"\xde\x02\n" +
 	"\x1eExecuteExtensionCommandRequest\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x12\x18\n" +
@@ -833,7 +873,8 @@ const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x126\n" +
 	"\x17expected_state_revision\x18\x06 \x01(\x04R\x15expectedStateRevision\x12\x1d\n" +
 	"\n" +
-	"history_id\x18\a \x01(\tR\thistoryId\"\xc3\x01\n" +
+	"history_id\x18\a \x01(\tR\thistoryId\x12$\n" +
+	"\x0eretry_lease_id\x18\b \x01(\tR\fretryLeaseId\"\xc3\x01\n" +
 	"\x1fExecuteExtensionCommandResponse\x12#\n" +
 	"\rdocument_json\x18\x01 \x01(\fR\fdocumentJson\x128\n" +
 	"\x06effect\x18\x02 \x01(\x0e2 .space.v1.ExtensionCommandEffectR\x06effect\x12%\n" +

@@ -5,9 +5,51 @@ import (
 	"testing"
 	"time"
 
+	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
+	"github.com/space-protocol-project/space-server/internal/extensionp1"
+
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"google.golang.org/grpc/codes"
 )
+
+func TestExtensionP1RetryLeaseExpiresDuringWorker(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "lease_worker")
+	binding := mutationBindings(c.Id, []byte{1})["demo"]
+	now := time.Now()
+	backend := &extensionMutations{
+		store: f.store, slots: make(chan struct{}, 2),
+		bindings: map[string]extensionMutationBinding{"demo": {
+			installation: "install", channel: c.Id, command: "acknowledge",
+			packageHash: mutationPackageHash(binding), events: map[string]bool{"note_changed": true},
+		}},
+		leases: extensionRetryLeases{now: func() time.Time { return now }},
+	}
+	if err := backend.prepare(f.ctx); err != nil {
+		t.Fatal(err)
+	}
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) {
+		now = now.Add(extensionRetryWindow)
+		return mutationOutput(0), nil
+	}}
+	svc, err := extensionp1.NewWithMutations(h, f.store.ExtensionP1Authorizer(map[string]string{"demo": c.Id}), map[string]demo.Registration{"demo": binding.Registration}, backend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := extensionP1RPCClient(t, f, svc)
+	grant, err := api.GetExtensionMutationContext(f.owner, &pb.GetExtensionMutationContextRequest{InstanceId: "demo", RequestRetryWindow: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := mutationRequest("lease-expiry-00100", 0)
+	r.HistoryId, r.RetryLeaseId = grant.HistoryId, grant.RetryLeaseId
+	_, err = api.ExecuteExtensionCommand(f.owner, r)
+	requireCode(t, err, codes.FailedPrecondition)
+	mutationCounts(t, f, 0, 0, 0, 0)
+	if h.calls.Load() != 1 {
+		t.Fatal("Не проверено истечение во время WASM")
+	}
+}
 
 func TestExtensionP1RetryLeaseLimits(t *testing.T) {
 	now := time.Now()

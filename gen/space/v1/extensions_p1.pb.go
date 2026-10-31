@@ -435,7 +435,7 @@ type ReconcileExtensionCommandResponse struct {
 	Outcome ExtensionCommandOutcome `protobuf:"varint,1,opt,name=outcome,proto3,enum=space.v1.ExtensionCommandOutcome" json:"outcome,omitempty"`
 	// Только для CONFIRMED; выдача требует текущих прав исполнения команды.
 	Receipt *ExecuteExtensionCommandResponse `protobuf:"bytes,2,opt,name=receipt,proto3" json:"receipt,omitempty"`
-	// P1 пока возвращает false/0: срок хранения и tombstone ещё не реализованы.
+	// P1 пока возвращает false/0: гарантированное окно до первой отправки ещё не реализовано.
 	// UNKNOWN никогда не разрешает повторную отправку сам по себе.
 	RetryWindowKnown       bool   `protobuf:"varint,3,opt,name=retry_window_known,json=retryWindowKnown,proto3" json:"retry_window_known,omitempty"`
 	RetryWindowRemainingMs uint64 `protobuf:"varint,4,opt,name=retry_window_remaining_ms,json=retryWindowRemainingMs,proto3" json:"retry_window_remaining_ms,omitempty"`

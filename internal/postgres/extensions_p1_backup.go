@@ -162,6 +162,6 @@ func checkExtensionBackupCursor(ctx context.Context, tx pgx.Tx) error {
 
 func validExtensionReceiptVersion(ctx context.Context, tx pgx.Tx) (bool, error) {
 	var valid bool
-	err := tx.QueryRow(ctx, `SELECT count(*)=1 AND min(version) IN (1,2) AND (min(version)=1 OR EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired' AND data_type='boolean' AND is_nullable='NO')) FROM extension_p1_meta`).Scan(&valid)
+	err := tx.QueryRow(ctx, `SELECT count(*)=1 AND CASE min(version) WHEN 1 THEN NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired') WHEN 2 THEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='extension_p1_receipts' AND column_name='retired' AND data_type='boolean' AND is_nullable='NO') ELSE false END FROM extension_p1_meta`).Scan(&valid)
 	return valid, err
 }

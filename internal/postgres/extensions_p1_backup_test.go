@@ -14,6 +14,7 @@ func TestExtensionP1BackupRejectsPartialState(t *testing.T) {
 		`UPDATE extension_p1_receipts SET response='broken'::bytea`,
 		`UPDATE extension_p1_receipts SET retired=true`,
 		`ALTER TABLE extension_p1_receipts DROP COLUMN retired`,
+		`ALTER TABLE extension_p1_meta DROP CONSTRAINT extension_p1_meta_version_check; UPDATE extension_p1_meta SET version=1`,
 		`CREATE TABLE extension_p1_unknown(value text)`,
 	} {
 		t.Run(sql, func(t *testing.T) {

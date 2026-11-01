@@ -4,6 +4,7 @@ package postgres
 
 import (
 	"context"
+	"net/url"
 	"testing"
 	"time"
 
@@ -13,8 +14,17 @@ import (
 func TestExtensionP1LifecycleUncertainAuditCommit(t *testing.T) {
 	f := newChannelFixture(t)
 	c := f.create(t, "lifecycle_commit")
-	proxy, url := newExtensionDatabaseProxy(t, f.url, "lifecycle_after_commit")
-	store, _, err := Open(f.ctx, url)
+	proxy, database := newExtensionDatabaseProxy(t, f.url, "lifecycle_after_commit")
+	address, err := url.Parse(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := address.Query()
+	// Повторный INSERT аудита иначе использует уже подготовленный statement:
+	// в Bind нет SQL-текста, по которому посредник выбирает транзакцию.
+	options.Set("default_query_exec_mode", "simple_protocol")
+	address.RawQuery = options.Encode()
+	store, _, err := Open(f.ctx, address.String())
 	if err != nil {
 		t.Fatal(err)
 	}

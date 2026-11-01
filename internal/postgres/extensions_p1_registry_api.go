@@ -56,7 +56,7 @@ func (s *ExtensionP1ManagedService) registryRead(ctx context.Context, read func(
 func (s *ExtensionP1ManagedService) readInstallation(ctx context.Context, tx pgx.Tx, id string) (*pb.ExtensionInstallation, error) {
 	item := s.control.installations[id]
 	if item == nil {
-		return nil, denied()
+		return nil, forbidden()
 	}
 	if err := checkLifecycleChannels(ctx, tx, item.channels); err != nil {
 		return nil, err

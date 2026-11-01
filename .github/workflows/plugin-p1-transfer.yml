@@ -1,0 +1,111 @@
+name: P1 межплатформенный перенос реестра
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2025
+            platform: windows
+          - os: macos-15
+            platform: darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: go mod tidy
+      - name: Сборка runtime и домашние проверки
+        run: python packaging/build-home-runtime.py
+      - name: ZIP и эталон на исходной ОС
+        shell: bash
+        run: |
+          mkdir -p .local/p1-transfer
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          export SPACE_P1_TRANSFER_EXPORT="$PWD/.local/transfer"
+          go test -race -json ./internal/home -run '^TestExtensionP1RegistryTransferExport$' -count=1 -timeout=10m > .local/p1-transfer/export.jsonl
+          python tools/p1_transfer_ci.py export
+          python tools/p1_transfer_ci.py pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transfer-${{ matrix.platform }}
+          path: .local/transfer
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: |
+            .local/runtime.tar.gz
+            .local/runtime.tar.sha256
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfer-export-results-${{ matrix.platform }}
+          path: .local/p1-transfer
+          include-hidden-files: true
+  import:
+    needs: export
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2025
+            platform: windows
+          - os: macos-15
+            platform: darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: .local/runtime
+      - name: Подготовка собственного runtime
+        run: python tools/p1_transfer_ci.py unpack
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: transfer-*
+          path: .local/sources
+      - name: Перенос с двух других ОС
+        shell: bash
+        run: |
+          mkdir -p .local/p1-transfer
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          export SPACE_P1_TRANSFER_IMPORT="$PWD/.local/sources"
+          go test -race -json ./internal/home -run '^TestExtensionP1RegistryTransferImport$' -count=3 -timeout=20m > .local/p1-transfer/import.jsonl
+          python tools/p1_transfer_ci.py import
+          go vet ./internal/home
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/home
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfer-import-results-${{ matrix.platform }}
+          path: .local/p1-transfer
+          include-hidden-files: true

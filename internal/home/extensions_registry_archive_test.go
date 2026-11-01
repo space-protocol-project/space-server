@@ -39,12 +39,7 @@ func TestExtensionP1RegistryArchiveRoundTrip(t *testing.T) {
 
 func newRegistryArchiveProbe(t *testing.T, store *postgres.Store, token string, host *backupExtensionHost) (*registryArchiveProbe, *postgres.ExtensionP1ManagedService) {
 	t.Helper()
-	p := &registryArchiveProbe{bindings: backupExtensionBindings()}
-	for _, state := range []string{"disabled", "disabling", "quarantined", "removed"} {
-		b := p.bindings["demo"]
-		b.Installation = state
-		p.bindings[state] = b
-	}
+	p := &registryArchiveProbe{bindings: registryArchiveBindings()}
 	s, err := store.NewExtensionP1ManagedService(context.Background(), host, p.bindings)
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +53,16 @@ func newRegistryArchiveProbe(t *testing.T, store *postgres.Store, token string, 
 	}
 	registryArchiveChange(t, s, token, "removed", "remove", 1)
 	return p, s
+}
+
+func registryArchiveBindings() map[string]postgres.ExtensionP1MutationBinding {
+	bindings := backupExtensionBindings()
+	for _, state := range []string{"disabled", "disabling", "quarantined", "removed"} {
+		b := bindings["demo"]
+		b.Installation = state
+		bindings[state] = b
+	}
+	return bindings
 }
 
 func registryArchiveChange(t *testing.T, s *postgres.ExtensionP1ManagedService, token, installation, action string, revision int64) {
@@ -75,6 +80,9 @@ func registryArchiveSnapshot(t *testing.T, address string) (string, string) {
 		t.Fatal(err)
 	}
 	defer conn.Close(ctx)
+	if _, err = conn.Exec(ctx, `SET TIME ZONE 'UTC'`); err != nil {
+		t.Fatal(err)
+	}
 	var registry, journal string
 	err = conn.QueryRow(ctx, `SELECT
  (SELECT jsonb_agg(to_jsonb(r)-'generation' ORDER BY installation)::text FROM extension_p1_installations r),

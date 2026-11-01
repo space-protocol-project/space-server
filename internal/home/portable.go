@@ -69,7 +69,8 @@ func preparePortableDump(runtime, data, staging string) (result error) {
 	if err := postgres.CheckExtensionP1Backup(ctx, address, false); err != nil {
 		return err
 	}
-	if err := portableDatabaseTool(runtime, "pg_dump", address, staging, "--format=custom", "--no-owner", "--no-privileges", "--exclude-table-data=auth_sessions", "--file="+filepath.Join(staging, "database.dump")); err != nil {
+	// Сжатие выполняет внешний ZIP: pg_restore в runtime без zlib должен читать дамп любой ОС.
+	if err := portableDatabaseTool(runtime, "pg_dump", address, staging, "--format=custom", "--compress=none", "--no-owner", "--no-privileges", "--exclude-table-data=auth_sessions", "--file="+filepath.Join(staging, "database.dump")); err != nil {
 		return err
 	}
 	if err := copyFile(filepath.Join(filepath.Dir(data), "config.json"), filepath.Join(staging, "config.json")); err != nil {

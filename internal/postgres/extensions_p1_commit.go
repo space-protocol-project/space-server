@@ -15,6 +15,11 @@ import (
 )
 
 func (m *extensionMutations) commit(ctx context.Context, conn *pgxpool.Conn, b extensionMutationBinding, r *pb.ExecuteExtensionCommandRequest, digest [32]byte, expected demo.Principal, document []byte, plan *pb.ExtensionMutationPlan) (*pb.ExecuteExtensionCommandResponse, error) {
+	release, err := m.lifecycle.commitGuard(ctx, b.installation)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	tx, err := beginExtensionMutation(ctx, conn)
 	if err != nil {
 		return nil, err

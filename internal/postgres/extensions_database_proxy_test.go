@@ -138,7 +138,11 @@ func (p *extensionDatabaseProxy) forward(source, target net.Conn, frontend bool,
 
 func (p *extensionDatabaseProxy) drop(frame []byte, frontend bool, selected *atomic.Int32) bool {
 	payload := strings.TrimSuffix(string(frame[5:]), "\x00")
-	if frontend && (frame[0] == 'P' || frame[0] == 'Q') && p.armed.Load() && strings.Contains(strings.ToUpper(payload), "INSERT INTO EXTENSION_P1_OUTBOX") {
+	insert := "INSERT INTO EXTENSION_P1_OUTBOX"
+	if p.mode == "lifecycle_after_commit" {
+		insert = "INSERT INTO ADMIN_AUDIT"
+	}
+	if frontend && (frame[0] == 'P' || frame[0] == 'Q') && p.armed.Load() && strings.Contains(strings.ToUpper(payload), insert) {
 		selected.Store(1)
 	}
 	if frontend && selected.Load() == 1 && frame[0] == 'Q' && strings.EqualFold(strings.TrimSpace(payload), "commit") && p.armed.CompareAndSwap(true, false) {

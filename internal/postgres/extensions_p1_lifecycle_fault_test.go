@@ -1,0 +1,46 @@
+//go:build linux
+
+package postgres
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"google.golang.org/grpc/codes"
+)
+
+func TestExtensionP1LifecycleUncertainAuditCommit(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "lifecycle_commit")
+	proxy, url := newExtensionDatabaseProxy(t, f.url, "lifecycle_after_commit")
+	store, _, err := Open(f.ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
+	s, err := store.NewExtensionP1ManagedService(f.ctx, h, mutationBindings(c.Id, []byte{1}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	managedChange(t, f, s, "enable", 1)
+	proxy.armed.Store(true)
+	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "disable", 2)
+	requireCode(t, err, codes.Internal)
+	select {
+	case evidence := <-proxy.hit:
+		t.Log(evidence)
+	case <-time.After(time.Second):
+		t.Fatal("Не перехвачен COMMIT аудита")
+	}
+	lifecycleAuditCount(t, f, 2)
+	api := extensionP1RPCClient(t, f, s)
+	_, err = api.QueryExtension(f.owner, extensionP1Query())
+	requireCode(t, err, codes.Unavailable)
+	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "enable", 3)
+	requireCode(t, err, codes.Unavailable)
+	if h.calls.Load() != 0 {
+		t.Fatal("Неопределённый COMMIT разрешил WASM")
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -54,10 +55,11 @@ type Store struct {
 	pb.UnimplementedSyncServiceServer
 	pb.UnimplementedAdminServiceServer
 	pb.UnimplementedMembershipServiceServer
-	pool        *pgxpool.Pool
-	streamSlots chan struct{}
-	pushSlots   chan struct{}
-	pushActive  sync.Map
+	pool                    *pgxpool.Pool
+	streamSlots             chan struct{}
+	pushSlots               chan struct{}
+	pushActive              sync.Map
+	extensionLifecycleOwned atomic.Bool
 }
 
 func Open(ctx context.Context, url string) (*Store, Identity, error) {

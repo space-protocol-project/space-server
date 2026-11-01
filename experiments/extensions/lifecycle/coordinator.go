@@ -18,6 +18,15 @@ type Coordinator struct {
 }
 type lease struct{ marker byte }
 
+// Preview не меняет состояние. Внешний адаптер должен сериализовать Preview/Apply
+// с другими переходами и новым допуском, если между ними выполняет транзакцию.
+func (c *Coordinator) Preview(o Observation) Decision {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	o.State, o.Revision, o.Active = c.state, c.revision, len(c.active)
+	return Decide(o)
+}
+
 func New(state string, revision int64) (*Coordinator, error) {
 	if !knownStates[state] || revision < 1 || revision > MaxRevision {
 		return nil, ErrUnavailable

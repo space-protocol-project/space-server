@@ -33,16 +33,21 @@ type extensionMutationBinding struct {
 	events                         map[string]bool
 }
 type extensionMutations struct {
-	store    *Store
-	bindings map[string]extensionMutationBinding
-	slots    chan struct{}
-	leases   extensionRetryLeases
+	store     *Store
+	bindings  map[string]extensionMutationBinding
+	slots     chan struct{}
+	leases    extensionRetryLeases
+	lifecycle *extensionLifecycle
 }
 
 // NewExtensionP1MutationService явно создаёт только экспериментальное хранилище.
 // Рабочий сервер этот конструктор не вызывает. Обновление пакета здесь запрещено.
 func (s *Store) NewExtensionP1MutationService(ctx context.Context, host extensions.Runtime, bindings map[string]ExtensionP1MutationBinding) (*extensionp1.Service, error) {
-	backend := &extensionMutations{store: s, bindings: make(map[string]extensionMutationBinding), slots: make(chan struct{}, 2)}
+	return s.newExtensionP1MutationService(ctx, host, bindings, nil)
+}
+
+func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensions.Runtime, bindings map[string]ExtensionP1MutationBinding, control *extensionLifecycle) (*extensionp1.Service, error) {
+	backend := &extensionMutations{store: s, bindings: make(map[string]extensionMutationBinding), slots: make(chan struct{}, 2), lifecycle: control}
 	registrations := make(map[string]demo.Registration)
 	channels := make(map[string]string)
 	for instance, binding := range bindings {

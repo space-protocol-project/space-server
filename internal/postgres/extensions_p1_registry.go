@@ -144,6 +144,15 @@ func (c *extensionLifecycle) systemChange(ctx context.Context, i *extensionLifec
 	if d.Code != "OK" {
 		return d, lifecycleDecisionError(d)
 	}
+	committed := false
+	defer func() {
+		// Отказ хранения не разрешает продолжать подозрительный код.
+		// Это локальное закрытие допуска, а не подтверждённое событие в БД.
+		if !committed && action == "quarantine" {
+			i.failed.Store(true)
+			i.coordinator.Apply(o)
+		}
+	}()
 	tx, err := c.store.pool.Begin(ctx)
 	if err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
@@ -160,5 +169,6 @@ func (c *extensionLifecycle) systemChange(ctx context.Context, i *extensionLifec
 		i.coordinator.Apply(lifecycleObservation("quarantine", "system", revision))
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
+	committed = true
 	return i.coordinator.Apply(o), nil
 }

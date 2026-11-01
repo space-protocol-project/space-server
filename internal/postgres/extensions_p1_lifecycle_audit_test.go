@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc/codes"
 )
@@ -83,11 +84,50 @@ func TestExtensionP1LifecycleJournalRollback(t *testing.T) {
 			if lifecycleJournal(t, f) != before {
 				t.Fatal("Неудачный переход изменил журнал")
 			}
-			if _, err = api.QueryExtension(f.owner, extensionP1Query()); err != nil {
+			_, err = api.QueryExtension(f.owner, extensionP1Query())
+			if actor == "system" {
+				requireCode(t, err, codes.Unavailable)
+			} else if err != nil {
 				t.Fatal(err)
 			}
 		})
 	}
+}
+
+func TestExtensionP1LifecycleJournalFailedQuarantineCancelsActive(t *testing.T) {
+	f := newChannelFixture(t)
+	entered := make(chan struct{})
+	h := &mutationProbe{run: func(ctx context.Context) ([]byte, error) {
+		close(entered)
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}}
+	s, api := managedFixture(t, f, h)
+	managedChange(t, f, s, "enable", 1)
+	done := make(chan error, 1)
+	go func() { _, err := api.QueryExtension(f.owner, extensionP1Query()); done <- err }()
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("Вызов не начался")
+	}
+	_, err := f.store.pool.Exec(f.ctx, `CREATE FUNCTION reject_quarantine() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'fixture'; END$$;
+ CREATE TRIGGER reject_quarantine BEFORE INSERT ON extension_p1_lifecycle_audit FOR EACH ROW EXECUTE FUNCTION reject_quarantine()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.SystemTransition(f.ctx, "install", "quarantine", 2)
+	requireCode(t, err, codes.Internal)
+	select {
+	case err = <-done:
+		requireCode(t, err, codes.Canceled)
+	case <-time.After(3 * time.Second):
+		t.Fatal("Отказ аудита оставил активный вызов")
+	}
+	lifecycleRegistryState(t, f, "enabled", 2)
+	lifecycleJournalCount(t, f, 2)
+	_, err = api.QueryExtension(f.owner, extensionP1Query())
+	requireCode(t, err, codes.Unavailable)
 }
 
 func TestExtensionP1LifecycleJournalMigration(t *testing.T) {

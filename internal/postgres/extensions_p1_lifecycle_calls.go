@@ -28,6 +28,9 @@ func (s *ExtensionP1ManagedService) begin(ctx context.Context, instance string, 
 	if i.failed.Load() {
 		return nil, nil, mutationError(codes.Unavailable, "lifecycle_failed")
 	}
+	if err := s.control.checkGeneration(ctx, installation); err != nil {
+		return nil, nil, err
+	}
 	call, release, err := i.coordinator.Begin(ctx)
 	if err != nil {
 		return nil, nil, mutationError(codes.FailedPrecondition, "extension_not_enabled")
@@ -48,6 +51,9 @@ func (s *ExtensionP1ManagedService) QueryExtension(ctx context.Context, r *pb.Qu
 	if call.Err() != nil {
 		return nil, mutationDatabaseError(call.Err())
 	}
+	if err == nil {
+		err = s.control.checkGeneration(call, s.control.instances[r.InstanceId])
+	}
 	return result, err
 }
 
@@ -65,6 +71,9 @@ func (s *ExtensionP1ManagedService) ExecuteExtensionCommand(ctx context.Context,
 	if call.Err() != nil {
 		return nil, mutationDatabaseError(call.Err())
 	}
+	if err == nil {
+		err = s.control.checkGeneration(call, s.control.instances[r.InstanceId])
+	}
 	return result, err
 }
 
@@ -80,6 +89,9 @@ func (s *ExtensionP1ManagedService) GetExtensionMutationContext(ctx context.Cont
 	result, err := s.service.GetExtensionMutationContext(call, r)
 	if call.Err() != nil {
 		return nil, mutationDatabaseError(call.Err())
+	}
+	if err == nil {
+		err = s.control.checkGeneration(call, s.control.instances[r.InstanceId])
 	}
 	return result, err
 }

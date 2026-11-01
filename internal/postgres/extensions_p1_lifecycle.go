@@ -32,8 +32,8 @@ type extensionLifecycle struct {
 	channels      map[string]string
 }
 
-// ExtensionP1ManagedService — один владелец жизненного цикла в памяти.
-// Публичный реестр и несколько управляющих процессов этим API не вводятся.
+// ExtensionP1ManagedService управляет постоянным состоянием установок.
+// Новое поколение отсекает предыдущую оболочку через реестр PostgreSQL.
 type ExtensionP1ManagedService struct {
 	pb.UnimplementedExtensionP1ServiceServer
 	service    *extensionp1.Service
@@ -41,8 +41,8 @@ type ExtensionP1ManagedService struct {
 	generation string
 }
 
-// Новая управляющая оболочка всегда начинает с disabled, включая повторное
-// создание после аварии. Установку должен явно включить действующий владелец.
+// Новая установка начинает с disabled; существующая сохраняет состояние
+// и ревизию. Контексты вызовов между поколениями не переносятся.
 func (s *Store) NewExtensionP1ManagedService(ctx context.Context, host extensions.Runtime, bindings map[string]ExtensionP1MutationBinding) (*ExtensionP1ManagedService, error) {
 	if !s.extensionLifecycleOwned.CompareAndSwap(false, true) {
 		return nil, mutationError(codes.FailedPrecondition, "lifecycle_already_owned")
@@ -161,6 +161,9 @@ func (c *extensionLifecycle) change(ctx context.Context, i *extensionLifecycleIn
 	if d.Code != "OK" {
 		return d, lifecycleDecisionError(d)
 	}
+	if err = c.persist(ctx, tx, installation, revision, d); err != nil {
+		return lifecycle.Decision{}, mutationDatabaseError(err)
+	}
 	if err = audit(ctx, tx, principal, "extension.p1.lifecycle/"+c.generation+"/"+installation+"/"+action, d.Revision); err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
@@ -237,9 +240,5 @@ func (s *ExtensionP1ManagedService) SystemTransition(ctx context.Context, instal
 	if i.failed.Load() {
 		return lifecycle.Decision{}, mutationError(codes.Unavailable, "lifecycle_failed")
 	}
-	d := i.coordinator.Apply(lifecycleObservation(action, "system", revision))
-	if d.Code != "OK" {
-		return d, lifecycleDecisionError(d)
-	}
-	return d, nil
+	return s.control.systemChange(ctx, i, installation, action, revision)
 }

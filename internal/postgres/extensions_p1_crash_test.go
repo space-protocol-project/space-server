@@ -35,7 +35,12 @@ func TestExtensionP1CrashProcess(t *testing.T) {
 	}
 	defer store.Close()
 	host, module := extensionCrashRuntime(t)
-	svc, err := store.NewExtensionP1MutationService(ctx, host, mutationBindings("mut_crash", module))
+	var svc pb.ExtensionP1ServiceServer
+	if os.Getenv("SPACE_P1_CRASH_MANAGED") == "yes" {
+		svc, err = store.NewExtensionP1ManagedService(ctx, host, mutationBindings("mut_crash", module))
+	} else {
+		svc, err = store.NewExtensionP1MutationService(ctx, host, mutationBindings("mut_crash", module))
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

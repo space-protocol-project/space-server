@@ -202,6 +202,7 @@ CREATE TRIGGER reject_lifecycle BEFORE INSERT ON admin_audit FOR EACH ROW EXECUT
 	}
 	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "disable", 2)
 	requireCode(t, err, codes.Internal)
+	lifecycleRegistryState(t, f, "enabled", 2)
 	if _, err = api.QueryExtension(f.owner, extensionP1Query()); err != nil {
 		t.Fatal(err)
 	}
@@ -284,8 +285,8 @@ func TestExtensionP1LifecycleNewGeneration(t *testing.T) {
 	}
 	_, err = next.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "enable", 1)
 	requireCode(t, err, codes.FailedPrecondition)
-	d := next.control.installations["install"].coordinator.Preview(lifecycleObservation("enable", "owner", 1))
-	if d.Code != "OK" || d.Revision != 2 {
+	d := next.control.installations["install"].coordinator.Preview(lifecycleObservation("disable", "owner", 2))
+	if d.Code != "OK" || d.Revision != 3 {
 		t.Fatal(d)
 	}
 }

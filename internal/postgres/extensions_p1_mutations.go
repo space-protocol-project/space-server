@@ -113,6 +113,11 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 			return mutationError(codes.FailedPrecondition, "binding_changed")
 		}
 	}
+	if m.lifecycle != nil {
+		if err = m.lifecycle.restore(ctx, tx, m.bindings); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
 }
 

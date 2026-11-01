@@ -30,3 +30,6 @@ CREATE TABLE IF NOT EXISTS extension_p1_outbox (
  PRIMARY KEY(installation,instance,revision,ordinal),
  FOREIGN KEY(installation,instance) REFERENCES extension_p1_instances ON DELETE CASCADE
 );
+
+-- Версия дополнительного реестра независима от формата квитанций v3.
+ALTER TABLE extension_p1_meta ADD COLUMN IF NOT EXISTS lifecycle_version integer NOT NULL DEFAULT 0 CHECK(lifecycle_version IN (0,1));

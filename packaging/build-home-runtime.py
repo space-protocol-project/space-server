@@ -112,7 +112,7 @@ def build():
         (STAGE / "RELEASE-NOTES.md").write_text(notes, encoding="utf-8")
         # Проверка запуска и сохранения базы выполняется до публикации архива.
         env = dict(os.environ, SPACE_HOME_RUNTIME=str(STAGE))
-        run("go", "test", "./internal/home", "-count=1", "-timeout=5m", cwd=ROOT, env=env)
+        run("go", "test", "./internal/home", "-count=1", "-timeout=10m", cwd=ROOT, env=env)
         filename = f"Space-home-{target}.zip"
         with zipfile.ZipFile(DIST / filename, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             for path in STAGE.rglob("*"):

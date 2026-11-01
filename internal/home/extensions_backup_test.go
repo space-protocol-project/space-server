@@ -87,12 +87,12 @@ func TestExtensionP1BackupRoundTrip(t *testing.T) {
 			if retired {
 				suffix = "_retired"
 			}
-			t.Run(name+suffix, func(t *testing.T) { extensionBackupRoundTrip(t, runtime, portable, retired) })
+			t.Run(name+suffix, func(t *testing.T) { extensionBackupRoundTrip(t, runtime, portable, retired, false) })
 		}
 	}
 }
 
-func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bool) {
+func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired, managed bool) {
 	t.Helper()
 	ctx := context.Background()
 	root := t.TempDir()
@@ -124,7 +124,13 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 	grant := backupExtensionProof(t, auth, &pb.CreateChallengeRequest{Purpose: "device.register", RootPublicKey: rootKey, DevicePublicKey: device, Administrative: true}, rootPrivate)
 	member, oldToken := backupExtensionLogin(t, s, id, grant.GrantId, devicePrivate)
 	host := new(backupExtensionHost)
-	svc, err := s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
+	var svc pb.ExtensionP1ServiceServer
+	var registry *registryArchiveProbe
+	if managed {
+		registry, svc = newRegistryArchiveProbe(t, s, member, oldToken, host)
+	} else {
+		svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +165,9 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 	if err = os.WriteFile(filepath.Join(root, "config.json"), []byte(`{"ip":"203.0.113.10","port":8443}`), 0600); err != nil {
 		t.Fatal(err)
 	}
+	if registry != nil {
+		registry.capture(t, address)
+	}
 	s.Close()
 	if retired {
 		retireBackupExtensionReceipt(t, address)
@@ -173,8 +182,12 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 		if err = ExportPortable(runtime, data, backup); err != nil {
 			t.Fatal(err)
 		}
+		before := registryArchiveDigest(t, backup, true)
 		if err = ImportPortable(runtime, backup, destination, ""); err != nil {
 			t.Fatal(err)
+		}
+		if registryArchiveDigest(t, backup, true) != before {
+			t.Fatal("Источник изменён")
 		}
 	} else {
 		if err = CreateBackup(runtime, data, backup); err != nil {
@@ -202,9 +215,14 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired bo
 			t.Fatal("Перенесена сессия", err)
 		}
 	}
-	member, _ = backupExtensionLogin(t, s, restored, grant.GrantId, devicePrivate)
+	var newToken string
+	member, newToken = backupExtensionLogin(t, s, restored, grant.GrantId, devicePrivate)
 	host = new(backupExtensionHost)
-	svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
+	if registry != nil {
+		svc = registry.restore(t, s, address, member, newToken, host)
+	} else {
+		svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

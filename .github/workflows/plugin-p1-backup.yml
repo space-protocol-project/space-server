@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-22.04, windows-2025, macos-14]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -35,10 +35,22 @@ jobs:
         run: |
           mkdir -p .local/p1-backup
           export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          go test -race -json ./internal/home -run '^TestExtensionP1RegistryArchive' -count=3 -timeout=20m > .local/p1-backup/registry-archive.jsonl
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(line) for line in Path('.local/p1-backup/registry-archive.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          required={'TestExtensionP1RegistryArchiveRoundTrip/'+name for name in ('physical_full','physical_retired','portable_full','portable_retired')}
+          required|={'TestExtensionP1RegistryArchiveRejectsInvalid/'+name for name in ('physical_gap','physical_missing','portable_gap','portable_missing')}
+          for name in required:
+              assert sum(e['Action']=='pass' and e.get('Test')==name for e in events)==3, name
+          PY
           go test -race -json ./internal/home -run '^(TestExtensionP1BackupRoundTrip|TestStoppedDatabaseBackupAndRestore|TestPortableSpaceRoundTrip)$' -count=3 -timeout=10m > .local/p1-backup/backup.jsonl
           go test -race -json ./internal/home -run '^TestExtensionP1OldBackupRestore$' -count=1 -timeout=8m > .local/p1-backup/old-backup.jsonl
           go vet ./internal/home
           go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/home
       - uses: actions/upload-artifact@v4
         if: always()
         with:

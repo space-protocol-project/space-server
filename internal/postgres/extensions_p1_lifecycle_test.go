@@ -57,6 +57,10 @@ func TestExtensionP1LifecyclePermissions(t *testing.T) {
 	_, err = s.Change(f.ctx, lifecycleToken(f.owner), "old-generation", "install", "enable", 1)
 	requireCode(t, err, codes.FailedPrecondition)
 	managedChange(t, f, s, "enable", 1)
+	var recorded string
+	if err = f.store.pool.QueryRow(f.ctx, "SELECT action FROM admin_audit WHERE action LIKE 'extension.p1.lifecycle/%'").Scan(&recorded); err != nil || recorded != "extension.p1.lifecycle/"+s.Generation()+"/install/enable" {
+		t.Fatal("Аудит не привязан к поколению", recorded, err)
+	}
 	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "disable", 1)
 	requireCode(t, err, codes.Aborted)
 	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "begin_upgrade", 2)

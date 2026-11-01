@@ -26,6 +26,7 @@ type extensionLifecycleInstallation struct {
 }
 type extensionLifecycle struct {
 	store         *Store
+	generation    string
 	installations map[string]*extensionLifecycleInstallation
 	instances     map[string]string
 	channels      map[string]string
@@ -51,7 +52,7 @@ func (s *Store) NewExtensionP1ManagedService(ctx context.Context, host extension
 		s.extensionLifecycleOwned.Store(false)
 		return nil, err
 	}
-	control := &extensionLifecycle{store: s, installations: map[string]*extensionLifecycleInstallation{}, instances: map[string]string{}, channels: map[string]string{}}
+	control := &extensionLifecycle{store: s, generation: hex.EncodeToString(nonce[:]), installations: map[string]*extensionLifecycleInstallation{}, instances: map[string]string{}, channels: map[string]string{}}
 	for instance, b := range bindings {
 		item := control.installations[b.Installation]
 		if item == nil {
@@ -71,7 +72,7 @@ func (s *Store) NewExtensionP1ManagedService(ctx context.Context, host extension
 		s.extensionLifecycleOwned.Store(false)
 		return nil, err
 	}
-	return &ExtensionP1ManagedService{service: svc, control: control, generation: hex.EncodeToString(nonce[:])}, nil
+	return &ExtensionP1ManagedService{service: svc, control: control, generation: control.generation}, nil
 }
 
 func (s *ExtensionP1ManagedService) Generation() string { return s.generation }
@@ -160,7 +161,7 @@ func (c *extensionLifecycle) change(ctx context.Context, i *extensionLifecycleIn
 	if d.Code != "OK" {
 		return d, lifecycleDecisionError(d)
 	}
-	if err = audit(ctx, tx, principal, "extension.p1.lifecycle/"+installation+"/"+action, d.Revision); err != nil {
+	if err = audit(ctx, tx, principal, "extension.p1.lifecycle/"+c.generation+"/"+installation+"/"+action, d.Revision); err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
 	if err = currentExtensionSession(ctx, tx); err != nil {

@@ -130,9 +130,9 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired, m
 		registry, svc = newRegistryArchiveProbe(t, s, oldToken, host)
 	} else {
 		svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
-	}
-	if err != nil {
-		t.Fatal(err)
+		if err != nil {
+			t.Fatal("Создание сервиса расширений", err)
+		}
 	}
 	request := &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "acknowledge", PayloadJson: []byte(`{}`), Effect: pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_MUTATION, IdempotencyKey: "backup-command-001"}
 	history, err := svc.GetExtensionMutationContext(member, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
@@ -222,9 +222,9 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired, m
 		svc = registry.restore(t, s, address, member, newToken, host)
 	} else {
 		svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
-	}
-	if err != nil {
-		t.Fatal(err)
+		if err != nil {
+			t.Fatal("Создание сервиса расширений", err)
+		}
 	}
 	current, err := svc.GetExtensionMutationContext(member, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
 	if err != nil || current.HistoryId == request.HistoryId {

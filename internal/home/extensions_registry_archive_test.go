@@ -37,15 +37,8 @@ func TestExtensionP1RegistryArchiveRoundTrip(t *testing.T) {
 	}
 }
 
-func newRegistryArchiveProbe(t *testing.T, store *postgres.Store, owner context.Context, token string, host *backupExtensionHost) (*registryArchiveProbe, *postgres.ExtensionP1ManagedService) {
+func newRegistryArchiveProbe(t *testing.T, store *postgres.Store, token string, host *backupExtensionHost) (*registryArchiveProbe, *postgres.ExtensionP1ManagedService) {
 	t.Helper()
-	code, err := store.CreateSetupCode(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = store.ClaimOwner(owner, &pb.ClaimOwnerRequest{SetupCode: code}); err != nil {
-		t.Fatal(err)
-	}
 	p := &registryArchiveProbe{bindings: backupExtensionBindings()}
 	for _, state := range []string{"disabled", "disabling", "quarantined", "removed"} {
 		b := p.bindings["demo"]

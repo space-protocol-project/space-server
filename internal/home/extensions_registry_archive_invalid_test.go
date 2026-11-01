@@ -34,7 +34,7 @@ func TestExtensionP1RegistryArchiveRejectsInvalid(t *testing.T) {
 
 func registryArchiveRejectsInvalid(t *testing.T, runtime string, portable, missing bool) {
 	f := newHistoryBackupFixture(t, runtime)
-	newRegistryArchiveProbe(t, f.store, f.member, authn.Token(f.member), f.host)
+	newRegistryArchiveProbe(t, f.store, authn.Token(f.member), f.host)
 	f.close()
 	backup := f.save(portable)
 	if portable {

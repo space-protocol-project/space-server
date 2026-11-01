@@ -127,7 +127,7 @@ func extensionBackupRoundTrip(t *testing.T, runtime string, portable, retired, m
 	var svc pb.ExtensionP1ServiceServer
 	var registry *registryArchiveProbe
 	if managed {
-		registry, svc = newRegistryArchiveProbe(t, s, member, oldToken, host)
+		registry, svc = newRegistryArchiveProbe(t, s, oldToken, host)
 	} else {
 		svc, err = s.NewExtensionP1MutationService(ctx, host, backupExtensionBindings())
 	}

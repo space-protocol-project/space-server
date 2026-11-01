@@ -146,6 +146,10 @@ func TestExtensionP1RegistryAPIRejectsStaleAndInvalid(t *testing.T) {
 	}
 	_, err = api.GetExtensionInstallation(f.owner, &pb.GetExtensionInstallationRequest{InstallationId: "unknown"})
 	requireCode(t, err, codes.PermissionDenied)
+	_, err = api.ChangeExtensionInstallation(f.owner, &pb.ChangeExtensionInstallationRequest{InstallationId: "unknown", Generation: s.Generation(), ExpectedRevision: 1, Action: "enable"})
+	requireCode(t, err, codes.PermissionDenied)
+	_, err = api.ListExtensionInstallationAudit(f.owner, &pb.ListExtensionInstallationAuditRequest{InstallationId: "unknown", Generation: s.Generation()})
+	requireCode(t, err, codes.PermissionDenied)
 	_, err = api.ListExtensionInstallations(f.owner, &pb.ListExtensionInstallationsRequest{PageSize: 101})
 	requireCode(t, err, codes.InvalidArgument)
 	_, err = api.ListExtensionInstallations(f.owner, &pb.ListExtensionInstallationsRequest{AfterInstallationId: "install"})

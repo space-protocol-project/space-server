@@ -125,7 +125,7 @@ func (s *ExtensionP1ManagedService) Change(ctx context.Context, token, generatio
 	}
 	i := s.control.installations[installation]
 	if i == nil {
-		return lifecycle.Decision{}, denied()
+		return lifecycle.Decision{}, forbidden()
 	}
 	if action != "enable" && action != "disable" && action != "remove" {
 		return lifecycle.Decision{}, mutationError(codes.FailedPrecondition, "lifecycle_action_not_connected")

@@ -45,6 +45,18 @@ const (
 	// ExtensionP1ServiceGetExtensionMutationContextProcedure is the fully-qualified name of the
 	// ExtensionP1Service's GetExtensionMutationContext RPC.
 	ExtensionP1ServiceGetExtensionMutationContextProcedure = "/space.v1.ExtensionP1Service/GetExtensionMutationContext"
+	// ExtensionP1ServiceListExtensionInstallationsProcedure is the fully-qualified name of the
+	// ExtensionP1Service's ListExtensionInstallations RPC.
+	ExtensionP1ServiceListExtensionInstallationsProcedure = "/space.v1.ExtensionP1Service/ListExtensionInstallations"
+	// ExtensionP1ServiceGetExtensionInstallationProcedure is the fully-qualified name of the
+	// ExtensionP1Service's GetExtensionInstallation RPC.
+	ExtensionP1ServiceGetExtensionInstallationProcedure = "/space.v1.ExtensionP1Service/GetExtensionInstallation"
+	// ExtensionP1ServiceChangeExtensionInstallationProcedure is the fully-qualified name of the
+	// ExtensionP1Service's ChangeExtensionInstallation RPC.
+	ExtensionP1ServiceChangeExtensionInstallationProcedure = "/space.v1.ExtensionP1Service/ChangeExtensionInstallation"
+	// ExtensionP1ServiceListExtensionInstallationAuditProcedure is the fully-qualified name of the
+	// ExtensionP1Service's ListExtensionInstallationAudit RPC.
+	ExtensionP1ServiceListExtensionInstallationAuditProcedure = "/space.v1.ExtensionP1Service/ListExtensionInstallationAudit"
 )
 
 // ExtensionP1ServiceClient is a client for the space.v1.ExtensionP1Service service.
@@ -53,6 +65,10 @@ type ExtensionP1ServiceClient interface {
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
 	GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error)
+	ListExtensionInstallations(context.Context, *connect.Request[v1.ListExtensionInstallationsRequest]) (*connect.Response[v1.ListExtensionInstallationsResponse], error)
+	GetExtensionInstallation(context.Context, *connect.Request[v1.GetExtensionInstallationRequest]) (*connect.Response[v1.GetExtensionInstallationResponse], error)
+	ChangeExtensionInstallation(context.Context, *connect.Request[v1.ChangeExtensionInstallationRequest]) (*connect.Response[v1.ChangeExtensionInstallationResponse], error)
+	ListExtensionInstallationAudit(context.Context, *connect.Request[v1.ListExtensionInstallationAuditRequest]) (*connect.Response[v1.ListExtensionInstallationAuditResponse], error)
 }
 
 // NewExtensionP1ServiceClient constructs a client for the space.v1.ExtensionP1Service service. By
@@ -90,15 +106,43 @@ func NewExtensionP1ServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionMutationContext")),
 			connect.WithClientOptions(opts...),
 		),
+		listExtensionInstallations: connect.NewClient[v1.ListExtensionInstallationsRequest, v1.ListExtensionInstallationsResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceListExtensionInstallationsProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionInstallations")),
+			connect.WithClientOptions(opts...),
+		),
+		getExtensionInstallation: connect.NewClient[v1.GetExtensionInstallationRequest, v1.GetExtensionInstallationResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceGetExtensionInstallationProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		changeExtensionInstallation: connect.NewClient[v1.ChangeExtensionInstallationRequest, v1.ChangeExtensionInstallationResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceChangeExtensionInstallationProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("ChangeExtensionInstallation")),
+			connect.WithClientOptions(opts...),
+		),
+		listExtensionInstallationAudit: connect.NewClient[v1.ListExtensionInstallationAuditRequest, v1.ListExtensionInstallationAuditResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceListExtensionInstallationAuditProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionInstallationAudit")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // extensionP1ServiceClient implements ExtensionP1ServiceClient.
 type extensionP1ServiceClient struct {
-	queryExtension              *connect.Client[v1.QueryExtensionRequest, v1.QueryExtensionResponse]
-	executeExtensionCommand     *connect.Client[v1.ExecuteExtensionCommandRequest, v1.ExecuteExtensionCommandResponse]
-	reconcileExtensionCommand   *connect.Client[v1.ReconcileExtensionCommandRequest, v1.ReconcileExtensionCommandResponse]
-	getExtensionMutationContext *connect.Client[v1.GetExtensionMutationContextRequest, v1.GetExtensionMutationContextResponse]
+	queryExtension                 *connect.Client[v1.QueryExtensionRequest, v1.QueryExtensionResponse]
+	executeExtensionCommand        *connect.Client[v1.ExecuteExtensionCommandRequest, v1.ExecuteExtensionCommandResponse]
+	reconcileExtensionCommand      *connect.Client[v1.ReconcileExtensionCommandRequest, v1.ReconcileExtensionCommandResponse]
+	getExtensionMutationContext    *connect.Client[v1.GetExtensionMutationContextRequest, v1.GetExtensionMutationContextResponse]
+	listExtensionInstallations     *connect.Client[v1.ListExtensionInstallationsRequest, v1.ListExtensionInstallationsResponse]
+	getExtensionInstallation       *connect.Client[v1.GetExtensionInstallationRequest, v1.GetExtensionInstallationResponse]
+	changeExtensionInstallation    *connect.Client[v1.ChangeExtensionInstallationRequest, v1.ChangeExtensionInstallationResponse]
+	listExtensionInstallationAudit *connect.Client[v1.ListExtensionInstallationAuditRequest, v1.ListExtensionInstallationAuditResponse]
 }
 
 // QueryExtension calls space.v1.ExtensionP1Service.QueryExtension.
@@ -121,12 +165,36 @@ func (c *extensionP1ServiceClient) GetExtensionMutationContext(ctx context.Conte
 	return c.getExtensionMutationContext.CallUnary(ctx, req)
 }
 
+// ListExtensionInstallations calls space.v1.ExtensionP1Service.ListExtensionInstallations.
+func (c *extensionP1ServiceClient) ListExtensionInstallations(ctx context.Context, req *connect.Request[v1.ListExtensionInstallationsRequest]) (*connect.Response[v1.ListExtensionInstallationsResponse], error) {
+	return c.listExtensionInstallations.CallUnary(ctx, req)
+}
+
+// GetExtensionInstallation calls space.v1.ExtensionP1Service.GetExtensionInstallation.
+func (c *extensionP1ServiceClient) GetExtensionInstallation(ctx context.Context, req *connect.Request[v1.GetExtensionInstallationRequest]) (*connect.Response[v1.GetExtensionInstallationResponse], error) {
+	return c.getExtensionInstallation.CallUnary(ctx, req)
+}
+
+// ChangeExtensionInstallation calls space.v1.ExtensionP1Service.ChangeExtensionInstallation.
+func (c *extensionP1ServiceClient) ChangeExtensionInstallation(ctx context.Context, req *connect.Request[v1.ChangeExtensionInstallationRequest]) (*connect.Response[v1.ChangeExtensionInstallationResponse], error) {
+	return c.changeExtensionInstallation.CallUnary(ctx, req)
+}
+
+// ListExtensionInstallationAudit calls space.v1.ExtensionP1Service.ListExtensionInstallationAudit.
+func (c *extensionP1ServiceClient) ListExtensionInstallationAudit(ctx context.Context, req *connect.Request[v1.ListExtensionInstallationAuditRequest]) (*connect.Response[v1.ListExtensionInstallationAuditResponse], error) {
+	return c.listExtensionInstallationAudit.CallUnary(ctx, req)
+}
+
 // ExtensionP1ServiceHandler is an implementation of the space.v1.ExtensionP1Service service.
 type ExtensionP1ServiceHandler interface {
 	QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error)
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
 	GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error)
+	ListExtensionInstallations(context.Context, *connect.Request[v1.ListExtensionInstallationsRequest]) (*connect.Response[v1.ListExtensionInstallationsResponse], error)
+	GetExtensionInstallation(context.Context, *connect.Request[v1.GetExtensionInstallationRequest]) (*connect.Response[v1.GetExtensionInstallationResponse], error)
+	ChangeExtensionInstallation(context.Context, *connect.Request[v1.ChangeExtensionInstallationRequest]) (*connect.Response[v1.ChangeExtensionInstallationResponse], error)
+	ListExtensionInstallationAudit(context.Context, *connect.Request[v1.ListExtensionInstallationAuditRequest]) (*connect.Response[v1.ListExtensionInstallationAuditResponse], error)
 }
 
 // NewExtensionP1ServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -160,6 +228,30 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 		connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionMutationContext")),
 		connect.WithHandlerOptions(opts...),
 	)
+	extensionP1ServiceListExtensionInstallationsHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceListExtensionInstallationsProcedure,
+		svc.ListExtensionInstallations,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionInstallations")),
+		connect.WithHandlerOptions(opts...),
+	)
+	extensionP1ServiceGetExtensionInstallationHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceGetExtensionInstallationProcedure,
+		svc.GetExtensionInstallation,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("GetExtensionInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	extensionP1ServiceChangeExtensionInstallationHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceChangeExtensionInstallationProcedure,
+		svc.ChangeExtensionInstallation,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("ChangeExtensionInstallation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	extensionP1ServiceListExtensionInstallationAuditHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceListExtensionInstallationAuditProcedure,
+		svc.ListExtensionInstallationAudit,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionInstallationAudit")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/space.v1.ExtensionP1Service/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExtensionP1ServiceQueryExtensionProcedure:
@@ -170,6 +262,14 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 			extensionP1ServiceReconcileExtensionCommandHandler.ServeHTTP(w, r)
 		case ExtensionP1ServiceGetExtensionMutationContextProcedure:
 			extensionP1ServiceGetExtensionMutationContextHandler.ServeHTTP(w, r)
+		case ExtensionP1ServiceListExtensionInstallationsProcedure:
+			extensionP1ServiceListExtensionInstallationsHandler.ServeHTTP(w, r)
+		case ExtensionP1ServiceGetExtensionInstallationProcedure:
+			extensionP1ServiceGetExtensionInstallationHandler.ServeHTTP(w, r)
+		case ExtensionP1ServiceChangeExtensionInstallationProcedure:
+			extensionP1ServiceChangeExtensionInstallationHandler.ServeHTTP(w, r)
+		case ExtensionP1ServiceListExtensionInstallationAuditProcedure:
+			extensionP1ServiceListExtensionInstallationAuditHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -193,4 +293,20 @@ func (UnimplementedExtensionP1ServiceHandler) ReconcileExtensionCommand(context.
 
 func (UnimplementedExtensionP1ServiceHandler) GetExtensionMutationContext(context.Context, *connect.Request[v1.GetExtensionMutationContextRequest]) (*connect.Response[v1.GetExtensionMutationContextResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.GetExtensionMutationContext is not implemented"))
+}
+
+func (UnimplementedExtensionP1ServiceHandler) ListExtensionInstallations(context.Context, *connect.Request[v1.ListExtensionInstallationsRequest]) (*connect.Response[v1.ListExtensionInstallationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.ListExtensionInstallations is not implemented"))
+}
+
+func (UnimplementedExtensionP1ServiceHandler) GetExtensionInstallation(context.Context, *connect.Request[v1.GetExtensionInstallationRequest]) (*connect.Response[v1.GetExtensionInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.GetExtensionInstallation is not implemented"))
+}
+
+func (UnimplementedExtensionP1ServiceHandler) ChangeExtensionInstallation(context.Context, *connect.Request[v1.ChangeExtensionInstallationRequest]) (*connect.Response[v1.ChangeExtensionInstallationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.ChangeExtensionInstallation is not implemented"))
+}
+
+func (UnimplementedExtensionP1ServiceHandler) ListExtensionInstallationAudit(context.Context, *connect.Request[v1.ListExtensionInstallationAuditRequest]) (*connect.Response[v1.ListExtensionInstallationAuditResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.ListExtensionInstallationAudit is not implemented"))
 }

@@ -38,6 +38,15 @@ jobs:
           mkdir -p .local/p1-core
           go mod tidy
           export SPACE_P1_LIFECYCLE_CASES="$PWD/.local/p1-protocol/docs/extensions/p1/lifecycle.json"
+          go test -race -json ./internal/postgres -run '^TestExtensionP1RegistryAPI' -count=5 -timeout=8m > .local/p1-core/registry-api.jsonl
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(line) for line in Path('.local/p1-core/registry-api.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          for name in ('Permissions','TransitionsAndAudit','RejectsStaleAndInvalid','RevocationBoundary','PaginationAndFencing','Connect'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1RegistryAPI'+name for e in events)==5
+          PY
           go test -race -json ./internal/postgres -run '^TestExtensionP1Lifecycle' -count=5 > .local/p1-core/lifecycle.jsonl
           (cd experiments/extensions && go test -race -json ./lifecycle -count=25) > .local/p1-core/lifecycle-coordinator.jsonl
           go test -race -json ./internal/extensionp1 -run '^TestRetry' -count=1 > .local/p1-core/retry.jsonl

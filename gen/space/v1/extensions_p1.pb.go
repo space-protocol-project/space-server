@@ -120,6 +120,664 @@ func (ExtensionCommandOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{1}
 }
 
+// Административный API P1: текущая сессия с space.manage, владелец и manage ACL
+// всех каналов установки. Не устанавливает пакеты и не принимает роль system.
+type ExtensionInstallation struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	InstallationId string                 `protobuf:"bytes,1,opt,name=installation_id,json=installationId,proto3" json:"installation_id,omitempty"`
+	State          string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	Revision       int64                  `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	Generation     string                 `protobuf:"bytes,4,opt,name=generation,proto3" json:"generation,omitempty"`
+	BindingSha256  []byte                 `protobuf:"bytes,5,opt,name=binding_sha256,json=bindingSha256,proto3" json:"binding_sha256,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ExtensionInstallation) Reset() {
+	*x = ExtensionInstallation{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExtensionInstallation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionInstallation) ProtoMessage() {}
+
+func (x *ExtensionInstallation) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionInstallation.ProtoReflect.Descriptor instead.
+func (*ExtensionInstallation) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ExtensionInstallation) GetInstallationId() string {
+	if x != nil {
+		return x.InstallationId
+	}
+	return ""
+}
+
+func (x *ExtensionInstallation) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *ExtensionInstallation) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *ExtensionInstallation) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *ExtensionInstallation) GetBindingSha256() []byte {
+	if x != nil {
+		return x.BindingSha256
+	}
+	return nil
+}
+
+type ListExtensionInstallationsRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	AfterInstallationId string                 `protobuf:"bytes,1,opt,name=after_installation_id,json=afterInstallationId,proto3" json:"after_installation_id,omitempty"`
+	PageSize            int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 0 означает 50; допустимо 1..100.
+	Generation          string                 `protobuf:"bytes,3,opt,name=generation,proto3" json:"generation,omitempty"`              // Обязательно при продолжении; смена требует нового чтения.
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ListExtensionInstallationsRequest) Reset() {
+	*x = ListExtensionInstallationsRequest{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtensionInstallationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtensionInstallationsRequest) ProtoMessage() {}
+
+func (x *ListExtensionInstallationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtensionInstallationsRequest.ProtoReflect.Descriptor instead.
+func (*ListExtensionInstallationsRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListExtensionInstallationsRequest) GetAfterInstallationId() string {
+	if x != nil {
+		return x.AfterInstallationId
+	}
+	return ""
+}
+
+func (x *ListExtensionInstallationsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListExtensionInstallationsRequest) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+type ListExtensionInstallationsResponse struct {
+	state                   protoimpl.MessageState   `protogen:"open.v1"`
+	Installations           []*ExtensionInstallation `protobuf:"bytes,1,rep,name=installations,proto3" json:"installations,omitempty"`
+	NextAfterInstallationId string                   `protobuf:"bytes,2,opt,name=next_after_installation_id,json=nextAfterInstallationId,proto3" json:"next_after_installation_id,omitempty"`
+	Generation              string                   `protobuf:"bytes,3,opt,name=generation,proto3" json:"generation,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *ListExtensionInstallationsResponse) Reset() {
+	*x = ListExtensionInstallationsResponse{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtensionInstallationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtensionInstallationsResponse) ProtoMessage() {}
+
+func (x *ListExtensionInstallationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtensionInstallationsResponse.ProtoReflect.Descriptor instead.
+func (*ListExtensionInstallationsResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ListExtensionInstallationsResponse) GetInstallations() []*ExtensionInstallation {
+	if x != nil {
+		return x.Installations
+	}
+	return nil
+}
+
+func (x *ListExtensionInstallationsResponse) GetNextAfterInstallationId() string {
+	if x != nil {
+		return x.NextAfterInstallationId
+	}
+	return ""
+}
+
+func (x *ListExtensionInstallationsResponse) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+type GetExtensionInstallationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	InstallationId string                 `protobuf:"bytes,1,opt,name=installation_id,json=installationId,proto3" json:"installation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetExtensionInstallationRequest) Reset() {
+	*x = GetExtensionInstallationRequest{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExtensionInstallationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExtensionInstallationRequest) ProtoMessage() {}
+
+func (x *GetExtensionInstallationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExtensionInstallationRequest.ProtoReflect.Descriptor instead.
+func (*GetExtensionInstallationRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetExtensionInstallationRequest) GetInstallationId() string {
+	if x != nil {
+		return x.InstallationId
+	}
+	return ""
+}
+
+type GetExtensionInstallationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Installation  *ExtensionInstallation `protobuf:"bytes,1,opt,name=installation,proto3" json:"installation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExtensionInstallationResponse) Reset() {
+	*x = GetExtensionInstallationResponse{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExtensionInstallationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExtensionInstallationResponse) ProtoMessage() {}
+
+func (x *GetExtensionInstallationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExtensionInstallationResponse.ProtoReflect.Descriptor instead.
+func (*GetExtensionInstallationResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetExtensionInstallationResponse) GetInstallation() *ExtensionInstallation {
+	if x != nil {
+		return x.Installation
+	}
+	return nil
+}
+
+type ChangeExtensionInstallationRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	InstallationId   string                 `protobuf:"bytes,1,opt,name=installation_id,json=installationId,proto3" json:"installation_id,omitempty"`
+	Generation       string                 `protobuf:"bytes,2,opt,name=generation,proto3" json:"generation,omitempty"`
+	ExpectedRevision int64                  `protobuf:"varint,3,opt,name=expected_revision,json=expectedRevision,proto3" json:"expected_revision,omitempty"`
+	Action           string                 `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"` // Только enable, disable, remove.
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ChangeExtensionInstallationRequest) Reset() {
+	*x = ChangeExtensionInstallationRequest{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeExtensionInstallationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeExtensionInstallationRequest) ProtoMessage() {}
+
+func (x *ChangeExtensionInstallationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeExtensionInstallationRequest.ProtoReflect.Descriptor instead.
+func (*ChangeExtensionInstallationRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ChangeExtensionInstallationRequest) GetInstallationId() string {
+	if x != nil {
+		return x.InstallationId
+	}
+	return ""
+}
+
+func (x *ChangeExtensionInstallationRequest) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *ChangeExtensionInstallationRequest) GetExpectedRevision() int64 {
+	if x != nil {
+		return x.ExpectedRevision
+	}
+	return 0
+}
+
+func (x *ChangeExtensionInstallationRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+type ChangeExtensionInstallationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         string                 `protobuf:"bytes,1,opt,name=state,proto3" json:"state,omitempty"`
+	Revision      int64                  `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	Generation    string                 `protobuf:"bytes,3,opt,name=generation,proto3" json:"generation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeExtensionInstallationResponse) Reset() {
+	*x = ChangeExtensionInstallationResponse{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeExtensionInstallationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeExtensionInstallationResponse) ProtoMessage() {}
+
+func (x *ChangeExtensionInstallationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeExtensionInstallationResponse.ProtoReflect.Descriptor instead.
+func (*ChangeExtensionInstallationResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ChangeExtensionInstallationResponse) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *ChangeExtensionInstallationResponse) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *ChangeExtensionInstallationResponse) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+type ExtensionInstallationAuditEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Revision      int64                  `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	Generation    string                 `protobuf:"bytes,2,opt,name=generation,proto3" json:"generation,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
+	Actor         string                 `protobuf:"bytes,4,opt,name=actor,proto3" json:"actor,omitempty"` // checkpoint, owner, system; назначает только ядро.
+	PrincipalId   string                 `protobuf:"bytes,5,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
+	PreviousState string                 `protobuf:"bytes,6,opt,name=previous_state,json=previousState,proto3" json:"previous_state,omitempty"`
+	State         string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339Nano, UTC.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExtensionInstallationAuditEntry) Reset() {
+	*x = ExtensionInstallationAuditEntry{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExtensionInstallationAuditEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExtensionInstallationAuditEntry) ProtoMessage() {}
+
+func (x *ExtensionInstallationAuditEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExtensionInstallationAuditEntry.ProtoReflect.Descriptor instead.
+func (*ExtensionInstallationAuditEntry) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ExtensionInstallationAuditEntry) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *ExtensionInstallationAuditEntry) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetActor() string {
+	if x != nil {
+		return x.Actor
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetPrincipalId() string {
+	if x != nil {
+		return x.PrincipalId
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetPreviousState() string {
+	if x != nil {
+		return x.PreviousState
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *ExtensionInstallationAuditEntry) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListExtensionInstallationAuditRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InstallationId  string                 `protobuf:"bytes,1,opt,name=installation_id,json=installationId,proto3" json:"installation_id,omitempty"`
+	Generation      string                 `protobuf:"bytes,2,opt,name=generation,proto3" json:"generation,omitempty"` // Текущее поколение из GetExtensionInstallation.
+	AfterRevision   int64                  `protobuf:"varint,3,opt,name=after_revision,json=afterRevision,proto3" json:"after_revision,omitempty"`
+	ThroughRevision int64                  `protobuf:"varint,4,opt,name=through_revision,json=throughRevision,proto3" json:"through_revision,omitempty"` // 0 на первой странице; далее возвращённая верхняя граница.
+	PageSize        int32                  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`                      // 0 означает 50; допустимо 1..100.
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ListExtensionInstallationAuditRequest) Reset() {
+	*x = ListExtensionInstallationAuditRequest{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtensionInstallationAuditRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtensionInstallationAuditRequest) ProtoMessage() {}
+
+func (x *ListExtensionInstallationAuditRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtensionInstallationAuditRequest.ProtoReflect.Descriptor instead.
+func (*ListExtensionInstallationAuditRequest) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListExtensionInstallationAuditRequest) GetInstallationId() string {
+	if x != nil {
+		return x.InstallationId
+	}
+	return ""
+}
+
+func (x *ListExtensionInstallationAuditRequest) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *ListExtensionInstallationAuditRequest) GetAfterRevision() int64 {
+	if x != nil {
+		return x.AfterRevision
+	}
+	return 0
+}
+
+func (x *ListExtensionInstallationAuditRequest) GetThroughRevision() int64 {
+	if x != nil {
+		return x.ThroughRevision
+	}
+	return 0
+}
+
+func (x *ListExtensionInstallationAuditRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListExtensionInstallationAuditResponse struct {
+	state             protoimpl.MessageState             `protogen:"open.v1"`
+	Entries           []*ExtensionInstallationAuditEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	NextAfterRevision int64                              `protobuf:"varint,2,opt,name=next_after_revision,json=nextAfterRevision,proto3" json:"next_after_revision,omitempty"` // 0 означает конец выбранного диапазона.
+	ThroughRevision   int64                              `protobuf:"varint,3,opt,name=through_revision,json=throughRevision,proto3" json:"through_revision,omitempty"`
+	Generation        string                             `protobuf:"bytes,4,opt,name=generation,proto3" json:"generation,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ListExtensionInstallationAuditResponse) Reset() {
+	*x = ListExtensionInstallationAuditResponse{}
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExtensionInstallationAuditResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExtensionInstallationAuditResponse) ProtoMessage() {}
+
+func (x *ListExtensionInstallationAuditResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExtensionInstallationAuditResponse.ProtoReflect.Descriptor instead.
+func (*ListExtensionInstallationAuditResponse) Descriptor() ([]byte, []int) {
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListExtensionInstallationAuditResponse) GetEntries() []*ExtensionInstallationAuditEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+func (x *ListExtensionInstallationAuditResponse) GetNextAfterRevision() int64 {
+	if x != nil {
+		return x.NextAfterRevision
+	}
+	return 0
+}
+
+func (x *ListExtensionInstallationAuditResponse) GetThroughRevision() int64 {
+	if x != nil {
+		return x.ThroughRevision
+	}
+	return 0
+}
+
+func (x *ListExtensionInstallationAuditResponse) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
 // Доверенный контекст получают до первой отправки и сохраняют вместе с командой.
 type GetExtensionMutationContextRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -132,7 +790,7 @@ type GetExtensionMutationContextRequest struct {
 
 func (x *GetExtensionMutationContextRequest) Reset() {
 	*x = GetExtensionMutationContextRequest{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[0]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -144,7 +802,7 @@ func (x *GetExtensionMutationContextRequest) String() string {
 func (*GetExtensionMutationContextRequest) ProtoMessage() {}
 
 func (x *GetExtensionMutationContextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[0]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -157,7 +815,7 @@ func (x *GetExtensionMutationContextRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetExtensionMutationContextRequest.ProtoReflect.Descriptor instead.
 func (*GetExtensionMutationContextRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{0}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetExtensionMutationContextRequest) GetInstanceId() string {
@@ -189,7 +847,7 @@ type GetExtensionMutationContextResponse struct {
 
 func (x *GetExtensionMutationContextResponse) Reset() {
 	*x = GetExtensionMutationContextResponse{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[1]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +859,7 @@ func (x *GetExtensionMutationContextResponse) String() string {
 func (*GetExtensionMutationContextResponse) ProtoMessage() {}
 
 func (x *GetExtensionMutationContextResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[1]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +872,7 @@ func (x *GetExtensionMutationContextResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GetExtensionMutationContextResponse.ProtoReflect.Descriptor instead.
 func (*GetExtensionMutationContextResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{1}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetExtensionMutationContextResponse) GetHistoryId() string {
@@ -249,7 +907,7 @@ type QueryExtensionRequest struct {
 
 func (x *QueryExtensionRequest) Reset() {
 	*x = QueryExtensionRequest{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[2]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +919,7 @@ func (x *QueryExtensionRequest) String() string {
 func (*QueryExtensionRequest) ProtoMessage() {}
 
 func (x *QueryExtensionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[2]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,7 +932,7 @@ func (x *QueryExtensionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryExtensionRequest.ProtoReflect.Descriptor instead.
 func (*QueryExtensionRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{2}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueryExtensionRequest) GetInstanceId() string {
@@ -308,7 +966,7 @@ type QueryExtensionResponse struct {
 
 func (x *QueryExtensionResponse) Reset() {
 	*x = QueryExtensionResponse{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[3]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +978,7 @@ func (x *QueryExtensionResponse) String() string {
 func (*QueryExtensionResponse) ProtoMessage() {}
 
 func (x *QueryExtensionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[3]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +991,7 @@ func (x *QueryExtensionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryExtensionResponse.ProtoReflect.Descriptor instead.
 func (*QueryExtensionResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{3}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *QueryExtensionResponse) GetDocumentJson() []byte {
@@ -370,7 +1028,7 @@ type ExecuteExtensionCommandRequest struct {
 
 func (x *ExecuteExtensionCommandRequest) Reset() {
 	*x = ExecuteExtensionCommandRequest{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -382,7 +1040,7 @@ func (x *ExecuteExtensionCommandRequest) String() string {
 func (*ExecuteExtensionCommandRequest) ProtoMessage() {}
 
 func (x *ExecuteExtensionCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[4]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -395,7 +1053,7 @@ func (x *ExecuteExtensionCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteExtensionCommandRequest.ProtoReflect.Descriptor instead.
 func (*ExecuteExtensionCommandRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{4}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ExecuteExtensionCommandRequest) GetInstanceId() string {
@@ -466,7 +1124,7 @@ type ExecuteExtensionCommandResponse struct {
 
 func (x *ExecuteExtensionCommandResponse) Reset() {
 	*x = ExecuteExtensionCommandResponse{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -478,7 +1136,7 @@ func (x *ExecuteExtensionCommandResponse) String() string {
 func (*ExecuteExtensionCommandResponse) ProtoMessage() {}
 
 func (x *ExecuteExtensionCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[5]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -491,7 +1149,7 @@ func (x *ExecuteExtensionCommandResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteExtensionCommandResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteExtensionCommandResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{5}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ExecuteExtensionCommandResponse) GetDocumentJson() []byte {
@@ -532,7 +1190,7 @@ type ReconcileExtensionCommandRequest struct {
 
 func (x *ReconcileExtensionCommandRequest) Reset() {
 	*x = ReconcileExtensionCommandRequest{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +1202,7 @@ func (x *ReconcileExtensionCommandRequest) String() string {
 func (*ReconcileExtensionCommandRequest) ProtoMessage() {}
 
 func (x *ReconcileExtensionCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[6]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +1215,7 @@ func (x *ReconcileExtensionCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcileExtensionCommandRequest.ProtoReflect.Descriptor instead.
 func (*ReconcileExtensionCommandRequest) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{6}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ReconcileExtensionCommandRequest) GetCommand() *ExecuteExtensionCommandRequest {
@@ -582,7 +1240,7 @@ type ReconcileExtensionCommandResponse struct {
 
 func (x *ReconcileExtensionCommandResponse) Reset() {
 	*x = ReconcileExtensionCommandResponse{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -594,7 +1252,7 @@ func (x *ReconcileExtensionCommandResponse) String() string {
 func (*ReconcileExtensionCommandResponse) ProtoMessage() {}
 
 func (x *ReconcileExtensionCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[7]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -607,7 +1265,7 @@ func (x *ReconcileExtensionCommandResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ReconcileExtensionCommandResponse.ProtoReflect.Descriptor instead.
 func (*ReconcileExtensionCommandResponse) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{7}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReconcileExtensionCommandResponse) GetOutcome() ExtensionCommandOutcome {
@@ -651,7 +1309,7 @@ type ExtensionMutationPlan struct {
 
 func (x *ExtensionMutationPlan) Reset() {
 	*x = ExtensionMutationPlan{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -663,7 +1321,7 @@ func (x *ExtensionMutationPlan) String() string {
 func (*ExtensionMutationPlan) ProtoMessage() {}
 
 func (x *ExtensionMutationPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[8]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -676,7 +1334,7 @@ func (x *ExtensionMutationPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationPlan.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationPlan) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{8}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ExtensionMutationPlan) GetExpectedStateRevision() uint64 {
@@ -714,7 +1372,7 @@ type ExtensionMutationOperation struct {
 
 func (x *ExtensionMutationOperation) Reset() {
 	*x = ExtensionMutationOperation{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[9]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +1384,7 @@ func (x *ExtensionMutationOperation) String() string {
 func (*ExtensionMutationOperation) ProtoMessage() {}
 
 func (x *ExtensionMutationOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[9]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +1397,7 @@ func (x *ExtensionMutationOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationOperation.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationOperation) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{9}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ExtensionMutationOperation) GetKey() string {
@@ -800,7 +1458,7 @@ type ExtensionMutationEvent struct {
 
 func (x *ExtensionMutationEvent) Reset() {
 	*x = ExtensionMutationEvent{}
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[10]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -812,7 +1470,7 @@ func (x *ExtensionMutationEvent) String() string {
 func (*ExtensionMutationEvent) ProtoMessage() {}
 
 func (x *ExtensionMutationEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_space_v1_extensions_p1_proto_msgTypes[10]
+	mi := &file_space_v1_extensions_p1_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -825,7 +1483,7 @@ func (x *ExtensionMutationEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtensionMutationEvent.ProtoReflect.Descriptor instead.
 func (*ExtensionMutationEvent) Descriptor() ([]byte, []int) {
-	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{10}
+	return file_space_v1_extensions_p1_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ExtensionMutationEvent) GetType() string {
@@ -846,7 +1504,71 @@ var File_space_v1_extensions_p1_proto protoreflect.FileDescriptor
 
 const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\n" +
-	"\x1cspace/v1/extensions_p1.proto\x12\bspace.v1\"w\n" +
+	"\x1cspace/v1/extensions_p1.proto\x12\bspace.v1\"\xb9\x01\n" +
+	"\x15ExtensionInstallation\x12'\n" +
+	"\x0finstallation_id\x18\x01 \x01(\tR\x0einstallationId\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1a\n" +
+	"\brevision\x18\x03 \x01(\x03R\brevision\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x04 \x01(\tR\n" +
+	"generation\x12%\n" +
+	"\x0ebinding_sha256\x18\x05 \x01(\fR\rbindingSha256\"\x94\x01\n" +
+	"!ListExtensionInstallationsRequest\x122\n" +
+	"\x15after_installation_id\x18\x01 \x01(\tR\x13afterInstallationId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x03 \x01(\tR\n" +
+	"generation\"\xc8\x01\n" +
+	"\"ListExtensionInstallationsResponse\x12E\n" +
+	"\rinstallations\x18\x01 \x03(\v2\x1f.space.v1.ExtensionInstallationR\rinstallations\x12;\n" +
+	"\x1anext_after_installation_id\x18\x02 \x01(\tR\x17nextAfterInstallationId\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x03 \x01(\tR\n" +
+	"generation\"J\n" +
+	"\x1fGetExtensionInstallationRequest\x12'\n" +
+	"\x0finstallation_id\x18\x01 \x01(\tR\x0einstallationId\"g\n" +
+	" GetExtensionInstallationResponse\x12C\n" +
+	"\finstallation\x18\x01 \x01(\v2\x1f.space.v1.ExtensionInstallationR\finstallation\"\xb2\x01\n" +
+	"\"ChangeExtensionInstallationRequest\x12'\n" +
+	"\x0finstallation_id\x18\x01 \x01(\tR\x0einstallationId\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\tR\n" +
+	"generation\x12+\n" +
+	"\x11expected_revision\x18\x03 \x01(\x03R\x10expectedRevision\x12\x16\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\"w\n" +
+	"#ChangeExtensionInstallationResponse\x12\x14\n" +
+	"\x05state\x18\x01 \x01(\tR\x05state\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x03R\brevision\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x03 \x01(\tR\n" +
+	"generation\"\x8a\x02\n" +
+	"\x1fExtensionInstallationAuditEntry\x12\x1a\n" +
+	"\brevision\x18\x01 \x01(\x03R\brevision\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\tR\n" +
+	"generation\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action\x12\x14\n" +
+	"\x05actor\x18\x04 \x01(\tR\x05actor\x12!\n" +
+	"\fprincipal_id\x18\x05 \x01(\tR\vprincipalId\x12%\n" +
+	"\x0eprevious_state\x18\x06 \x01(\tR\rpreviousState\x12\x14\n" +
+	"\x05state\x18\a \x01(\tR\x05state\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"\xdf\x01\n" +
+	"%ListExtensionInstallationAuditRequest\x12'\n" +
+	"\x0finstallation_id\x18\x01 \x01(\tR\x0einstallationId\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\tR\n" +
+	"generation\x12%\n" +
+	"\x0eafter_revision\x18\x03 \x01(\x03R\rafterRevision\x12)\n" +
+	"\x10through_revision\x18\x04 \x01(\x03R\x0fthroughRevision\x12\x1b\n" +
+	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\"\xe8\x01\n" +
+	"&ListExtensionInstallationAuditResponse\x12C\n" +
+	"\aentries\x18\x01 \x03(\v2).space.v1.ExtensionInstallationAuditEntryR\aentries\x12.\n" +
+	"\x13next_after_revision\x18\x02 \x01(\x03R\x11nextAfterRevision\x12)\n" +
+	"\x10through_revision\x18\x03 \x01(\x03R\x0fthroughRevision\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x04 \x01(\tR\n" +
+	"generation\"w\n" +
 	"\"GetExtensionMutationContextRequest\x12\x1f\n" +
 	"\vinstance_id\x18\x01 \x01(\tR\n" +
 	"instanceId\x120\n" +
@@ -908,12 +1630,16 @@ const file_space_v1_extensions_p1_proto_rawDesc = "" +
 	"\x17ExtensionCommandOutcome\x12)\n" +
 	"%EXTENSION_COMMAND_OUTCOME_UNSPECIFIED\x10\x00\x12%\n" +
 	"!EXTENSION_COMMAND_OUTCOME_UNKNOWN\x10\x01\x12'\n" +
-	"#EXTENSION_COMMAND_OUTCOME_CONFIRMED\x10\x022\xcb\x03\n" +
+	"#EXTENSION_COMMAND_OUTCOME_CONFIRMED\x10\x022\xb9\a\n" +
 	"\x12ExtensionP1Service\x12S\n" +
 	"\x0eQueryExtension\x12\x1f.space.v1.QueryExtensionRequest\x1a .space.v1.QueryExtensionResponse\x12n\n" +
 	"\x17ExecuteExtensionCommand\x12(.space.v1.ExecuteExtensionCommandRequest\x1a).space.v1.ExecuteExtensionCommandResponse\x12t\n" +
 	"\x19ReconcileExtensionCommand\x12*.space.v1.ReconcileExtensionCommandRequest\x1a+.space.v1.ReconcileExtensionCommandResponse\x12z\n" +
-	"\x1bGetExtensionMutationContext\x12,.space.v1.GetExtensionMutationContextRequest\x1a-.space.v1.GetExtensionMutationContextResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
+	"\x1bGetExtensionMutationContext\x12,.space.v1.GetExtensionMutationContextRequest\x1a-.space.v1.GetExtensionMutationContextResponse\x12w\n" +
+	"\x1aListExtensionInstallations\x12+.space.v1.ListExtensionInstallationsRequest\x1a,.space.v1.ListExtensionInstallationsResponse\x12q\n" +
+	"\x18GetExtensionInstallation\x12).space.v1.GetExtensionInstallationRequest\x1a*.space.v1.GetExtensionInstallationResponse\x12z\n" +
+	"\x1bChangeExtensionInstallation\x12,.space.v1.ChangeExtensionInstallationRequest\x1a-.space.v1.ChangeExtensionInstallationResponse\x12\x83\x01\n" +
+	"\x1eListExtensionInstallationAudit\x12/.space.v1.ListExtensionInstallationAuditRequest\x1a0.space.v1.ListExtensionInstallationAuditResponseBEZCgithub.com/space-protocol-project/space-server/gen/space/v1;spacev1b\x06proto3"
 
 var (
 	file_space_v1_extensions_p1_proto_rawDescOnce sync.Once
@@ -928,43 +1654,64 @@ func file_space_v1_extensions_p1_proto_rawDescGZIP() []byte {
 }
 
 var file_space_v1_extensions_p1_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_space_v1_extensions_p1_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_space_v1_extensions_p1_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_space_v1_extensions_p1_proto_goTypes = []any{
-	(ExtensionCommandEffect)(0),                 // 0: space.v1.ExtensionCommandEffect
-	(ExtensionCommandOutcome)(0),                // 1: space.v1.ExtensionCommandOutcome
-	(*GetExtensionMutationContextRequest)(nil),  // 2: space.v1.GetExtensionMutationContextRequest
-	(*GetExtensionMutationContextResponse)(nil), // 3: space.v1.GetExtensionMutationContextResponse
-	(*QueryExtensionRequest)(nil),               // 4: space.v1.QueryExtensionRequest
-	(*QueryExtensionResponse)(nil),              // 5: space.v1.QueryExtensionResponse
-	(*ExecuteExtensionCommandRequest)(nil),      // 6: space.v1.ExecuteExtensionCommandRequest
-	(*ExecuteExtensionCommandResponse)(nil),     // 7: space.v1.ExecuteExtensionCommandResponse
-	(*ReconcileExtensionCommandRequest)(nil),    // 8: space.v1.ReconcileExtensionCommandRequest
-	(*ReconcileExtensionCommandResponse)(nil),   // 9: space.v1.ReconcileExtensionCommandResponse
-	(*ExtensionMutationPlan)(nil),               // 10: space.v1.ExtensionMutationPlan
-	(*ExtensionMutationOperation)(nil),          // 11: space.v1.ExtensionMutationOperation
-	(*ExtensionMutationEvent)(nil),              // 12: space.v1.ExtensionMutationEvent
+	(ExtensionCommandEffect)(0),                    // 0: space.v1.ExtensionCommandEffect
+	(ExtensionCommandOutcome)(0),                   // 1: space.v1.ExtensionCommandOutcome
+	(*ExtensionInstallation)(nil),                  // 2: space.v1.ExtensionInstallation
+	(*ListExtensionInstallationsRequest)(nil),      // 3: space.v1.ListExtensionInstallationsRequest
+	(*ListExtensionInstallationsResponse)(nil),     // 4: space.v1.ListExtensionInstallationsResponse
+	(*GetExtensionInstallationRequest)(nil),        // 5: space.v1.GetExtensionInstallationRequest
+	(*GetExtensionInstallationResponse)(nil),       // 6: space.v1.GetExtensionInstallationResponse
+	(*ChangeExtensionInstallationRequest)(nil),     // 7: space.v1.ChangeExtensionInstallationRequest
+	(*ChangeExtensionInstallationResponse)(nil),    // 8: space.v1.ChangeExtensionInstallationResponse
+	(*ExtensionInstallationAuditEntry)(nil),        // 9: space.v1.ExtensionInstallationAuditEntry
+	(*ListExtensionInstallationAuditRequest)(nil),  // 10: space.v1.ListExtensionInstallationAuditRequest
+	(*ListExtensionInstallationAuditResponse)(nil), // 11: space.v1.ListExtensionInstallationAuditResponse
+	(*GetExtensionMutationContextRequest)(nil),     // 12: space.v1.GetExtensionMutationContextRequest
+	(*GetExtensionMutationContextResponse)(nil),    // 13: space.v1.GetExtensionMutationContextResponse
+	(*QueryExtensionRequest)(nil),                  // 14: space.v1.QueryExtensionRequest
+	(*QueryExtensionResponse)(nil),                 // 15: space.v1.QueryExtensionResponse
+	(*ExecuteExtensionCommandRequest)(nil),         // 16: space.v1.ExecuteExtensionCommandRequest
+	(*ExecuteExtensionCommandResponse)(nil),        // 17: space.v1.ExecuteExtensionCommandResponse
+	(*ReconcileExtensionCommandRequest)(nil),       // 18: space.v1.ReconcileExtensionCommandRequest
+	(*ReconcileExtensionCommandResponse)(nil),      // 19: space.v1.ReconcileExtensionCommandResponse
+	(*ExtensionMutationPlan)(nil),                  // 20: space.v1.ExtensionMutationPlan
+	(*ExtensionMutationOperation)(nil),             // 21: space.v1.ExtensionMutationOperation
+	(*ExtensionMutationEvent)(nil),                 // 22: space.v1.ExtensionMutationEvent
 }
 var file_space_v1_extensions_p1_proto_depIdxs = []int32{
-	0,  // 0: space.v1.ExecuteExtensionCommandRequest.effect:type_name -> space.v1.ExtensionCommandEffect
-	0,  // 1: space.v1.ExecuteExtensionCommandResponse.effect:type_name -> space.v1.ExtensionCommandEffect
-	6,  // 2: space.v1.ReconcileExtensionCommandRequest.command:type_name -> space.v1.ExecuteExtensionCommandRequest
-	1,  // 3: space.v1.ReconcileExtensionCommandResponse.outcome:type_name -> space.v1.ExtensionCommandOutcome
-	7,  // 4: space.v1.ReconcileExtensionCommandResponse.receipt:type_name -> space.v1.ExecuteExtensionCommandResponse
-	11, // 5: space.v1.ExtensionMutationPlan.operations:type_name -> space.v1.ExtensionMutationOperation
-	12, // 6: space.v1.ExtensionMutationPlan.events:type_name -> space.v1.ExtensionMutationEvent
-	4,  // 7: space.v1.ExtensionP1Service.QueryExtension:input_type -> space.v1.QueryExtensionRequest
-	6,  // 8: space.v1.ExtensionP1Service.ExecuteExtensionCommand:input_type -> space.v1.ExecuteExtensionCommandRequest
-	8,  // 9: space.v1.ExtensionP1Service.ReconcileExtensionCommand:input_type -> space.v1.ReconcileExtensionCommandRequest
-	2,  // 10: space.v1.ExtensionP1Service.GetExtensionMutationContext:input_type -> space.v1.GetExtensionMutationContextRequest
-	5,  // 11: space.v1.ExtensionP1Service.QueryExtension:output_type -> space.v1.QueryExtensionResponse
-	7,  // 12: space.v1.ExtensionP1Service.ExecuteExtensionCommand:output_type -> space.v1.ExecuteExtensionCommandResponse
-	9,  // 13: space.v1.ExtensionP1Service.ReconcileExtensionCommand:output_type -> space.v1.ReconcileExtensionCommandResponse
-	3,  // 14: space.v1.ExtensionP1Service.GetExtensionMutationContext:output_type -> space.v1.GetExtensionMutationContextResponse
-	11, // [11:15] is the sub-list for method output_type
-	7,  // [7:11] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	2,  // 0: space.v1.ListExtensionInstallationsResponse.installations:type_name -> space.v1.ExtensionInstallation
+	2,  // 1: space.v1.GetExtensionInstallationResponse.installation:type_name -> space.v1.ExtensionInstallation
+	9,  // 2: space.v1.ListExtensionInstallationAuditResponse.entries:type_name -> space.v1.ExtensionInstallationAuditEntry
+	0,  // 3: space.v1.ExecuteExtensionCommandRequest.effect:type_name -> space.v1.ExtensionCommandEffect
+	0,  // 4: space.v1.ExecuteExtensionCommandResponse.effect:type_name -> space.v1.ExtensionCommandEffect
+	16, // 5: space.v1.ReconcileExtensionCommandRequest.command:type_name -> space.v1.ExecuteExtensionCommandRequest
+	1,  // 6: space.v1.ReconcileExtensionCommandResponse.outcome:type_name -> space.v1.ExtensionCommandOutcome
+	17, // 7: space.v1.ReconcileExtensionCommandResponse.receipt:type_name -> space.v1.ExecuteExtensionCommandResponse
+	21, // 8: space.v1.ExtensionMutationPlan.operations:type_name -> space.v1.ExtensionMutationOperation
+	22, // 9: space.v1.ExtensionMutationPlan.events:type_name -> space.v1.ExtensionMutationEvent
+	14, // 10: space.v1.ExtensionP1Service.QueryExtension:input_type -> space.v1.QueryExtensionRequest
+	16, // 11: space.v1.ExtensionP1Service.ExecuteExtensionCommand:input_type -> space.v1.ExecuteExtensionCommandRequest
+	18, // 12: space.v1.ExtensionP1Service.ReconcileExtensionCommand:input_type -> space.v1.ReconcileExtensionCommandRequest
+	12, // 13: space.v1.ExtensionP1Service.GetExtensionMutationContext:input_type -> space.v1.GetExtensionMutationContextRequest
+	3,  // 14: space.v1.ExtensionP1Service.ListExtensionInstallations:input_type -> space.v1.ListExtensionInstallationsRequest
+	5,  // 15: space.v1.ExtensionP1Service.GetExtensionInstallation:input_type -> space.v1.GetExtensionInstallationRequest
+	7,  // 16: space.v1.ExtensionP1Service.ChangeExtensionInstallation:input_type -> space.v1.ChangeExtensionInstallationRequest
+	10, // 17: space.v1.ExtensionP1Service.ListExtensionInstallationAudit:input_type -> space.v1.ListExtensionInstallationAuditRequest
+	15, // 18: space.v1.ExtensionP1Service.QueryExtension:output_type -> space.v1.QueryExtensionResponse
+	17, // 19: space.v1.ExtensionP1Service.ExecuteExtensionCommand:output_type -> space.v1.ExecuteExtensionCommandResponse
+	19, // 20: space.v1.ExtensionP1Service.ReconcileExtensionCommand:output_type -> space.v1.ReconcileExtensionCommandResponse
+	13, // 21: space.v1.ExtensionP1Service.GetExtensionMutationContext:output_type -> space.v1.GetExtensionMutationContextResponse
+	4,  // 22: space.v1.ExtensionP1Service.ListExtensionInstallations:output_type -> space.v1.ListExtensionInstallationsResponse
+	6,  // 23: space.v1.ExtensionP1Service.GetExtensionInstallation:output_type -> space.v1.GetExtensionInstallationResponse
+	8,  // 24: space.v1.ExtensionP1Service.ChangeExtensionInstallation:output_type -> space.v1.ChangeExtensionInstallationResponse
+	11, // 25: space.v1.ExtensionP1Service.ListExtensionInstallationAudit:output_type -> space.v1.ListExtensionInstallationAuditResponse
+	18, // [18:26] is the sub-list for method output_type
+	10, // [10:18] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_space_v1_extensions_p1_proto_init() }
@@ -972,7 +1719,7 @@ func file_space_v1_extensions_p1_proto_init() {
 	if File_space_v1_extensions_p1_proto != nil {
 		return
 	}
-	file_space_v1_extensions_p1_proto_msgTypes[9].OneofWrappers = []any{
+	file_space_v1_extensions_p1_proto_msgTypes[19].OneofWrappers = []any{
 		(*ExtensionMutationOperation_PutJson)(nil),
 		(*ExtensionMutationOperation_Delete)(nil),
 	}
@@ -982,7 +1729,7 @@ func file_space_v1_extensions_p1_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_space_v1_extensions_p1_proto_rawDesc), len(file_space_v1_extensions_p1_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

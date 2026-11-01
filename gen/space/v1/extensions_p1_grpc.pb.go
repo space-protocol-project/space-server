@@ -19,10 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ExtensionP1Service_QueryExtension_FullMethodName              = "/space.v1.ExtensionP1Service/QueryExtension"
-	ExtensionP1Service_ExecuteExtensionCommand_FullMethodName     = "/space.v1.ExtensionP1Service/ExecuteExtensionCommand"
-	ExtensionP1Service_ReconcileExtensionCommand_FullMethodName   = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
-	ExtensionP1Service_GetExtensionMutationContext_FullMethodName = "/space.v1.ExtensionP1Service/GetExtensionMutationContext"
+	ExtensionP1Service_QueryExtension_FullMethodName                 = "/space.v1.ExtensionP1Service/QueryExtension"
+	ExtensionP1Service_ExecuteExtensionCommand_FullMethodName        = "/space.v1.ExtensionP1Service/ExecuteExtensionCommand"
+	ExtensionP1Service_ReconcileExtensionCommand_FullMethodName      = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
+	ExtensionP1Service_GetExtensionMutationContext_FullMethodName    = "/space.v1.ExtensionP1Service/GetExtensionMutationContext"
+	ExtensionP1Service_ListExtensionInstallations_FullMethodName     = "/space.v1.ExtensionP1Service/ListExtensionInstallations"
+	ExtensionP1Service_GetExtensionInstallation_FullMethodName       = "/space.v1.ExtensionP1Service/GetExtensionInstallation"
+	ExtensionP1Service_ChangeExtensionInstallation_FullMethodName    = "/space.v1.ExtensionP1Service/ChangeExtensionInstallation"
+	ExtensionP1Service_ListExtensionInstallationAudit_FullMethodName = "/space.v1.ExtensionP1Service/ListExtensionInstallationAudit"
 )
 
 // ExtensionP1ServiceClient is the client API for ExtensionP1Service service.
@@ -35,6 +39,10 @@ type ExtensionP1ServiceClient interface {
 	ExecuteExtensionCommand(ctx context.Context, in *ExecuteExtensionCommandRequest, opts ...grpc.CallOption) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(ctx context.Context, in *ReconcileExtensionCommandRequest, opts ...grpc.CallOption) (*ReconcileExtensionCommandResponse, error)
 	GetExtensionMutationContext(ctx context.Context, in *GetExtensionMutationContextRequest, opts ...grpc.CallOption) (*GetExtensionMutationContextResponse, error)
+	ListExtensionInstallations(ctx context.Context, in *ListExtensionInstallationsRequest, opts ...grpc.CallOption) (*ListExtensionInstallationsResponse, error)
+	GetExtensionInstallation(ctx context.Context, in *GetExtensionInstallationRequest, opts ...grpc.CallOption) (*GetExtensionInstallationResponse, error)
+	ChangeExtensionInstallation(ctx context.Context, in *ChangeExtensionInstallationRequest, opts ...grpc.CallOption) (*ChangeExtensionInstallationResponse, error)
+	ListExtensionInstallationAudit(ctx context.Context, in *ListExtensionInstallationAuditRequest, opts ...grpc.CallOption) (*ListExtensionInstallationAuditResponse, error)
 }
 
 type extensionP1ServiceClient struct {
@@ -85,6 +93,46 @@ func (c *extensionP1ServiceClient) GetExtensionMutationContext(ctx context.Conte
 	return out, nil
 }
 
+func (c *extensionP1ServiceClient) ListExtensionInstallations(ctx context.Context, in *ListExtensionInstallationsRequest, opts ...grpc.CallOption) (*ListExtensionInstallationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListExtensionInstallationsResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_ListExtensionInstallations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *extensionP1ServiceClient) GetExtensionInstallation(ctx context.Context, in *GetExtensionInstallationRequest, opts ...grpc.CallOption) (*GetExtensionInstallationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetExtensionInstallationResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_GetExtensionInstallation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *extensionP1ServiceClient) ChangeExtensionInstallation(ctx context.Context, in *ChangeExtensionInstallationRequest, opts ...grpc.CallOption) (*ChangeExtensionInstallationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeExtensionInstallationResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_ChangeExtensionInstallation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *extensionP1ServiceClient) ListExtensionInstallationAudit(ctx context.Context, in *ListExtensionInstallationAuditRequest, opts ...grpc.CallOption) (*ListExtensionInstallationAuditResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListExtensionInstallationAuditResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_ListExtensionInstallationAudit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ExtensionP1ServiceServer is the server API for ExtensionP1Service service.
 // All implementations must embed UnimplementedExtensionP1ServiceServer
 // for forward compatibility.
@@ -95,6 +143,10 @@ type ExtensionP1ServiceServer interface {
 	ExecuteExtensionCommand(context.Context, *ExecuteExtensionCommandRequest) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(context.Context, *ReconcileExtensionCommandRequest) (*ReconcileExtensionCommandResponse, error)
 	GetExtensionMutationContext(context.Context, *GetExtensionMutationContextRequest) (*GetExtensionMutationContextResponse, error)
+	ListExtensionInstallations(context.Context, *ListExtensionInstallationsRequest) (*ListExtensionInstallationsResponse, error)
+	GetExtensionInstallation(context.Context, *GetExtensionInstallationRequest) (*GetExtensionInstallationResponse, error)
+	ChangeExtensionInstallation(context.Context, *ChangeExtensionInstallationRequest) (*ChangeExtensionInstallationResponse, error)
+	ListExtensionInstallationAudit(context.Context, *ListExtensionInstallationAuditRequest) (*ListExtensionInstallationAuditResponse, error)
 	mustEmbedUnimplementedExtensionP1ServiceServer()
 }
 
@@ -116,6 +168,18 @@ func (UnimplementedExtensionP1ServiceServer) ReconcileExtensionCommand(context.C
 }
 func (UnimplementedExtensionP1ServiceServer) GetExtensionMutationContext(context.Context, *GetExtensionMutationContextRequest) (*GetExtensionMutationContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetExtensionMutationContext not implemented")
+}
+func (UnimplementedExtensionP1ServiceServer) ListExtensionInstallations(context.Context, *ListExtensionInstallationsRequest) (*ListExtensionInstallationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExtensionInstallations not implemented")
+}
+func (UnimplementedExtensionP1ServiceServer) GetExtensionInstallation(context.Context, *GetExtensionInstallationRequest) (*GetExtensionInstallationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetExtensionInstallation not implemented")
+}
+func (UnimplementedExtensionP1ServiceServer) ChangeExtensionInstallation(context.Context, *ChangeExtensionInstallationRequest) (*ChangeExtensionInstallationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeExtensionInstallation not implemented")
+}
+func (UnimplementedExtensionP1ServiceServer) ListExtensionInstallationAudit(context.Context, *ListExtensionInstallationAuditRequest) (*ListExtensionInstallationAuditResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExtensionInstallationAudit not implemented")
 }
 func (UnimplementedExtensionP1ServiceServer) mustEmbedUnimplementedExtensionP1ServiceServer() {}
 func (UnimplementedExtensionP1ServiceServer) testEmbeddedByValue()                            {}
@@ -210,6 +274,78 @@ func _ExtensionP1Service_GetExtensionMutationContext_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExtensionP1Service_ListExtensionInstallations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExtensionInstallationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).ListExtensionInstallations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_ListExtensionInstallations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).ListExtensionInstallations(ctx, req.(*ListExtensionInstallationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ExtensionP1Service_GetExtensionInstallation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExtensionInstallationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).GetExtensionInstallation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_GetExtensionInstallation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).GetExtensionInstallation(ctx, req.(*GetExtensionInstallationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ExtensionP1Service_ChangeExtensionInstallation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeExtensionInstallationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).ChangeExtensionInstallation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_ChangeExtensionInstallation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).ChangeExtensionInstallation(ctx, req.(*ChangeExtensionInstallationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ExtensionP1Service_ListExtensionInstallationAudit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExtensionInstallationAuditRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).ListExtensionInstallationAudit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_ListExtensionInstallationAudit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).ListExtensionInstallationAudit(ctx, req.(*ListExtensionInstallationAuditRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ExtensionP1Service_ServiceDesc is the grpc.ServiceDesc for ExtensionP1Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -232,6 +368,22 @@ var ExtensionP1Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetExtensionMutationContext",
 			Handler:    _ExtensionP1Service_GetExtensionMutationContext_Handler,
+		},
+		{
+			MethodName: "ListExtensionInstallations",
+			Handler:    _ExtensionP1Service_ListExtensionInstallations_Handler,
+		},
+		{
+			MethodName: "GetExtensionInstallation",
+			Handler:    _ExtensionP1Service_GetExtensionInstallation_Handler,
+		},
+		{
+			MethodName: "ChangeExtensionInstallation",
+			Handler:    _ExtensionP1Service_ChangeExtensionInstallation_Handler,
+		},
+		{
+			MethodName: "ListExtensionInstallationAudit",
+			Handler:    _ExtensionP1Service_ListExtensionInstallationAudit_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

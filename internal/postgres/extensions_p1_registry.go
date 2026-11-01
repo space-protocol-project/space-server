@@ -31,8 +31,11 @@ func (c *extensionLifecycle) restore(ctx context.Context, tx pgx.Tx, bindings ma
 		if _, err = tx.Exec(ctx, extensionRegistrySchema); err != nil {
 			return err
 		}
-	} else if version != 1 {
+	} else if version != 1 && version != 2 {
 		return mutationError(codes.FailedPrecondition, "lifecycle_storage_version")
+	}
+	if err = prepareLifecycleAudit(ctx, tx, version); err != nil {
+		return err
 	}
 	names := make([]string, 0, len(c.installations))
 	for name := range c.installations {
@@ -59,10 +62,15 @@ func lifecycleBindingHash(bindings map[string]extensionMutationBinding, installa
 }
 
 func (c *extensionLifecycle) restoreInstallation(ctx context.Context, tx pgx.Tx, name string, hash [32]byte) error {
-	_, err := tx.Exec(ctx, `INSERT INTO extension_p1_installations(installation,binding_hash,state,revision,generation)
+	tag, err := tx.Exec(ctx, `INSERT INTO extension_p1_installations(installation,binding_hash,state,revision,generation)
  VALUES($1,$2,'disabled',1,$3) ON CONFLICT DO NOTHING`, name, hash[:], c.generation)
 	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 1 {
+		if err = checkpointLifecycleInstallation(ctx, tx, name); err != nil {
+			return err
+		}
 	}
 	var state string
 	var revision int64
@@ -142,6 +150,9 @@ func (c *extensionLifecycle) systemChange(ctx context.Context, i *extensionLifec
 	}
 	defer tx.Rollback(ctx)
 	if err = c.persist(ctx, tx, installation, revision, d); err != nil {
+		return lifecycle.Decision{}, mutationDatabaseError(err)
+	}
+	if err = c.recordTransition(ctx, tx, installation, action, "system", "", revision, d); err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
 	if err = tx.Commit(ctx); err != nil {

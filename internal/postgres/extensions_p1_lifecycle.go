@@ -164,6 +164,9 @@ func (c *extensionLifecycle) change(ctx context.Context, i *extensionLifecycleIn
 	if err = c.persist(ctx, tx, installation, revision, d); err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
+	if err = c.recordTransition(ctx, tx, installation, action, "owner", principal, revision, d); err != nil {
+		return lifecycle.Decision{}, mutationDatabaseError(err)
+	}
 	if err = audit(ctx, tx, principal, "extension.p1.lifecycle/"+c.generation+"/"+installation+"/"+action, d.Revision); err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}

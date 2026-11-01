@@ -7,16 +7,16 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func checkLifecycleBackup(ctx context.Context, tx pgx.Tx, table, restore bool) error {
+func checkLifecycleBackup(ctx context.Context, tx pgx.Tx, table, journal, restore bool) error {
 	var version int
 	err := tx.QueryRow(ctx, `SELECT COALESCE((to_jsonb(m)->>'lifecycle_version')::int,0) FROM extension_p1_meta m WHERE singleton`).Scan(&version)
 	if err != nil {
 		return err
 	}
-	if version == 0 && !table {
+	if version == 0 && !table && !journal {
 		return nil
 	}
-	if version != 1 || !table {
+	if (version != 1 && version != 2) || !table || journal != (version == 2) {
 		return errors.New("Неполный или неизвестный реестр установок")
 	}
 	var invalid bool
@@ -30,6 +30,11 @@ func checkLifecycleBackup(ctx context.Context, tx pgx.Tx, table, restore bool) e
 	}
 	if invalid {
 		return errors.New("Несогласованный реестр установок")
+	}
+	if journal {
+		if err = checkLifecycleAudit(ctx, tx); err != nil {
+			return err
+		}
 	}
 	if restore {
 		// Состояние и ревизия сохраняются. Поколение копии не даёт права на вызовы.

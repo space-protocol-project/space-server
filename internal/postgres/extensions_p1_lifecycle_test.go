@@ -203,6 +203,7 @@ CREATE TRIGGER reject_lifecycle BEFORE INSERT ON admin_audit FOR EACH ROW EXECUT
 	_, err = s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "disable", 2)
 	requireCode(t, err, codes.Internal)
 	lifecycleRegistryState(t, f, "enabled", 2)
+	lifecycleJournalCount(t, f, 2)
 	if _, err = api.QueryExtension(f.owner, extensionP1Query()); err != nil {
 		t.Fatal(err)
 	}

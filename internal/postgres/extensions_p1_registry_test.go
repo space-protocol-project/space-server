@@ -134,7 +134,7 @@ func TestExtensionP1LifecycleRegistryRollbackAndBackup(t *testing.T) {
 	lifecycleRegistryState(t, f, "enabled", 2)
 	_, err := s.Change(f.ctx, lifecycleToken(f.owner), s.Generation(), "install", "disable", 2)
 	requireCode(t, err, codes.FailedPrecondition)
-	if _, err = f.store.pool.Exec(f.ctx, `DROP TABLE extension_p1_installations`); err != nil {
+	if _, err = f.store.pool.Exec(f.ctx, `DROP TABLE extension_p1_installations CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	if err = CheckExtensionP1Backup(f.ctx, f.url, true); err == nil {

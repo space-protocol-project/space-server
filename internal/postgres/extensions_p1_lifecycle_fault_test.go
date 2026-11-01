@@ -46,6 +46,7 @@ func TestExtensionP1LifecycleUncertainAuditCommit(t *testing.T) {
 	}
 	lifecycleAuditCount(t, f, 2)
 	lifecycleRegistryState(t, f, "disabling", 3)
+	lifecycleJournalCount(t, f, 3)
 	api := extensionP1RPCClient(t, f, s)
 	_, err = api.QueryExtension(f.owner, extensionP1Query())
 	requireCode(t, err, codes.Unavailable)
@@ -59,6 +60,7 @@ func TestExtensionP1LifecycleUncertainAuditCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	lifecycleRegistryState(t, f, "disabled", 4)
+	lifecycleJournalCount(t, f, 4)
 	if h.calls.Load() != 0 {
 		t.Fatal("Неопределённый COMMIT разрешил WASM")
 	}

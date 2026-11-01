@@ -142,6 +142,9 @@ func (p *extensionDatabaseProxy) drop(frame []byte, frontend bool, selected *ato
 	if p.mode == "lifecycle_after_commit" {
 		insert = "INSERT INTO ADMIN_AUDIT"
 	}
+	if p.mode == "lifecycle_system_after_commit" {
+		insert = "INSERT INTO EXTENSION_P1_LIFECYCLE_AUDIT"
+	}
 	if frontend && (frame[0] == 'P' || frame[0] == 'Q') && p.armed.Load() && strings.Contains(strings.ToUpper(payload), insert) {
 		selected.Store(1)
 	}

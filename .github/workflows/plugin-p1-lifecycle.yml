@@ -1,0 +1,45 @@
+name: P1 lifecycle contract and coordinator
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: c141e2d95c84abce6470d37a30201322aa962d59
+          path: .local/protocol
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Подготовка существующих WASM fixtures
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          python3 experiments/extensions/fixtures.py
+          mkdir -p .local/lifecycle
+          echo "SPACE_P1_LIFECYCLE_CASES=$PWD/.local/protocol/docs/extensions/p1/lifecycle.json" >> "$GITHUB_ENV"
+      - name: Анализ, зависимости и регрессия экспериментального модуля
+        working-directory: experiments/extensions
+        run: |
+          test -z "$(gofmt -l lifecycle)"
+          go mod verify
+          go vet ./...
+          go test -json -count=1 -timeout=180s ./... > ../../.local/lifecycle/module.jsonl
+          go test -race -json -count=1 -timeout=180s ./... > ../../.local/lifecycle/module-race.jsonl
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./lifecycle > ../../.local/lifecycle/vulnerabilities.txt
+      - name: Повторение переходов и конкурентных вызовов
+        working-directory: experiments/extensions
+        run: go test -race -json -count=25 -timeout=120s ./lifecycle > ../../.local/lifecycle/lifecycle.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-lifecycle
+          include-hidden-files: true
+          path: .local/lifecycle

@@ -57,6 +57,8 @@ jobs:
       - name: Настоящие WASM-миграции и исходные ZIP
         shell: bash
         run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
           python3 experiments/extensions/demo/build.py --upgraded
           python3 experiments/extensions/demo/build.py --upgrade-three
           python3 experiments/extensions/upgrade/build.py

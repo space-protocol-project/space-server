@@ -79,7 +79,7 @@ func writeVersionArchive(t *testing.T, directory string, m versionArchiveFixture
 }
 
 // Импорт не запускает гостя. Модули и все байты истории сравниваются с источником.
-func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixture, delivery bool) {
+func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixture, delivery bool) registryTransferFixture {
 	t.Helper()
 	ctx := context.Background()
 	address, stop, err := StartDatabase(os.Getenv("SPACE_HOME_RUNTIME"), filepath.Join(destination, "data"))
@@ -142,6 +142,10 @@ func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixtu
 	if err = postgres.CheckExtensionP1Backup(ctx, address, false); err != nil {
 		t.Fatal(err)
 	}
+	next := m.Registry
+	next.Generation = svc.Generation()
+	next.OldToken = token
+	return next
 }
 
 func TestExtensionP1VersionArchiveExport(t *testing.T) {
@@ -164,7 +168,7 @@ func TestExtensionP1VersionArchiveExport(t *testing.T) {
 			if err := ImportPortable(os.Getenv("SPACE_HOME_RUNTIME"), source, destination, ""); err != nil {
 				t.Fatal(err)
 			}
-			checkVersionArchive(t, destination, m, false)
+			m.Registry = checkVersionArchive(t, destination, m, false)
 			archive := filepath.Join(directory, state+".zip")
 			if err := ExportPortable(os.Getenv("SPACE_HOME_RUNTIME"), filepath.Join(destination, "data"), archive); err != nil {
 				t.Fatal(err)

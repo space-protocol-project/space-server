@@ -180,3 +180,5 @@ git push origin v0.3.0
 Workflow `home-runtime.yml` проверит сервер, соберёт архивы и дескрипторы для трёх платформ и опубликует GitHub Release с описанием и `SHA256SUMS.txt`. Версии приложения и сервера независимы. После серверного выпуска закрепите стабильный runtime в space-app через `packaging/pin-home-runtime.py`, затем выпускайте приложение. Предварительные серверные теги пока не поддержаны механизмом закрепления runtime основного приложения.
 
 Форум в runtime v0.7.11 / клиенте v0.7.14: схема 28, `core.forum.v1`, `core.forum.attachments.v1` и `core.forum.navigation.v1`, отдельный ForumService через gRPC и Connect. Темы и ответы используют ACL раздела; закрытие требует read/manage и запрещает новые ответы на сервере. [Контракт и решение](https://github.com/space-protocol-project/space-protocol/blob/codex/voice-rooms/docs/adr/045-forum.md).
+
+[Клиентские WASM-расширения и пример «Игры»](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-CLIENT.md): целевая установка из Git в работающее приложение, локальные данные и разрешения устройства. Статус — проектирование; клиентский хост и CI-приёмка ещё предстоят.

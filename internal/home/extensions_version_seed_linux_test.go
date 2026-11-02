@@ -119,11 +119,16 @@ func TestExtensionP1VersionArchiveWorker(t *testing.T) {
 	defer store.Close()
 	token, state := os.Getenv("SPACE_P1_VERSION_TOKEN"), os.Getenv("SPACE_P1_VERSION_STATE")
 	if state == "resume" {
-		resumeVersionArchive(t, store, host, token)
+		resumeVersionArchive(t, store, host, address, token)
 		return
 	}
 	for index := 0; index < 2; index++ {
-		svc, err := store.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+		active, _, err := postgres.Open(ctx, address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer active.Close()
+		svc, err := active.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +226,7 @@ func TestExtensionP1VersionArchiveResume(t *testing.T) {
 	}
 }
 
-func resumeVersionArchive(t *testing.T, store *postgres.Store, host *extensions.ProcessHost, token string) {
+func resumeVersionArchive(t *testing.T, store *postgres.Store, host *extensions.ProcessHost, address, token string) {
 	t.Helper()
 	ctx := context.Background()
 	svc, err := store.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
@@ -249,7 +254,12 @@ func resumeVersionArchive(t *testing.T, store *postgres.Store, host *extensions.
 	if err = svc.PublishUpgrade(ctx, token, "install", progress.Digest, v, c); err != nil {
 		t.Fatal(err)
 	}
-	svc, err = store.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+	next, _, err := postgres.Open(ctx, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer next.Close()
+	svc, err = next.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
 	if err != nil {
 		t.Fatal(err)
 	}

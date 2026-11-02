@@ -10,9 +10,15 @@ def literal(raw):
 seed = json.dumps({'version':'space.migration.data.p1','schema':1,'values':{'note':{'value':1}}},separators=(',',':')).encode()
 (root / 'migration-data.json').write_bytes(seed)
 output = json.dumps({'version':'space.migration.data.p1','schema':2,'values':{'added':True,'note':{'value':2}}},separators=(',',':')).encode()
-for kind in ('ok','trap','loop','invalid','schema','memory','next'):
+for kind in ('ok','trap','loop','invalid','schema','memory','next','empty','empty-next'):
     current_seed = seed
     result = output
+    if kind == 'empty':
+        current_seed = json.dumps({'version':'space.migration.data.p1','schema':1,'values':{}},separators=(',',':')).encode()
+        result = json.dumps({'version':'space.migration.data.p1','schema':2,'values':{'other':True}},separators=(',',':')).encode()
+    if kind == 'empty-next':
+        current_seed = json.dumps({'version':'space.migration.data.p1','schema':2,'values':{'other':True}},separators=(',',':')).encode()
+        result = json.dumps({'version':'space.migration.data.p1','schema':3,'values':{'other':True,'schema3':True}},separators=(',',':')).encode()
     if kind == 'next':
         current_seed = output
         result = json.dumps({'version':'space.migration.data.p1','schema':3,'values':{'added':True,'note':{'value':3},'schema3':True}},separators=(',',':')).encode()

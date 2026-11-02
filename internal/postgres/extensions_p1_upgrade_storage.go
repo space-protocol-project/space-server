@@ -32,6 +32,9 @@ func prepareUpgradeStorage(ctx context.Context, tx pgx.Tx) error {
 	if err := prepareVersionsStorage(ctx, tx); err != nil {
 		return err
 	}
+	if err := prepareGroupStorage(ctx, tx); err != nil {
+		return err
+	}
 	// Даже пустой журнал обязан содержать таблицу завершённых шагов.
 	if _, err := tx.Exec(ctx, `SELECT installation,ordinal,step_digest,input_digest,output,generation,principal FROM extension_p1_upgrade_steps LIMIT 0`); err != nil {
 		return err
@@ -158,6 +161,19 @@ func checkUpgradeBackup(ctx context.Context, tx pgx.Tx, tables map[string]bool) 
 func blockUpgradeChange(ctx context.Context, tx pgx.Tx, installation string) error {
 	var pending bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_upgrade_jobs j WHERE installation=$1 AND NOT COALESCE((to_jsonb(j)->>'published')::boolean,false))`, installation).Scan(&pending); err != nil {
+		return err
+	}
+	if pending {
+		return upgradeError()
+	}
+	version, err := groupStorageVersion(ctx, tx)
+	if err != nil || version == 0 {
+		return err
+	}
+	if version != 1 {
+		return upgradeError()
+	}
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_group_jobs WHERE installation=$1 AND NOT published)`, installation).Scan(&pending); err != nil {
 		return err
 	}
 	if pending {

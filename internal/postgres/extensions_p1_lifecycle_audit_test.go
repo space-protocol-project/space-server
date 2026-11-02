@@ -141,7 +141,8 @@ func TestExtensionP1LifecycleJournalMigration(t *testing.T) {
 	}
 	managedChange(t, f, s, "enable", 1)
 	// Старый реестр v1 не содержал ни аудита, ни истории публикаций пакетов.
-	_, err = f.store.pool.Exec(f.ctx, `DROP TABLE extension_p1_versions; ALTER TABLE extension_p1_meta DROP COLUMN versions_version;
+	_, err = f.store.pool.Exec(f.ctx, `DROP TABLE extension_p1_group_jobs,extension_p1_group_versions; ALTER TABLE extension_p1_meta DROP COLUMN group_version;
+ DROP TABLE extension_p1_versions; ALTER TABLE extension_p1_meta DROP COLUMN versions_version;
  DROP TABLE extension_p1_lifecycle_audit; UPDATE extension_p1_meta SET lifecycle_version=1;
  ALTER TABLE extension_p1_meta DROP CONSTRAINT extension_p1_meta_lifecycle_version_check;
  ALTER TABLE extension_p1_meta ADD CONSTRAINT extension_p1_meta_lifecycle_version_check CHECK(lifecycle_version IN (0,1))`)

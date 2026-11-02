@@ -13,10 +13,18 @@ func checkVersionHistory(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 	var invalid bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_versions v LEFT JOIN extension_p1_lifecycle_audit a USING(installation,revision)
+	query := `SELECT EXISTS(SELECT 1 FROM extension_p1_versions v LEFT JOIN extension_p1_lifecycle_audit a USING(installation,revision)
  WHERE a.installation IS NULL OR a.action<>'publish_upgrade' OR a.actor<>'owner' OR a.principal IS DISTINCT FROM v.principal OR a.generation<>v.generation)
  OR EXISTS(SELECT 1 FROM extension_p1_lifecycle_audit a LEFT JOIN extension_p1_versions v USING(installation,revision)
- WHERE a.action='publish_upgrade' AND v.installation IS NULL)`).Scan(&invalid)
+ WHERE a.action='publish_upgrade' AND v.installation IS NULL`
+	version, err := groupStorageVersion(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if version == 1 {
+		query += ` AND NOT EXISTS(SELECT 1 FROM extension_p1_group_versions g WHERE g.installation=a.installation AND g.revision=a.revision)`
+	}
+	err = tx.QueryRow(ctx, query+`)`).Scan(&invalid)
 	if err != nil {
 		return err
 	}
@@ -130,6 +138,9 @@ func (s *Store) versionBindings(ctx context.Context, bindings map[string]Extensi
 			return nil, upgradeError()
 		}
 		result[r.Instance] = r.Artifacts.Target
+	}
+	if err = groupPublishedBindings(ctx, tx, result); err != nil {
+		return nil, err
 	}
 	return result, tx.Commit(ctx)
 }

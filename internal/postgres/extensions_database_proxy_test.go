@@ -154,12 +154,21 @@ func (p *extensionDatabaseProxy) drop(frame []byte, frontend bool, selected *ato
 	if p.mode == "versions_prepare_before_commit" || p.mode == "versions_prepare_after_commit" {
 		insert = "INSERT INTO EXTENSION_P1_UPGRADE_JOBS"
 	}
+	if strings.HasPrefix(p.mode, "group_prepare_") {
+		insert = "INSERT INTO EXTENSION_P1_GROUP_JOBS"
+	}
+	if strings.HasPrefix(p.mode, "group_step_") {
+		insert = "UPDATE EXTENSION_P1_GROUP_JOBS SET RECORD"
+	}
+	if strings.HasPrefix(p.mode, "group_publish_") {
+		insert = "INSERT INTO EXTENSION_P1_GROUP_VERSIONS"
+	}
 	if frontend && (frame[0] == 'P' || frame[0] == 'Q') && p.armed.Load() && strings.Contains(strings.ToUpper(payload), insert) {
 		selected.Store(1)
 	}
 	if frontend && selected.Load() == 1 && frame[0] == 'Q' && strings.EqualFold(strings.TrimSpace(payload), "commit") && p.armed.CompareAndSwap(true, false) {
 		selected.Store(2)
-		if p.mode == "before_commit" || p.mode == "upgrade_before_commit" || p.mode == "publish_before_commit" || p.mode == "versions_prepare_before_commit" {
+		if strings.HasSuffix(p.mode, "before_commit") {
 			p.hit <- "COMMIT not forwarded"
 			return true
 		}

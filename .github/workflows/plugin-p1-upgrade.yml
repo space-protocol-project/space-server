@@ -1,0 +1,78 @@
+name: P1 планы обновления и свидетельства миграций
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y wabt
+      - run: python3 experiments/extensions/fixtures.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upgrade-wasm-fixtures
+          path: experiments/extensions/testdata
+  upgrade:
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: 93c8e212c2e7944f26cffdc0dab088a66cb6adf8
+          path: .local/protocol
+      - uses: actions/download-artifact@v4
+        with:
+          name: upgrade-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Схемы и общий эталон
+        shell: bash
+        run: |
+          python -m pip install jsonschema==4.26.0
+          mkdir -p .local/upgrade
+          python .local/protocol/tools/check_extension_p1.py > .local/upgrade/contracts.txt
+      - name: Привязка плана и регрессия
+        shell: bash
+        working-directory: experiments/extensions
+        run: |
+          export SPACE_P1_UPGRADE_PLAN="${GITHUB_WORKSPACE}/.local/protocol/docs/extensions/p1/upgrade-plan.json"
+          export SPACE_P1_LIFECYCLE_CASES="${GITHUB_WORKSPACE}/.local/protocol/docs/extensions/p1/lifecycle.json"
+          test -z "$(gofmt -l upgrade)"
+          go mod verify
+          go vet ./...
+          go test -race -json ./upgrade -count=25 -timeout=120s > ../../.local/upgrade/upgrade.jsonl
+          go test -json ./... -count=1 -timeout=180s > ../../.local/upgrade/module.jsonl
+          go test -race -json ./... -count=1 -timeout=180s > ../../.local/upgrade/module-race.jsonl
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./... > ../../.local/upgrade/vulnerabilities.txt
+      - name: Обязательные результаты без пропусков
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(line) for line in Path('.local/upgrade/upgrade.jsonl').read_text(encoding='utf-8').splitlines()]
+          assert not any(e['Action'] in ('fail','skip') for e in events)
+          for name in ('SharedPlan','PlanValidation','StrictDecode','BoundEvidence','MigrationEvidence','LifecycleIntegration','ActiveCallBlocksUpgrade','ConcurrentBegin'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='Test'+name for e in events)==25
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-upgrade-${{ matrix.os }}
+          path: .local/upgrade
+          include-hidden-files: true

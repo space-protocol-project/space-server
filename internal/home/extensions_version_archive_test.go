@@ -262,15 +262,21 @@ func checkVersionArchiveReceipt(t *testing.T, address string, svc *postgres.Exte
 		t.Fatal("Старая команда принята", err)
 	}
 	result, err := svc.ReconcileExtensionCommand(member, &pb.ReconcileExtensionCommandRequest{Command: request})
-	if err != nil || result.GetOutcome() != pb.ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_CONFIRMED || !result.GetReceipt().GetReplayed() {
-		t.Fatal("Нет исходной квитанции", err)
+	if status.Code(err) != codes.AlreadyExists || result != nil {
+		t.Fatal("Квитанция прежнего пакета принята новым пакетом", err)
 	}
-	first := new(pb.ExecuteExtensionCommandResponse)
+	var raw []byte
+	if err = conn.QueryRow(context.Background(), `SELECT response FROM extension_p1_receipts WHERE key=$1`, request.IdempotencyKey).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	first, stored := new(pb.ExecuteExtensionCommandResponse), new(pb.ExecuteExtensionCommandResponse)
 	if err = proto.Unmarshal(m.Receipt, first); err != nil {
 		t.Fatal(err)
 	}
-	result.Receipt.Replayed = false
-	if !proto.Equal(first, result.Receipt) {
+	if err = proto.Unmarshal(raw, stored); err != nil {
+		t.Fatal(err)
+	}
+	if !proto.Equal(first, stored) {
 		t.Fatal("Квитанция изменилась")
 	}
 }

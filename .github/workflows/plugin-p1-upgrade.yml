@@ -52,7 +52,8 @@ jobs:
         run: |
           export SPACE_P1_UPGRADE_PLAN="${GITHUB_WORKSPACE}/.local/protocol/docs/extensions/p1/upgrade-plan.json"
           export SPACE_P1_LIFECYCLE_CASES="${GITHUB_WORKSPACE}/.local/protocol/docs/extensions/p1/lifecycle.json"
-          test -z "$(gofmt -l upgrade)"
+          gofmt -w upgrade
+          git diff --exit-code -- upgrade
           go mod verify
           go vet ./...
           go test -race -json ./upgrade -count=25 -timeout=120s > ../../.local/upgrade/upgrade.jsonl

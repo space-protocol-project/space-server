@@ -64,6 +64,9 @@ func CheckExtensionP1Backup(ctx context.Context, address string, restore bool) e
 	if err = checkLifecycleBackup(ctx, tx, tables["extension_p1_installations"], tables["extension_p1_lifecycle_audit"], restore); err != nil {
 		return err
 	}
+	if err = checkUpgradeBackup(ctx, tx, tables); err != nil {
+		return err
+	}
 	if err = checkExtensionBackupRows(ctx, tx, tables["extension_p1_delivery"]); err != nil {
 		return err
 	}
@@ -101,7 +104,7 @@ func extensionBackupTables(ctx context.Context, tx pgx.Tx) (map[string]bool, err
 			return nil, err
 		}
 		switch name {
-		case "extension_p1_meta", "extension_p1_instances", "extension_p1_data", "extension_p1_receipts", "extension_p1_outbox", "extension_p1_delivery", "extension_p1_installations", "extension_p1_lifecycle_audit":
+		case "extension_p1_meta", "extension_p1_instances", "extension_p1_data", "extension_p1_receipts", "extension_p1_outbox", "extension_p1_delivery", "extension_p1_installations", "extension_p1_lifecycle_audit", "extension_p1_upgrade_jobs", "extension_p1_upgrade_steps":
 			tables[name] = true
 		default:
 			return nil, errors.New("Неизвестная таблица расширений в копии")

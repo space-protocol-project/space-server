@@ -37,6 +37,9 @@ func (c *extensionLifecycle) restore(ctx context.Context, tx pgx.Tx, bindings ma
 	if err = prepareLifecycleAudit(ctx, tx, version); err != nil {
 		return err
 	}
+	if err = prepareUpgradeStorage(ctx, tx); err != nil {
+		return err
+	}
 	names := make([]string, 0, len(c.installations))
 	for name := range c.installations {
 		names = append(names, name)

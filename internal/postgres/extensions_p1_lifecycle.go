@@ -156,6 +156,18 @@ func (c *extensionLifecycle) change(ctx context.Context, i *extensionLifecycleIn
 	if err != nil {
 		return lifecycle.Decision{}, mutationDatabaseError(err)
 	}
+	// Берём ту же строковую блокировку, что и подготовка плана: проверка
+	// отсутствия миграции и смена состояния не должны пересекаться.
+	var generation string
+	if err = tx.QueryRow(ctx, `SELECT generation FROM extension_p1_installations WHERE installation=$1 FOR UPDATE`, installation).Scan(&generation); err != nil {
+		return lifecycle.Decision{}, mutationDatabaseError(err)
+	}
+	if generation != c.generation {
+		return lifecycle.Decision{}, upgradeError()
+	}
+	if err = blockUpgradeChange(ctx, tx, installation); err != nil {
+		return lifecycle.Decision{}, err
+	}
 	o := lifecycleObservation(action, "owner", revision)
 	d := i.coordinator.Preview(o)
 	if d.Code != "OK" {

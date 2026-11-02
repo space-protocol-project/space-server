@@ -202,7 +202,7 @@ func TestExtensionP1VersionArchiveResume(t *testing.T) {
 				if err := ImportPortable(runtime, archive, output, ""); err != nil {
 					t.Fatal(err)
 				}
-				checkVersionArchive(t, output, m, false)
+				checkVersionArchive(t, output, m, false, true)
 				withRegistryArchiveDatabase(t, runtime, filepath.Join(output, "data"), func(address string) {
 					store, id, err := postgres.Open(context.Background(), address)
 					if err != nil {

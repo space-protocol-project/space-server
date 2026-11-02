@@ -81,7 +81,7 @@ func writeVersionArchive(t *testing.T, directory string, m versionArchiveFixture
 }
 
 // Импорт не запускает гостя. Модули и все байты истории сравниваются с источником.
-func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixture, delivery bool) registryTransferFixture {
+func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixture, delivery, portable bool) registryTransferFixture {
 	t.Helper()
 	ctx := context.Background()
 	address, stop, err := StartDatabase(os.Getenv("SPACE_HOME_RUNTIME"), filepath.Join(destination, "data"))
@@ -104,8 +104,12 @@ func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixtu
 	if id.ServerID != m.Registry.ServerID {
 		t.Fatal("Изменилась идентичность")
 	}
-	if _, err = store.Authenticate(ctx, m.Registry.OldToken); status.Code(err) != codes.Unauthenticated {
-		t.Fatal("Принята сессия источника", err)
+	_, err = store.Authenticate(ctx, m.Registry.OldToken)
+	if portable && status.Code(err) != codes.Unauthenticated {
+		t.Fatal("ZIP перенёс исходную сессию", err)
+	}
+	if !portable && err != nil {
+		t.Fatal("Физическая копия изменила действующую сессию", err)
 	}
 	member, token := backupExtensionLogin(t, store, id, m.Registry.Grant, ed25519.PrivateKey(m.Registry.DevicePrivate))
 	host := new(backupExtensionHost)
@@ -170,7 +174,7 @@ func TestExtensionP1VersionArchiveExport(t *testing.T) {
 			if err := ImportPortable(os.Getenv("SPACE_HOME_RUNTIME"), source, destination, ""); err != nil {
 				t.Fatal(err)
 			}
-			m.Registry = checkVersionArchive(t, destination, m, false)
+			m.Registry = checkVersionArchive(t, destination, m, false, true)
 			archive := filepath.Join(directory, state+".zip")
 			if err := ExportPortable(os.Getenv("SPACE_HOME_RUNTIME"), filepath.Join(destination, "data"), archive); err != nil {
 				t.Fatal(err)
@@ -196,7 +200,7 @@ func TestExtensionP1VersionArchiveExport(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					checkVersionArchive(t, output, m, true)
+					checkVersionArchive(t, output, m, true, portable)
 				})
 			}
 			if registryArchiveDigest(t, source, true) != before {
@@ -231,7 +235,7 @@ func TestExtensionP1VersionArchiveImport(t *testing.T) {
 				if err := ImportPortable(os.Getenv("SPACE_HOME_RUNTIME"), archive, output, ""); err != nil {
 					t.Fatal(err)
 				}
-				checkVersionArchive(t, output, m, true)
+				checkVersionArchive(t, output, m, true, true)
 				if registryArchiveDigest(t, archive, true) != m.Registry.ArchiveSHA {
 					t.Fatal("Импорт изменил ZIP")
 				}

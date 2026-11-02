@@ -8,6 +8,7 @@ root.mkdir(exist_ok=True)
 def literal(raw):
     return '"' + ''.join('\\%02x' % byte for byte in raw) + '"'
 seed = json.dumps({'version':'space.migration.data.p1','schema':1,'values':{'note':{'value':1}}},separators=(',',':')).encode()
+(root / 'migration-data.json').write_bytes(seed)
 output = json.dumps({'version':'space.migration.data.p1','schema':2,'values':{'added':True,'note':{'value':2}}},separators=(',',':')).encode()
 for kind in ('ok','trap','loop','invalid','schema','memory'):
     result = output

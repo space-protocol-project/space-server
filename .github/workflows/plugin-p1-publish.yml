@@ -22,10 +22,23 @@ jobs:
       SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: b392be28880ddb420ef2500dbd3f9be2b5969659
+          path: .local/protocol
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Общий контракт данных миграции
+        run: |
+          mkdir -p .local/publish
+          python -m pip install jsonschema==4.26.0
+          python .local/protocol/tools/check_extension_p1.py > .local/publish/contracts.txt
       - name: Анализ и зависимости
         run: |
           mkdir -p .local/publish
@@ -40,6 +53,13 @@ jobs:
           python3 experiments/extensions/demo/build.py --mutation
           python3 experiments/extensions/demo/build.py --upgraded
           python3 experiments/extensions/upgrade/build.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          actual=json.loads(Path('experiments/extensions/testdata/migration-data.json').read_text())
+          expected=json.loads(Path('.local/protocol/docs/extensions/p1/migration-data.json').read_text())
+          assert actual==expected
+          PY
           cd experiments/extensions
           go build -o /tmp/space-p1-publish-worker ./cmd/p1-worker
       - name: Изолированные миграции и сбои публикации

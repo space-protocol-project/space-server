@@ -114,6 +114,12 @@ func checkPublishBackup(ctx context.Context, tx pgx.Tx, tables map[string]bool) 
 // прежнего процесса. Неизвестная исходная конфигурация не заменяется молча.
 func (s *Store) publishedBindings(ctx context.Context, bindings map[string]ExtensionP1MutationBinding) (map[string]ExtensionP1MutationBinding, error) {
 	var exists bool
+	if err := s.pool.QueryRow(ctx, `SELECT to_regclass('extension_p1_versions') IS NOT NULL`).Scan(&exists); err != nil {
+		return nil, err
+	}
+	if exists {
+		return s.versionBindings(ctx, bindings)
+	}
 	if err := s.pool.QueryRow(ctx, `SELECT to_regclass('extension_p1_upgrade_artifacts') IS NOT NULL`).Scan(&exists); err != nil {
 		return nil, err
 	}

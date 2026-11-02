@@ -29,6 +29,9 @@ func prepareUpgradeStorage(ctx context.Context, tx pgx.Tx) error {
 	if err := preparePublishStorage(ctx, tx); err != nil {
 		return err
 	}
+	if err := prepareVersionsStorage(ctx, tx); err != nil {
+		return err
+	}
 	// Даже пустой журнал обязан содержать таблицу завершённых шагов.
 	if _, err := tx.Exec(ctx, `SELECT installation,ordinal,step_digest,input_digest,output,generation,principal FROM extension_p1_upgrade_steps LIMIT 0`); err != nil {
 		return err
@@ -125,8 +128,12 @@ func checkUpgradeJobs(ctx context.Context, tx pgx.Tx) error {
 			return err
 		}
 		// Карантин останавливает выполнение, но сохраняет пригодный для разбора журнал.
+		schema, err := currentPackageSchema(ctx, tx, name)
+		if err != nil {
+			return err
+		}
 		validState := (state == "disabled" && revision == p.Plan.Revision) || (state == "quarantined" && revision == p.Plan.Revision+1)
-		if !validState || space != p.Plan.Space || source != p.Plan.Source || dataRevision != p.Plan.DataRevision {
+		if !validState || space != p.Plan.Space || source != p.Plan.Source || dataRevision != p.Plan.DataRevision || schema != p.Plan.SchemaFrom {
 			return upgradeError()
 		}
 	}

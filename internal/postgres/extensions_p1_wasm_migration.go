@@ -35,11 +35,6 @@ func (s *ExtensionP1ManagedService) PrepareWASMUpgrade(ctx context.Context, toke
 	if err = validateMigrationArtifacts(p, a); err != nil {
 		return err
 	}
-	// Первый профиль публикации: исходная схема P1 равна 1. Последующие
-	// обновления потребуют архивации завершённого журнала, а не его удаления.
-	if p.SchemaFrom != 1 {
-		return upgradeError()
-	}
 	return s.upgradeTransaction(ctx, token, p.Installation, func(ctx context.Context, tx pgx.Tx, principal string) error {
 		b, err := upgradeBinding(ctx, tx, p, instance)
 		if err != nil {
@@ -52,6 +47,9 @@ func (s *ExtensionP1ManagedService) PrepareWASMUpgrade(ctx context.Context, toke
 		d := s.control.installations[p.Installation].coordinator.Preview(o)
 		if d.Code != "OK" {
 			return lifecycleDecisionError(d)
+		}
+		if err = prepareNextVersion(ctx, tx, p.Installation); err != nil {
+			return err
 		}
 		var channel string
 		if err = tx.QueryRow(ctx, `SELECT channel FROM extension_p1_instances WHERE installation=$1 AND instance=$2`, p.Installation, instance).Scan(&channel); err != nil {

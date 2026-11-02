@@ -14,6 +14,9 @@ import (
 func (s *ExtensionP1ManagedService) PublishUpgrade(ctx context.Context, token, installation, digest string, v upgrade.Verification, c upgrade.Checkpoint) error {
 	changed := false
 	err := s.upgradeTransaction(ctx, token, installation, func(ctx context.Context, tx pgx.Tx, principal string) error {
+		if err := checkVersionHistory(ctx, tx); err != nil {
+			return err
+		}
 		p, instance, err := readUpgrade(ctx, tx, installation)
 		if err != nil {
 			return err
@@ -96,7 +99,10 @@ func (c *extensionLifecycle) publishBinding(ctx context.Context, tx pgx.Tx, p Ex
 		return err
 	}
 	_, err := tx.Exec(ctx, `UPDATE extension_p1_upgrade_jobs SET published=true,result_digest=$2 WHERE installation=$1`, p.Plan.Installation, upgradeHash(p.Document))
-	return err
+	if err != nil {
+		return err
+	}
+	return archiveVersion(ctx, tx, p, instance)
 }
 
 func checkPublishedUpgrade(ctx context.Context, tx pgx.Tx, p ExtensionP1UpgradeProgress, instance string) error {

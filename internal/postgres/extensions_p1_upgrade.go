@@ -175,8 +175,8 @@ func upgradeBinding(ctx context.Context, tx pgx.Tx, p upgrade.Plan, instance str
 	if state != "disabled" || count != 1 {
 		return b, upgradeError()
 	}
-	b.Schema = p.SchemaFrom // У P1 нет рабочего каталога версий схем; значение подтверждает ядро.
-	return b, nil
+	b.Schema, err = currentPackageSchema(ctx, tx, p.Installation)
+	return b, err
 }
 
 func (s *ExtensionP1ManagedService) ReadUpgrade(ctx context.Context, token, installation string) (ExtensionP1UpgradeProgress, error) {

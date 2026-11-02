@@ -281,6 +281,7 @@ func TestExtensionP1UpgradeCorruptJournal(t *testing.T) {
 		`UPDATE extension_p1_upgrade_steps SET input_digest=repeat('0',64)`,
 		`DELETE FROM extension_p1_upgrade_steps`,
 		`DROP TABLE extension_p1_upgrade_steps`,
+		`ALTER TABLE extension_p1_upgrade_steps DROP CONSTRAINT extension_p1_upgrade_steps_installation_fkey; UPDATE extension_p1_upgrade_steps SET installation='orphan'`,
 	} {
 		t.Run(sql, func(t *testing.T) {
 			u := newUpgradeFixture(t)

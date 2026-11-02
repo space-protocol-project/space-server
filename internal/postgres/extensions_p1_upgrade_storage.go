@@ -82,6 +82,17 @@ func checkUpgradeSteps(ctx context.Context, tx pgx.Tx, p ExtensionP1UpgradeProgr
 }
 
 func checkUpgradeJobs(ctx context.Context, tx pgx.Tx) error {
+	var invalid bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_upgrade_steps s LEFT JOIN extension_p1_upgrade_jobs j USING(installation)
+ WHERE j.installation IS NULL OR s.generation !~ '^[0-9a-f]{32}$' OR s.principal='')
+ OR EXISTS(SELECT 1 FROM extension_p1_upgrade_jobs j LEFT JOIN extension_p1_installations r USING(installation)
+ WHERE r.installation IS NULL OR j.principal='')`).Scan(&invalid)
+	if err != nil {
+		return err
+	}
+	if invalid {
+		return upgradeError()
+	}
 	rows, err := tx.Query(ctx, `SELECT j.installation FROM extension_p1_upgrade_jobs j JOIN extension_p1_installations r USING(installation) ORDER BY j.installation FOR UPDATE OF r`)
 	if err != nil {
 		return err

@@ -1,0 +1,75 @@
+name: P1 WASM-миграции и атомарная публикация
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Анализ и зависимости
+        run: |
+          mkdir -p .local/publish
+          gofmt -w internal/postgres/extensions_p1_publish*.go internal/postgres/extensions_p1_migration_data.go internal/postgres/extensions_p1_wasm_migration.go internal/postgres/extensions_p1_upgrade.go internal/postgres/extensions_p1_upgrade_storage.go internal/postgres/extensions_p1_lifecycle.go internal/postgres/extensions_p1_mutations.go internal/postgres/extensions_p1_backup.go internal/postgres/extensions_database_proxy_test.go
+          git diff --exit-code
+          go mod verify
+          go vet ./...
+      - name: WASM-модули и изолированный worker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          python3 experiments/extensions/demo/build.py --mutation
+          python3 experiments/extensions/demo/build.py --upgraded
+          python3 experiments/extensions/upgrade/build.py
+          cd experiments/extensions
+          go build -o /tmp/space-p1-publish-worker ./cmd/p1-worker
+      - name: Изолированные миграции и сбои публикации
+        run: |
+          sudo mkdir /sys/fs/cgroup/space-p1-publish
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-publish/cgroup.subtree_control'
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_WORKER=/tmp/space-p1-publish-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-publish \
+            SPACE_P1_PUBLISH_MODULES="$PWD/experiments/extensions/testdata" \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1Publish' -count=3 -timeout=8m > .local/publish/publish.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-publish
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(line) for line in Path('.local/publish/publish.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          for name in ('WASM','WASMFailures','RejectsUntrusted','Concurrent','CommitRecovery','ProcessRecovery'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Publish'+name for e in events)==3
+          PY
+      - name: Регрессия постоянного журнала
+        run: go test -race -json ./internal/postgres -run '^TestExtensionP1Upgrade' -count=3 -timeout=8m > .local/publish/recovery.jsonl
+      - name: Регрессия сервера
+        run: |
+          go test -json ./... > .local/publish/server.jsonl
+          go test -race -json ./... > .local/publish/server-race.jsonl
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/postgres ./internal/extensionp1 ./internal/home > .local/publish/vulnerabilities.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-publish
+          path: .local/publish
+          include-hidden-files: true

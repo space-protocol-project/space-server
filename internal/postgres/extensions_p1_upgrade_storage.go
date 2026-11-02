@@ -18,11 +18,16 @@ func prepareUpgradeStorage(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 	if version == 0 {
-		_, err := tx.Exec(ctx, extensionUpgradeSchema)
-		return err
+		if _, err := tx.Exec(ctx, extensionUpgradeSchema); err != nil {
+			return err
+		}
+		version = 1
 	}
 	if version != 1 {
 		return upgradeError()
+	}
+	if err := preparePublishStorage(ctx, tx); err != nil {
+		return err
 	}
 	// Даже пустой журнал обязан содержать таблицу завершённых шагов.
 	if _, err := tx.Exec(ctx, `SELECT installation,ordinal,step_digest,input_digest,output,generation,principal FROM extension_p1_upgrade_steps LIMIT 0`); err != nil {
@@ -35,7 +40,7 @@ func readUpgrade(ctx context.Context, tx pgx.Tx, installation string) (Extension
 	var p ExtensionP1UpgradeProgress
 	var raw, seed []byte
 	var instance string
-	err := tx.QueryRow(ctx, `SELECT plan,digest,instance,seed,document,next_step FROM extension_p1_upgrade_jobs WHERE installation=$1`, installation).Scan(&raw, &p.Digest, &instance, &seed, &p.Document, &p.NextStep)
+	err := tx.QueryRow(ctx, `SELECT plan,digest,instance,seed,document,next_step,COALESCE((to_jsonb(j)->>'published')::boolean,false) FROM extension_p1_upgrade_jobs j WHERE installation=$1`, installation).Scan(&raw, &p.Digest, &instance, &seed, &p.Document, &p.NextStep, &p.Published)
 	if err != nil {
 		return p, instance, err
 	}
@@ -106,6 +111,12 @@ func checkUpgradeJobs(ctx context.Context, tx pgx.Tx) error {
 		if err != nil {
 			return err
 		}
+		if p.Published {
+			if err = checkPublishedUpgrade(ctx, tx, p, instance); err != nil {
+				return err
+			}
+			continue
+		}
 		var state, space, source string
 		var revision int64
 		var dataRevision uint64
@@ -139,7 +150,7 @@ func checkUpgradeBackup(ctx context.Context, tx pgx.Tx, tables map[string]bool) 
 
 func blockUpgradeChange(ctx context.Context, tx pgx.Tx, installation string) error {
 	var pending bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_upgrade_jobs WHERE installation=$1)`, installation).Scan(&pending); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM extension_p1_upgrade_jobs j WHERE installation=$1 AND NOT COALESCE((to_jsonb(j)->>'published')::boolean,false))`, installation).Scan(&pending); err != nil {
 		return err
 	}
 	if pending {

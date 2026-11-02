@@ -22,10 +22,11 @@ var extensionUpgradeSchema string
 
 // ExtensionP1UpgradeProgress описывает подготовку, а не публикацию пакета.
 type ExtensionP1UpgradeProgress struct {
-	Plan     upgrade.Plan
-	Digest   string
-	NextStep int
-	Document []byte
+	Plan      upgrade.Plan
+	Digest    string
+	NextStep  int
+	Document  []byte
+	Published bool
 }
 
 func (p ExtensionP1UpgradeProgress) Ready() bool { return p.NextStep == len(p.Plan.Steps) }
@@ -100,6 +101,9 @@ func (s *ExtensionP1ManagedService) upgradeTransaction(ctx context.Context, toke
 	defer tx.Rollback(context.Background())
 	principal, err := authorizeLifecycleTx(ctx, tx, i.channels)
 	if err != nil {
+		return mutationDatabaseError(err)
+	}
+	if _, err = tx.Exec(ctx, `SELECT singleton FROM extension_p1_meta WHERE singleton FOR UPDATE`); err != nil {
 		return mutationDatabaseError(err)
 	}
 	var generation string
@@ -192,6 +196,10 @@ func (s *ExtensionP1ManagedService) ReadUpgrade(ctx context.Context, token, inst
 // При неопределённом COMMIT вызывающий открывает новую оболочку, читает NextStep
 // и продолжает с него. Исходное поколение в Plan при этом не переписывается.
 func (s *ExtensionP1ManagedService) AdvanceUpgrade(ctx context.Context, token, installation, digest string, expectedStep int, v upgrade.Verification, c upgrade.Checkpoint, execute ExtensionP1MigrationStep) (ExtensionP1UpgradeProgress, error) {
+	return s.advanceUpgrade(ctx, token, installation, digest, expectedStep, v, c, execute, false)
+}
+
+func (s *ExtensionP1ManagedService) advanceUpgrade(ctx context.Context, token, installation, digest string, expectedStep int, v upgrade.Verification, c upgrade.Checkpoint, execute ExtensionP1MigrationStep, wasm bool) (ExtensionP1UpgradeProgress, error) {
 	var p ExtensionP1UpgradeProgress
 	err := s.upgradeTransaction(ctx, token, installation, func(ctx context.Context, tx pgx.Tx, principal string) error {
 		var instance string
@@ -199,6 +207,9 @@ func (s *ExtensionP1ManagedService) AdvanceUpgrade(ctx context.Context, token, i
 		p, instance, err = readUpgrade(ctx, tx, installation)
 		if err != nil {
 			return err
+		}
+		if p.Published {
+			return upgradeError()
 		}
 		if p.Digest != digest || p.NextStep != expectedStep {
 			return mutationError(codes.Aborted, "upgrade_cursor")
@@ -228,7 +239,7 @@ func (s *ExtensionP1ManagedService) AdvanceUpgrade(ctx context.Context, token, i
 			return upgrade.ErrEvidence
 		}
 		output = bytes.Clone(output)
-		_, err = tx.Exec(ctx, `INSERT INTO extension_p1_upgrade_steps(installation,ordinal,step_digest,input_digest,output,generation,principal) VALUES($1,$2,$3,$4,$5,$6,$7)`, installation, p.NextStep, step.Digest, upgradeHash(p.Document), output, s.generation, principal)
+		_, err = tx.Exec(ctx, `INSERT INTO extension_p1_upgrade_steps(installation,ordinal,step_digest,input_digest,output,generation,principal,wasm) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, installation, p.NextStep, step.Digest, upgradeHash(p.Document), output, s.generation, principal, wasm)
 		if err != nil {
 			return err
 		}

@@ -44,6 +44,10 @@ type ExtensionP1ManagedService struct {
 // Новая установка начинает с disabled; существующая сохраняет состояние
 // и ревизию. Контексты вызовов между поколениями не переносятся.
 func (s *Store) NewExtensionP1ManagedService(ctx context.Context, host extensions.Runtime, bindings map[string]ExtensionP1MutationBinding) (*ExtensionP1ManagedService, error) {
+	bindings, err := s.publishedBindings(ctx, bindings)
+	if err != nil {
+		return nil, err
+	}
 	if !s.extensionLifecycleOwned.CompareAndSwap(false, true) {
 		return nil, mutationError(codes.FailedPrecondition, "lifecycle_already_owned")
 	}

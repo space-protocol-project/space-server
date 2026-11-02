@@ -23,13 +23,17 @@ command = b'{"abi":"space_plugin_p1","kind":"command","name":"acknowledge",'
 initial = document(("Ready", "Готово к проверке"))
 result = document(("Command completed", "Команда выполнена"))
 name = "demo"
-if "--mutation" in sys.argv:
+if "--upgraded" in sys.argv:
+    initial = document(("Upgraded", "Обновлено"))
+if "--mutation" in sys.argv or "--upgraded" in sys.argv:
     name = "mutation"
     result = json.dumps({"ui_api":"space.ui.p1", "document":json.loads(result), "plan":{
-        "expectedStateRevision":"0",
+        "expectedStateRevision":"1" if "--upgraded" in sys.argv else "0",
         "operations":[{"key":"note", "putJson":"eyJ2YWx1ZSI6MX0="}],
         "events":[{"type":"note_changed", "payloadJson":"e30="}]}}
         ,ensure_ascii=False,separators=(",",":")).encode()
+if "--upgraded" in sys.argv:
+    name = "upgraded"
 wat = f'''(module
  (memory (export "memory") 2)
  (data (i32.const 32768) {literal(query)})

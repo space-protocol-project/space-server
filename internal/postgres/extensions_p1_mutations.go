@@ -92,7 +92,7 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 		return err
 	}
 	var version int
-	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true").Scan(&version); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT version FROM extension_p1_meta WHERE singleton=true FOR UPDATE").Scan(&version); err != nil {
 		return err
 	}
 	if version != 3 {

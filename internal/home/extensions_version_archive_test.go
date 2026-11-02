@@ -11,9 +11,11 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"github.com/space-protocol-project/space-server/internal/postgres"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 var versionArchiveStates = []string{"published", "pending", "ready"}
@@ -129,7 +131,7 @@ func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixtu
 	if _, err = svc.Change(ctx, token, m.Registry.Generation, "install", "enable", versions[len(versions)-1].Revision); status.Code(err) != codes.FailedPrecondition {
 		t.Fatal("Принято старое поколение", err)
 	}
-	checkRegistryTransferReceipt(t, svc, member, m.Registry)
+	checkVersionArchiveReceipt(t, address, svc, member, m.Registry)
 	if delivery {
 		checkRegistryTransferCursor(t, store, m.Registry)
 	}
@@ -236,5 +238,39 @@ func TestExtensionP1VersionArchiveImport(t *testing.T) {
 				t.Logf("source=%s target=%s state=%s archive_sha256=%s history_artifacts_preserved=true guest_calls=0", source, runtime.GOOS, state, m.Registry.ArchiveSHA)
 			})
 		}
+	}
+}
+
+// Обновление оставляет установку выключенной: сверка квитанции доступна,
+// но новый контекст команд не запрашивается через выключенный lifecycle.
+func checkVersionArchiveReceipt(t *testing.T, address string, svc *postgres.ExtensionP1ManagedService, member context.Context, m registryTransferFixture) {
+	t.Helper()
+	request := new(pb.ExecuteExtensionCommandRequest)
+	if err := proto.Unmarshal(m.Request, request); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := pgx.Connect(context.Background(), address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
+	var history string
+	if err = conn.QueryRow(context.Background(), `SELECT history_id FROM extension_p1_meta WHERE singleton`).Scan(&history); err != nil || history == request.HistoryId {
+		t.Fatal("История не сменилась", err)
+	}
+	if _, err = svc.ExecuteExtensionCommand(member, request); status.Code(err) != codes.FailedPrecondition {
+		t.Fatal("Старая команда принята", err)
+	}
+	result, err := svc.ReconcileExtensionCommand(member, &pb.ReconcileExtensionCommandRequest{Command: request})
+	if err != nil || result.GetOutcome() != pb.ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_CONFIRMED || !result.GetReceipt().GetReplayed() {
+		t.Fatal("Нет исходной квитанции", err)
+	}
+	first := new(pb.ExecuteExtensionCommandResponse)
+	if err = proto.Unmarshal(m.Receipt, first); err != nil {
+		t.Fatal(err)
+	}
+	result.Receipt.Replayed = false
+	if !proto.Equal(first, result.Receipt) {
+		t.Fatal("Квитанция изменилась")
 	}
 }

@@ -16,7 +16,7 @@ type ExtensionP1GroupMember struct {
 	Modules  map[string][]byte
 }
 
-// ExtensionP1GroupAttest проверяет свидетельства для каждого экземпляра.
+// ExtensionP1GroupEvidence содержит свидетельства для каждого экземпляра.
 // Доверенный адаптер дополнительно подтверждает общий digest состава.
 type ExtensionP1GroupEvidence struct {
 	Digest       string

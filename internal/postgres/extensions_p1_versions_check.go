@@ -89,7 +89,15 @@ func (s *ExtensionP1ManagedService) ListUpgradeVersions(ctx context.Context, tok
 	}
 	result := []ExtensionP1Version{}
 	err := s.upgradeTransaction(ctx, token, installation, func(ctx context.Context, tx pgx.Tx, _ string) error {
-		rows, err := tx.Query(ctx, `SELECT sequence,digest,source,target,schema_from,schema_to,revision,principal,generation FROM extension_p1_versions WHERE installation=$1 AND sequence>$2 ORDER BY sequence LIMIT $3`, installation, after, limit)
+		rows, err := tx.Query(ctx, `SELECT sequence,digest,source,target,schema_from,schema_to,revision,principal,generation FROM (
+ SELECT installation,sequence,digest,source,target,schema_from,schema_to,revision,principal,generation FROM extension_p1_versions
+ UNION ALL SELECT installation,sequence,digest,
+ convert_from(record,'UTF8')::jsonb->'Members'->0->'Plan'->>'source',
+ convert_from(record,'UTF8')::jsonb->'Members'->0->'Plan'->>'target',
+ (convert_from(record,'UTF8')::jsonb->'Members'->0->'Plan'->>'schema_from')::integer,
+ (convert_from(record,'UTF8')::jsonb->'Members'->0->'Plan'->>'schema_to')::integer,
+ revision,principal,generation FROM extension_p1_group_versions
+ ) history WHERE installation=$1 AND sequence>$2 ORDER BY sequence LIMIT $3`, installation, after, limit)
 		if err != nil {
 			return err
 		}

@@ -87,7 +87,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(line) for line in Path('.local/groups/groups.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('Sequential','Rejects','Failure','AtomicFailure','CommitRecovery','ProcessRecovery','Corruption'):
+          for name in ('Sequential','Rejects','Failure','AtomicFailure','ActiveCalls','RestoreGeneration','CommitRecovery','ProcessRecovery','Corruption'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Group'+name for e in events)==3
           events=[json.loads(line) for line in Path('.local/groups/publish.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)

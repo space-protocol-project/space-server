@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	"github.com/space-protocol-project/space-server/experiments/extensions/upgrade"
@@ -171,7 +173,8 @@ func (g *groupFixture) state(t *testing.T, published bool) {
 		}
 		values = data.Values
 		if m.Instance == "demo" {
-			if _, ok := values["note"]; !ok {
+			note, ok := values["note"].(map[string]any)
+			if !ok || note["value"] != float64(schema) {
 				t.Fatal(string(raw))
 			}
 			if _, ok := values["other"]; ok {
@@ -270,6 +273,10 @@ func TestExtensionP1GroupSequential(t *testing.T) {
 			t.Fatal(err)
 		}
 		g.state(t, true)
+		list, err := g.service.ListUpgradeVersions(g.f.ctx, lifecycleToken(g.f.owner), "install", 0, 100)
+		if err != nil || len(list) != int(schema) || list[len(list)-1].Digest != g.digest {
+			t.Fatal(list, err)
+		}
 		var versions, audits int
 		if err = g.f.store.pool.QueryRow(g.f.ctx, `SELECT (SELECT count(*) FROM extension_p1_group_versions),(SELECT count(*) FROM extension_p1_lifecycle_audit WHERE action='publish_upgrade')`).Scan(&versions, &audits); err != nil || versions != int(schema) || audits != versions {
 			t.Fatal(versions, audits, err)
@@ -345,4 +352,96 @@ func TestExtensionP1GroupFailure(t *testing.T) {
 	if stats := g.host.Stats(); stats.Active != 0 || stats.ReservedBytes != 0 {
 		t.Fatal(stats)
 	}
+}
+
+func TestExtensionP1GroupActiveCalls(t *testing.T) {
+	g := newGroupFixture(t)
+	entered := make(chan struct{}, 2)
+	finish := make(chan struct{})
+	var once sync.Once
+	finishCalls := func() { once.Do(func() { close(finish) }) }
+	defer finishCalls()
+	host := &mutationProbe{run: func(context.Context) ([]byte, error) {
+		entered <- struct{}{}
+		<-finish
+		return []byte(`{"ui_api":"space.ui.p1"}`), nil
+	}}
+	store, _, err := Open(g.f.ctx, g.f.url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	g.service, err = store.NewExtensionP1ManagedService(g.f.ctx, host, g.bindings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	managedChange(t, g.f, g.service, "enable", 4)
+	api := extensionP1RPCClient(t, g.f, g.service)
+	done := make(chan error, 2)
+	for _, id := range []string{"demo", "other"} {
+		go func() {
+			r := extensionP1Query()
+			r.InstanceId = id
+			_, e := api.QueryExtension(g.f.owner, r)
+			done <- e
+		}()
+	}
+	for range 2 {
+		select {
+		case <-entered:
+		case <-time.After(5 * time.Second):
+			t.Fatal("Вызовы экземпляров не начались")
+		}
+	}
+	managedChange(t, g.f, g.service, "disable", 5)
+	if _, err = g.service.SystemTransition(g.f.ctx, "install", "finish_disable", 6); err == nil {
+		finishCalls()
+		t.Fatal("Не дождались активных экземпляров")
+	}
+	g.plan(t, 1)
+	if err = g.prepare(); err == nil {
+		finishCalls()
+		t.Fatal("Миграция началась с активными вызовами")
+	}
+	finishCalls()
+	for range 2 {
+		if err = <-done; err == nil {
+			t.Fatal("Возвращён результат отключённого экземпляра")
+		}
+	}
+	if _, err = g.service.SystemTransition(g.f.ctx, "install", "finish_disable", 6); err != nil {
+		t.Fatal(err)
+	}
+	g.plan(t, 1)
+	if err = g.prepare(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExtensionP1GroupRestoreGeneration(t *testing.T) {
+	g := newGroupFixture(t)
+	if err := g.prepare(); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.advance("demo"); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckExtensionP1Backup(g.f.ctx, g.f.url, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.advance("other"); err == nil {
+		t.Fatal("Принято старое поколение после восстановления")
+	}
+	g.reopen(t)
+	if err := g.advance("other"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.publish(); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckExtensionP1Backup(g.f.ctx, g.f.url, true); err != nil {
+		t.Fatal(err)
+	}
+	g.reopen(t)
+	g.state(t, true)
 }

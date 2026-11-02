@@ -91,9 +91,19 @@ func TestExtensionP1UpgradePersistentResume(t *testing.T) {
 	}
 	_, err = original.ReadUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "install")
 	requireCode(t, err, codes.FailedPrecondition)
-	p, err = u.advance(p.NextStep, upgradeTestStep)
+	attestations := 0
+	p, err = u.service.ResumeUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "install", func(_ context.Context, plan upgrade.Plan) (upgrade.Verification, upgrade.Checkpoint, error) {
+		attestations++
+		if plan.Generation != original.Generation() {
+			t.Error("План изменён при восстановлении")
+		}
+		return u.verification, u.checkpoint, nil
+	}, upgradeTestStep)
 	if err != nil || !p.Ready() || string(p.Document) != `{"schema":3}` {
 		t.Fatal(p, err)
+	}
+	if attestations != 1 {
+		t.Fatal(attestations)
 	}
 	// Готовый результат не вызывает преобразователь и не включает установку.
 	if _, err = u.advance(2, func(context.Context, upgrade.Step, []byte) ([]byte, error) {
@@ -177,6 +187,61 @@ func TestExtensionP1UpgradeConcurrentStep(t *testing.T) {
 	if calls.Load() != 1 || success.Load() != 1 {
 		t.Fatal(calls.Load(), success.Load())
 	}
+}
+
+func TestExtensionP1UpgradeResumeBoundaries(t *testing.T) {
+	t.Run("revalidate_each_step", func(t *testing.T) {
+		u := newUpgradeFixture(t)
+		u.prepare(t)
+		calls := 0
+		_, err := u.service.ResumeUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "install", func(context.Context, upgrade.Plan) (upgrade.Verification, upgrade.Checkpoint, error) {
+			calls++
+			v := u.verification
+			v.Trusted = calls == 1
+			return v, u.checkpoint, nil
+		}, upgradeTestStep)
+		if err == nil || calls != 2 {
+			t.Fatal(calls, err)
+		}
+		p, err := u.service.ReadUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "install")
+		if err != nil || p.NextStep != 1 {
+			t.Fatal(p, err)
+		}
+	})
+	t.Run("duplicate_plan", func(t *testing.T) {
+		u := newUpgradeFixture(t)
+		u.prepare(t)
+		if err := u.service.PrepareUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "demo", u.plan, u.verification, u.checkpoint, []byte(`{"different":true}`)); err == nil {
+			t.Fatal("План перезаписан")
+		}
+		p, err := u.service.ReadUpgrade(u.f.ctx, lifecycleToken(u.f.owner), "install")
+		if err != nil || string(p.Document) != `{"schema":1}` {
+			t.Fatal(p, err)
+		}
+	})
+	t.Run("backup_generation", func(t *testing.T) {
+		u := newUpgradeFixture(t)
+		u.prepare(t)
+		if _, err := u.advance(0, upgradeTestStep); err != nil {
+			t.Fatal(err)
+		}
+		if err := CheckExtensionP1Backup(u.f.ctx, u.f.url, true); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := u.advance(1, upgradeTestStep); err == nil {
+			t.Fatal("Старое поколение принято после восстановления")
+		}
+		store, _, err := Open(u.f.ctx, u.f.url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer store.Close()
+		u.service = u.open(t, store)
+		p, err := u.advance(1, upgradeTestStep)
+		if err != nil || !p.Ready() {
+			t.Fatal(p, err)
+		}
+	})
 }
 
 func TestExtensionP1UpgradePermissions(t *testing.T) {

@@ -24,6 +24,10 @@ func prepareUpgradeStorage(ctx context.Context, tx pgx.Tx) error {
 	if version != 1 {
 		return upgradeError()
 	}
+	// Даже пустой журнал обязан содержать таблицу завершённых шагов.
+	if _, err := tx.Exec(ctx, `SELECT installation,ordinal,step_digest,input_digest,output,generation,principal FROM extension_p1_upgrade_steps LIMIT 0`); err != nil {
+		return err
+	}
 	return checkUpgradeJobs(ctx, tx)
 }
 

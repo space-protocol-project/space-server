@@ -41,7 +41,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(x) for x in Path('.local/upgrade-recovery/recovery.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('PersistentResume','Rollback','ConcurrentStep','Permissions','CorruptJournal','ProcessRecovery','UncertainCommit'):
+          for name in ('PersistentResume','Rollback','ConcurrentStep','ResumeBoundaries','Permissions','CorruptJournal','ProcessRecovery','UncertainCommit'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Upgrade'+name for e in events)==5
           for mode in ('prepared','during_step','after_commit'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1UpgradeProcessRecovery/'+mode for e in events)==5

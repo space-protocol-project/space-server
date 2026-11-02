@@ -35,6 +35,36 @@ func (p ExtensionP1UpgradeProgress) Ready() bool { return p.NextStep == len(p.Pl
 // WASM, SQL и сетевой доступ гостю через этот интерфейс не предоставляются.
 type ExtensionP1MigrationStep func(context.Context, upgrade.Step, []byte) ([]byte, error)
 
+// ExtensionP1UpgradeAttest заново проверяет доверие и копию перед каждым шагом.
+// Свидетельства не сохраняются как бессрочное разрешение на исполнение.
+type ExtensionP1UpgradeAttest func(context.Context, upgrade.Plan) (upgrade.Verification, upgrade.Checkpoint, error)
+
+// ResumeUpgrade продолжает с зафиксированного курсора. Запускается доверенным
+// ядром после открытия новой оболочки; сетевой API этого метода не существует.
+func (s *ExtensionP1ManagedService) ResumeUpgrade(ctx context.Context, token, installation string, attest ExtensionP1UpgradeAttest, execute ExtensionP1MigrationStep) (ExtensionP1UpgradeProgress, error) {
+	p, err := s.ReadUpgrade(ctx, token, installation)
+	if err != nil {
+		return ExtensionP1UpgradeProgress{}, err
+	}
+	for !p.Ready() {
+		if attest == nil {
+			return ExtensionP1UpgradeProgress{}, upgrade.ErrEvidence
+		}
+		// Копия плана не позволяет адаптеру менять сохранённые шаги через slice.
+		plan := p.Plan
+		plan.Steps = append([]upgrade.Step(nil), plan.Steps...)
+		v, c, err := attest(ctx, plan)
+		if err != nil {
+			return ExtensionP1UpgradeProgress{}, err
+		}
+		p, err = s.AdvanceUpgrade(ctx, token, installation, p.Digest, p.NextStep, v, c, execute)
+		if err != nil {
+			return ExtensionP1UpgradeProgress{}, err
+		}
+	}
+	return p, nil
+}
+
 func upgradeHash(raw []byte) string {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])

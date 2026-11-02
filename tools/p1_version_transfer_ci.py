@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import sys
 
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
 kind = sys.argv[1]
 events = [json.loads(line) for line in (Path('.local/p1-version-transfer') / (kind + '.jsonl')).read_text(encoding='utf-8').splitlines()]
 if any(e['Action'] in ('fail', 'skip') for e in events):

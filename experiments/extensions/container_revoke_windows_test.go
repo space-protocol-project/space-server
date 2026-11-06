@@ -84,7 +84,11 @@ func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	sendRevocationPong(t, data)
 	acceptRevocationPipe(t, h, control, launch)
 	grant := newDeliveryGrant(pipeDeliveryWriter(t, data), func() error { return windows.DisconnectNamedPipe(data) })
-	prepared, err := grant.prepare([]byte("data"))
+	call, err := grant.begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := grant.prepare(call, []byte("data"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +119,14 @@ func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	if !errors.Is(grant.deliver(prepared), errDeliveryRevoked) {
 		t.Fatal("Старый ответ отправлен по новому каналу")
 	}
-	fresh, err := grant.prepare([]byte("pong"))
+	if _, err := grant.prepare(call, []byte("late")); !errors.Is(err, errDeliveryRevoked) {
+		t.Fatal("Результат старого вызова получил новое поколение")
+	}
+	freshCall, err := grant.begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := grant.prepare(freshCall, []byte("pong"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +135,7 @@ func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	}
 	requireRevocationResult(t, done, launch.process.ProcessId, pending)
 	winEmpty(t, h)
-	t.Logf("buffered_response_discarded=%v job_termination_used=false stale_generation_denied=true renewed_delivery=true", buffered)
+	t.Logf("buffered_response_discarded=%v job_termination_used=false stale_generation_denied=true renewed_delivery=true stale_call_denied=true", buffered)
 }
 
 func pipeDeliveryWriter(t *testing.T, pipe windows.Handle) func([]byte) error {

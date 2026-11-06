@@ -153,7 +153,7 @@ func (c *appContainer) verify(process windows.Handle) error {
 	for _, class := range []uint32{29, 46} { // TokenIsAppContainer, TokenIsLessPrivilegedAppContainer.
 		var flag, size uint32
 		if err := windows.GetTokenInformation(token, class, (*byte)(unsafe.Pointer(&flag)), 4, &size); err != nil {
-			return err
+			return fmt.Errorf("token class %d: %w", class, err)
 		}
 		if flag != 1 {
 			return ErrIsolation
@@ -162,14 +162,14 @@ func (c *appContainer) verify(process windows.Handle) error {
 	var buffer [1024]byte
 	var size uint32
 	if err := windows.GetTokenInformation(token, 31, &buffer[0], uint32(len(buffer)), &size); err != nil {
-		return err
+		return fmt.Errorf("token SID: %w", err)
 	}
 	sid := *(**windows.SID)(unsafe.Pointer(&buffer[0]))
 	if sid == nil || !windows.EqualSid(c.sid, sid) {
 		return ErrIsolation
 	}
 	if err := windows.GetTokenInformation(token, 30, &buffer[0], uint32(len(buffer)), &size); err != nil {
-		return err
+		return fmt.Errorf("token capabilities: %w", err)
 	}
 	if *(*uint32)(unsafe.Pointer(&buffer[0])) != 0 {
 		return ErrIsolation

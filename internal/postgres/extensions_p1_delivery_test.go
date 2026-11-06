@@ -1,12 +1,15 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"github.com/space-protocol-project/space-server/internal/authn"
+	"github.com/space-protocol-project/space-server/internal/extensionp1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func TestExtensionP1DeliveryRegistrySnapshot(t *testing.T) {
@@ -48,6 +51,42 @@ func TestExtensionP1DeliveryRegistrySnapshot(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtensionP1DeliveryCommittedCommand(t *testing.T) {
+	f := newChannelFixture(t)
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
+	s, api := managedFixture(t, f, h)
+	managedChange(t, f, s, "enable", 1)
+	// Отложенный trigger меняет снимок при COMMIT, после проверки команды.
+	// Это управляемая инъекция границы, а не публичный путь смены состояния.
+	_, err := f.store.pool.Exec(f.ctx, `CREATE FUNCTION delivery_commit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+ BEGIN UPDATE extension_p1_installations SET revision=revision+1 WHERE installation=NEW.installation; RETURN NEW; END $$;
+ CREATE CONSTRAINT TRIGGER delivery_commit_change AFTER INSERT ON extension_p1_outbox
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION delivery_commit_change()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := mutationRequest("delivery-commit-001", 0)
+	result, err := api.ExecuteExtensionCommand(f.owner, r)
+	requireCode(t, err, codes.Unavailable)
+	if result != nil {
+		t.Fatal("Ответ после смены снимка возвращён")
+	}
+	decision := extensionp1.DecideRetry(extensionp1.RetryObservation{Code: status.Code(err).String(), Attempt: 1, SameRequest: true})
+	if !decision.Unknown || decision.Action != "stop" {
+		t.Fatal("COMMIT объявлен откатом", decision)
+	}
+	mutationCounts(t, f, 1, 1, 1, 1)
+	reconciled, err := api.ReconcileExtensionCommand(f.owner, &pb.ReconcileExtensionCommandRequest{Command: r})
+	if err != nil || reconciled.GetOutcome() != pb.ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_CONFIRMED {
+		t.Fatal(reconciled, err)
+	}
+	verifyExtensionCrashReceipt(t, f, reconciled.Receipt)
+	if h.calls.Load() != 1 {
+		t.Fatal("Сверка повторно запустила гостя")
+	}
+	mutationCounts(t, f, 1, 1, 1, 1)
 }
 
 func TestExtensionP1DeliveryAuthoritySnapshot(t *testing.T) {

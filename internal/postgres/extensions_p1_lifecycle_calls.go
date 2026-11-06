@@ -76,7 +76,11 @@ func (s *ExtensionP1ManagedService) ExecuteExtensionCommand(ctx context.Context,
 		return nil, mutationDatabaseError(call.Err())
 	}
 	if err == nil {
-		err = s.checkDelivery(call, r.InstanceId)
+		if deliveryErr := s.checkDelivery(call, r.InstanceId); deliveryErr != nil {
+			// Эффект мог быть зафиксирован: клиент должен сверить квитанцию,
+			// а не считать поздний отказ авторизации доказательством отката.
+			return nil, mutationError(codes.Unavailable, "delivery_not_confirmed")
+		}
 	}
 	if err != nil {
 		return nil, err

@@ -44,7 +44,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(line) for line in Path('.local/p1-core/delivery.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke', 'HTTPNetworkFailure', 'HTTPFlowControl'):
+          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke', 'HTTPNetworkFailure', 'HTTPFlowControl', 'HTTPConnectionWindow', 'HTTPConcurrentRecipients'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Delivery'+name for e in events)==5
           for name in ('HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke'):
               for mode in ('http1', 'tls1', 'tls2'):
@@ -116,7 +116,7 @@ jobs:
           # Миграции/история/группы требуют иных WASM fixtures и принимаются
           # в plugin-p1-publish.yml, plugin-p1-versions.yml, plugin-p1-groups.yml.
           assert not any(e['Action']=='skip' for e in events)
-          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke', 'HTTPNetworkFailure', 'HTTPFlowControl'):
+          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke', 'HTTPNetworkFailure', 'HTTPFlowControl', 'HTTPConnectionWindow', 'HTTPConcurrentRecipients'):
               assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Delivery'+name for e in events)
           for name in ('HTTPRevokeFirst', 'HTTPWriteFirst', 'HTTPCommittedRevoke'):
               for mode in ('http1', 'tls1', 'tls2'):

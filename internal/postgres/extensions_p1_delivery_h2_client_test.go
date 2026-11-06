@@ -57,11 +57,16 @@ func newDeliveryH2Client(t *testing.T, server *httptest.Server, window uint32) *
 
 func (c *deliveryH2Client) query(t *testing.T, id uint32, authorization string) {
 	t.Helper()
+	c.request(t, id, authorization, extensionDeliveryPath+"QueryExtension")
+}
+
+func (c *deliveryH2Client) request(t *testing.T, id uint32, authorization, path string) {
+	t.Helper()
 	var headers bytes.Buffer
 	encoder := hpack.NewEncoder(&headers)
 	for _, field := range []hpack.HeaderField{
 		{Name: ":method", Value: "POST"}, {Name: ":scheme", Value: "https"},
-		{Name: ":authority", Value: c.authority}, {Name: ":path", Value: extensionDeliveryPath + "QueryExtension"},
+		{Name: ":authority", Value: c.authority}, {Name: ":path", Value: path},
 		{Name: "content-type", Value: "application/json"}, {Name: "connect-protocol-version", Value: "1"},
 		{Name: "authorization", Value: authorization},
 	} {

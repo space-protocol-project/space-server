@@ -35,6 +35,9 @@ func main() {
 	if profileIPCProbe(wire.Request) {
 		return
 	}
+	if pipeExchangeProbe(wire.Request) {
+		return
+	}
 	if networkProbe(wire.Request) {
 		return
 	}

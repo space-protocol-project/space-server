@@ -112,7 +112,8 @@ func TestExtensionP1DeliveryHTTPRevokeFirst(t *testing.T) {
 			resume <- struct{}{}
 			failure := deliveryAwait(t, done)
 			code := connect.CodeOf(failure)
-			if code != connect.CodePermissionDenied && code != connect.CodeUnauthenticated && code != connect.CodeFailedPrecondition {
+			expected := map[string]connect.Code{"acl": connect.CodeNotFound, "logout": connect.CodeUnauthenticated, "registry": connect.CodeFailedPrecondition}[kind]
+			if code != expected {
 				t.Fatal(failure)
 			}
 			if h.calls.Load() != 1 {
@@ -120,6 +121,65 @@ func TestExtensionP1DeliveryHTTPRevokeFirst(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExtensionP1DeliveryHTTPCommittedRevoke(t *testing.T) {
+	f := newChannelFixture(t)
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
+	s, api := managedFixture(t, f, h)
+	managedChange(t, f, s, "enable", 1)
+	info, err := api.GetExtensionMutationContext(f.owner, &pb.GetExtensionMutationContextRequest{InstanceId: "demo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready, resume := make(chan struct{}), make(chan struct{})
+	inner := s.deliveryMux()
+	server := httptest.NewServer(s.deliveryHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		inner.ServeHTTP(w, r)
+		if r.URL.Path == extensionDeliveryPath+"ExecuteExtensionCommand" {
+			close(ready)
+			select {
+			case <-resume:
+			case <-r.Context().Done():
+			}
+		}
+	})))
+	defer server.Close()
+	defer close(resume)
+	client := rpc.NewExtensionP1ServiceClient(server.Client(), server.URL)
+	r := mutationRequest("wire-committed-001", 0)
+	r.HistoryId = info.HistoryId
+	request := connect.NewRequest(r)
+	request.Header().Set("Authorization", outgoingAuthorization(f.owner))
+	done := make(chan error, 1)
+	go func() {
+		result, err := client.ExecuteExtensionCommand(f.ctx, request)
+		if result != nil {
+			done <- context.Canceled
+			return
+		}
+		done <- err
+	}()
+	deliverySignal(t, ready)
+	mutationCounts(t, f, 1, 1, 1, 1)
+	if _, err := f.store.pool.Exec(f.ctx, "UPDATE extension_p1_installations SET revision=revision+1 WHERE installation='install'"); err != nil {
+		t.Fatal(err)
+	}
+	resume <- struct{}{}
+	if err := deliveryAwait(t, done); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatal(err)
+	}
+	reconcile := connect.NewRequest(&pb.ReconcileExtensionCommandRequest{Command: r})
+	reconcile.Header().Set("Authorization", outgoingAuthorization(f.owner))
+	receipt, err := client.ReconcileExtensionCommand(f.ctx, reconcile)
+	if err != nil || receipt.Msg.Outcome != pb.ExtensionCommandOutcome_EXTENSION_COMMAND_OUTCOME_CONFIRMED {
+		t.Fatal(receipt, err)
+	}
+	verifyExtensionCrashReceipt(t, f, receipt.Msg.Receipt)
+	if h.calls.Load() != 1 {
+		t.Fatal("Повторное исполнение", h.calls.Load())
+	}
+	mutationCounts(t, f, 1, 1, 1, 1)
 }
 
 type deliveryBlockingWriter struct {

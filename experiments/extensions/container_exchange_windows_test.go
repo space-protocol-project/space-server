@@ -172,13 +172,20 @@ func completeProfileExchange(t *testing.T, h *ProcessHost, pipe windows.Handle, 
 
 func cancelProfileExchange(t *testing.T, h *ProcessHost, pipe windows.Handle, cancel context.CancelFunc, done <-chan pipeWorkerResult) {
 	t.Helper()
+	var data [1]byte
+	operation := pipeEvent(t)
+	var count uint32
+	started := windows.ReadFile(pipe, data[:], &count, &operation)
+	if started != windows.ERROR_IO_PENDING {
+		t.Fatal("Чтение не перешло в ожидание", started)
+	}
 	cancel()
 	result := awaitPipeClient(t, done)
+	count, err := finishPipeIO(pipe, &operation, started)
+	runtime.KeepAlive(data)
 	if !errors.Is(result.err, context.Canceled) {
 		t.Fatal("Нет отмены", result.err)
 	}
-	var data [1]byte
-	count, err := profilePipeIO(t, pipe, data[:], false)
 	if count != 0 || !errors.Is(err, windows.ERROR_BROKEN_PIPE) {
 		t.Fatal("Канал не закрылся", count, err)
 	}

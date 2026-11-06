@@ -4,18 +4,23 @@ package extensions
 
 import (
 	"context"
+	"crypto/rand"
+	"os"
 	"testing"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
 type profileClientLaunch struct {
-	job      windows.Handle
-	pipes    *workerPipes
-	process  windows.ProcessInformation
-	cancel   context.CancelFunc
-	finished chan struct{}
+	job           windows.Handle
+	pipes         *workerPipes
+	process       windows.ProcessInformation
+	cancel        context.CancelFunc
+	finished      chan struct{}
+	nonce         [16]byte
+	sessionOffset uint32
 }
 
 // Пространство нового LPAC-процесса должно существовать до создания pipe.
@@ -23,6 +28,9 @@ type profileClientLaunch struct {
 func prepareProfileClient(t *testing.T, h *ProcessHost) *profileClientLaunch {
 	t.Helper()
 	l := &profileClientLaunch{}
+	if _, err := rand.Read(l.nonce[:]); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { l.close(t) })
 	var err error
 	l.job, err = createJob(WorkerMemory)
@@ -48,7 +56,13 @@ func (l *profileClientLaunch) start(t *testing.T, name string) (context.CancelFu
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	l.cancel = cancel
-	input := boundaryInput(t, map[string]string{"Mode": "pipe-exchange", "Pipe": name})
+	var session uint32
+	ok, _, failure := windows.NewLazySystemDLL("kernel32.dll").NewProc("ProcessIdToSessionId").Call(uintptr(os.Getpid()), uintptr(unsafe.Pointer(&session)))
+	if ok == 0 {
+		t.Fatal(failure)
+	}
+	session += l.sessionOffset
+	input := boundaryInput(t, map[string]any{"Mode": "pipe-exchange", "Pipe": name, "ServerPID": uint32(os.Getpid()), "ServerSession": session, "Nonce": l.nonce[:]})
 	previous, err := windows.ResumeThread(l.process.Thread)
 	if err != nil || previous != 1 {
 		t.Fatal("ResumeThread", previous, err)

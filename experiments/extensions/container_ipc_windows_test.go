@@ -78,17 +78,25 @@ func (f *profileIPC) openServer(t *testing.T) windows.Handle {
 
 func (f *profileIPC) openServerFlags(t *testing.T, flags uint32) windows.Handle {
 	t.Helper()
-	pointer, err := windows.UTF16PtrFromString(f.pipeName)
+	handle, err := f.createServer(flags)
 	if err != nil {
 		t.Fatal(err)
+	}
+	return handle
+}
+
+func (f *profileIPC) createServer(flags uint32) (windows.Handle, error) {
+	pointer, err := windows.UTF16PtrFromString(f.pipeName)
+	if err != nil {
+		return 0, err
 	}
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: f.pipeSD}
 	// Duplex, первая и единственная инстанция, локальные клиенты, byte mode.
 	handle, _, failure := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateNamedPipeW").Call(uintptr(unsafe.Pointer(pointer)), uintptr(0x3|0x80000|flags), 0x8, 1, 1024, 1024, 1000, uintptr(unsafe.Pointer(&attributes)))
 	if windows.Handle(handle) == windows.InvalidHandle {
-		t.Fatal(failure)
+		return 0, failure
 	}
-	return windows.Handle(handle)
+	return windows.Handle(handle), nil
 }
 
 func checkProfileIPC(t *testing.T, h *ProcessHost, f *profileIPC, allowed bool) {

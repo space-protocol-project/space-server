@@ -131,6 +131,9 @@ func profileExchange(t *testing.T, h, other *ProcessHost, cancelCall bool) {
 	if _, err := verifyPipeClient(other, pipe); err == nil {
 		t.Fatal("Клиент принят чужим хостом")
 	}
+	if count, err := profilePipeIO(t, pipe, launch.nonce[:], true); err != nil || count != 16 {
+		t.Fatal("Не передано подтверждение сервера", count, err)
+	}
 	var request [4]byte
 	count, err := profilePipeIO(t, pipe, request[:], false)
 	if err != nil || count != 4 || string(request[:]) != "ping" {

@@ -200,3 +200,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Продолжение E03: [межпрофильный доступ к событиям и именованным каналам Windows LPAC](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Проверены свои и чужие объекты, удаление и новый профиль; рабочий broker пока не подключён.
 
 Дополнение E03: [настоящий обмен по LPAC pipe, проверка клиента и отмена](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Проверены повторное соединение после отмены и подготовка endpoint до ResumeThread; рабочий broker остаётся отдельным этапом.
+
+Дополнение E03: [проверка LPAC pipe-сервера до отправки запроса](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Подставной сервер, неверная сессия и неверное подтверждение отвергаются без передачи данных запроса; проверено занятие имени endpoint.

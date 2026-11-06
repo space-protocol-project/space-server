@@ -25,6 +25,10 @@ type jobAccounting struct {
 
 // Root для Windows — рабочий каталог доверенной оболочки, не cgroup.
 func NewProcessHost(root, executable string) (*ProcessHost, error) {
+	return newWindowsProcessHost(root, executable, nil)
+}
+
+func newWindowsProcessHost(root, executable string, name *uint16) (*ProcessHost, error) {
 	if !filepath.IsAbs(root) || !filepath.IsAbs(executable) {
 		return nil, ErrIsolation
 	}
@@ -36,7 +40,7 @@ func NewProcessHost(root, executable string) (*ProcessHost, error) {
 	if err != nil || !binary.Mode().IsRegular() {
 		return nil, ErrIsolation
 	}
-	job, err := createJob(TotalMemory)
+	job, err := createNamedJob(TotalMemory, name)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrIsolation, err)
 	}
@@ -51,7 +55,11 @@ func NewProcessHost(root, executable string) (*ProcessHost, error) {
 }
 
 func createJob(memory uintptr) (windows.Handle, error) {
-	job, err := windows.CreateJobObject(nil, nil)
+	return createNamedJob(memory, nil)
+}
+
+func createNamedJob(memory uintptr, name *uint16) (windows.Handle, error) {
+	job, err := windows.CreateJobObject(nil, name)
 	if err != nil {
 		return 0, err
 	}

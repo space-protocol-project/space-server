@@ -3,7 +3,6 @@
 package extensions
 
 import (
-	"crypto/rand"
 	"fmt"
 	"io"
 	"os"
@@ -23,6 +22,9 @@ type appContainer struct {
 	sid       *windows.SID
 	directory string
 	policy    uint32
+	jobName   *uint16
+	journal   string
+	lock      *os.File
 }
 
 type securityCapabilities struct {
@@ -34,15 +36,22 @@ type securityCapabilities struct {
 // NewWindowsRestrictedHost — отдельный прототип; обычный конструктор пока
 // проверяет только ресурсы. Здесь нет перехода к обычному запуску при отказе.
 func NewWindowsRestrictedHost(root, executable string) (*ProcessHost, error) {
-	h, err := NewProcessHost(root, executable)
-	if err != nil {
-		return nil, err
+	if !filepath.IsAbs(executable) {
+		return nil, ErrIsolation
 	}
 	c, err := prepareContainer(root, executable)
 	if err != nil {
-		_ = h.Close()
 		return nil, fmt.Errorf("%w: container: %v", ErrIsolation, err)
 	}
+	h, err := newWindowsProcessHost(root, executable, c.jobName)
+	if err != nil {
+		_ = c.close()
+		if c.lock != nil {
+			_ = c.lock.Close()
+		}
+		return nil, err
+	}
+
 	h.platform.container = c
 	h.group = c.directory
 	h.executable = filepath.Join(c.directory, "worker.exe")
@@ -50,32 +59,41 @@ func NewWindowsRestrictedHost(root, executable string) (*ProcessHost, error) {
 }
 
 func prepareContainer(root, executable string) (*appContainer, error) {
-	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return nil, err
-	}
-	name, err := windows.UTF16PtrFromString(fmt.Sprintf("Space.P1.%x", nonce))
+	c, err := beginContainer(root)
 	if err != nil {
 		return nil, err
 	}
-	c := &appContainer{name: name, policy: 1}
-	result, _, _ := createProfile.Call(uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(name)), 0, 0, uintptr(unsafe.Pointer(&c.sid)))
-	if int32(result) < 0 {
-		return nil, fmt.Errorf("CreateAppContainerProfile: %#x", result)
+	if err := c.create(); err != nil {
+		_ = c.close()
+		if c.lock != nil {
+			_ = c.lock.Close()
+		}
+		return nil, err
 	}
+
 	if err := c.stage(root, executable); err != nil {
 		_ = c.close()
+		if c.lock != nil {
+			_ = c.lock.Close()
+		}
 		return nil, err
 	}
 	return c, nil
 }
 
+func (c *appContainer) create() error {
+	result, _, _ := createProfile.Call(uintptr(unsafe.Pointer(c.name)), uintptr(unsafe.Pointer(c.name)), uintptr(unsafe.Pointer(c.name)), 0, 0, uintptr(unsafe.Pointer(&c.sid)))
+	if int32(result) < 0 {
+		return fmt.Errorf("CreateAppContainerProfile: %#x", result)
+	}
+	return nil
+}
+
 func (c *appContainer) stage(root, executable string) error {
-	directory, err := os.MkdirTemp(root, "lpac-")
-	if err != nil {
+	directory := c.directory
+	if err := os.Mkdir(directory, 0700); err != nil {
 		return err
 	}
-	c.directory = directory
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
 		return err
@@ -122,18 +140,19 @@ func (c *appContainer) close() error {
 	if c == nil {
 		return nil
 	}
-	if c.name != nil {
-		result, _, _ := deleteProfile.Call(uintptr(unsafe.Pointer(c.name)))
-		if int32(result) < 0 {
-			return fmt.Errorf("DeleteAppContainerProfile: %#x", result)
-		}
-		c.name = nil
+	if err := c.clean(); err != nil {
+		return err
 	}
 	if c.sid != nil {
 		_ = windows.FreeSid(c.sid)
 		c.sid = nil
 	}
-	return os.RemoveAll(c.directory)
+	if c.lock != nil {
+		err := c.lock.Close()
+		c.lock = nil
+		return err
+	}
+	return nil
 }
 
 func (c *appContainer) attributes(list *windows.ProcThreadAttributeListContainer) error {

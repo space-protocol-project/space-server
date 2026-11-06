@@ -204,3 +204,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Дополнение E03: [проверка LPAC pipe-сервера до отправки запроса](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Подставной сервер, неверная сессия и неверное подтверждение отвергаются без передачи данных запроса; проверено занятие имени endpoint.
 
 Дополнение E03: [отключение отдельного LPAC-канала без остановки worker](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Старый handle и непрочитанный ответ недоступны после отключения; второй канал того же процесса продолжает обмен. Связь с разрешениями приложения остаётся отдельным этапом.
+
+Дополнение E03: [отзыв LPAC-канала при незавершённом чтении](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Подтверждено ожидание I/O до отключения, завершение без данных и продолжение работы второго канала в том же процессе; поколения разрешений остаются отдельным этапом.

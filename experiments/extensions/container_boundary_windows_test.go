@@ -62,7 +62,9 @@ func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, inpu
 	}
 	defer pipes.close()
 	handles := pipes.child
-	handles[2] = handle
+	if handle != 0 {
+		handles[2] = handle
+	}
 	process, err := createContained(h.executable, h.group, [2]windows.Handle{h.platform.job, job}, handles, h.platform.container)
 	pipes.closeChild()
 	if err != nil {
@@ -79,7 +81,29 @@ func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, inpu
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return exchangeProcess(ctx, process.Process, job, pipes, input)
+	return boundaryExchange(t, ctx, process.Process, job, pipes, input)
+}
+
+func boundaryExchange(t *testing.T, ctx context.Context, process, job windows.Handle, pipes *workerPipes, input []byte) ([]byte, error) {
+	t.Helper()
+	stdout, stderr := &cappedOutput{limit: MaxJSON}, &cappedOutput{limit: 4096}
+	stop := func() { _ = windows.TerminateJobObject(job, 1) }
+	stdout.onOverflow, stderr.onOverflow = stop, stop
+	done := pipes.exchange(input, stdout, stderr)
+	err := waitProcess(ctx, process)
+	if failure := stopJob(job); failure != nil {
+		t.Fatal(failure)
+	}
+	if failure := drainPipes(done); failure != nil {
+		t.Fatal(failure)
+	}
+	if len(stderr.data) != 0 {
+		t.Logf("worker stderr: %s", stderr.data)
+	}
+	if stdout.exceeded || stderr.exceeded {
+		return nil, ErrQuota
+	}
+	return stdout.data, err
 }
 
 func TestWindowsRestrictedHandleAllowlist(t *testing.T) {
@@ -107,7 +131,8 @@ func TestWindowsRestrictedHandleAllowlist(t *testing.T) {
 			output, err := runWithFileHandle(t, h, handle, boundaryInput(t, request))
 			decodeBoundary(t, h, output, err, &result)
 		} else {
-			boundaryRun(t, h, request, &result)
+			output, err := runWithFileHandle(t, h, 0, boundaryInput(t, request))
+			decodeBoundary(t, h, output, err, &result)
 		}
 		if result.SameFile != allowed {
 			t.Fatalf("allowlisted=%v result=%+v", allowed, result)

@@ -32,14 +32,10 @@ func boundaryProbe(raw []byte) bool {
 			"same_file": err == nil && info.VolumeSerialNumber == request.Volume && info.FileIndexHigh == request.High && info.FileIndexLow == request.Low,
 		}
 	case "files":
-		data, err := os.ReadFile(request.File)
-		if err == nil && string(data) != "secret" {
-			err = fmt.Errorf("Неожиданное содержимое")
-		}
 		result = map[string]accessResult{
-			"read":   resultOf(err),
-			"write":  resultOf(os.WriteFile(request.File, []byte("tampered"), 0600)),
-			"create": resultOf(os.WriteFile(filepath.Join(request.Directory, "created"), []byte("tampered"), 0600)),
+			"read":   resultOf(nativeFile(request.File, false, windows.OPEN_EXISTING)),
+			"write":  resultOf(nativeFile(request.File, true, windows.OPEN_EXISTING)),
+			"create": resultOf(nativeFile(filepath.Join(request.Directory, "created"), true, windows.CREATE_NEW)),
 		}
 	default:
 		return false
@@ -48,4 +44,39 @@ func boundaryProbe(raw []byte) bool {
 		os.Exit(3)
 	}
 	return true
+}
+
+func nativeFile(path string, write bool, disposition uint32) error {
+	pointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	access := uint32(windows.GENERIC_READ)
+	if write {
+		access = windows.GENERIC_WRITE
+	}
+	handle, err := windows.CreateFile(pointer, access, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, disposition, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(handle)
+	var count uint32
+	if write {
+		data := []byte("tampered")
+		if err := windows.WriteFile(handle, data, &count, nil); err != nil {
+			return err
+		}
+		if count != uint32(len(data)) {
+			return fmt.Errorf("Неполная запись")
+		}
+		return nil
+	}
+	var data [16]byte
+	if err := windows.ReadFile(handle, data[:], &count, nil); err != nil {
+		return err
+	}
+	if string(data[:count]) != "secret" {
+		return fmt.Errorf("Неожиданное содержимое")
+	}
+	return nil
 }

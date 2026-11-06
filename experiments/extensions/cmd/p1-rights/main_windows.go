@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -31,16 +32,23 @@ func main() {
 	_, readErr := os.ReadFile(request.File)
 	writeErr := os.WriteFile(request.File, []byte("tampered"), 0600)
 	createErr := os.WriteFile(request.Directory+"\\created", []byte("tampered"), 0600)
+	var winsock windows.WSAData
+	startupErr := windows.WSAStartup(0x202, &winsock)
+	if startupErr == nil {
+		defer windows.WSACleanup()
+	}
 	connection, networkErr := net.DialTimeout("tcp", request.Address, time.Second)
 	if connection != nil {
 		connection.Close()
 	}
 	result := map[string]any{
-		"app_container":  tokenFlag(29),
-		"read_denied":    errors.Is(readErr, os.ErrPermission),
-		"write_denied":   errors.Is(writeErr, os.ErrPermission),
-		"create_denied":  errors.Is(createErr, os.ErrPermission),
-		"network_denied": errors.Is(networkErr, windows.WSAEACCES),
+		"app_container":     tokenFlag(29),
+		"read_denied":       errors.Is(readErr, os.ErrPermission),
+		"write_denied":      errors.Is(writeErr, os.ErrPermission),
+		"create_denied":     errors.Is(createErr, os.ErrPermission),
+		"network_denied":    errors.Is(networkErr, windows.WSAEACCES),
+		"network_connected": networkErr == nil,
+		"winsock_startup":   fmt.Sprint(startupErr),
 	}
 	if networkErr != nil {
 		result["network_error"] = networkErr.Error()

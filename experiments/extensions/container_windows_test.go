@@ -72,6 +72,28 @@ func TestWindowsRestrictedRights(t *testing.T) {
 	connection.Close()
 	request, _ := json.Marshal(map[string]string{"File": file, "Directory": directory, "Address": listener.Addr().String()})
 	input, _ := json.Marshal(workerRequest{Request: request})
+	control, err := NewProcessHost(t.TempDir(), os.Getenv("P1_RIGHTS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer control.Close()
+	controlCtx, controlCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer controlCancel()
+	baseline, err := control.run(controlCtx, input)
+	if err != nil {
+		t.Fatalf("control: %s %v", baseline, err)
+	}
+	var normal map[string]any
+	if json.Unmarshal(baseline, &normal) != nil || normal["network_connected"] != true || normal["app_container"] != float64(0) {
+		t.Fatalf("control: %s", baseline)
+	}
+	if err := os.WriteFile(file, []byte("secret"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(directory, "created")); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("control: %s", baseline)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	raw, err := h.run(ctx, input)
@@ -82,10 +104,13 @@ func TestWindowsRestrictedRights(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"read_denied", "write_denied", "create_denied", "network_denied"} {
+	for _, name := range []string{"read_denied", "write_denied", "create_denied"} {
 		if result[name] != true {
 			t.Fatalf("%s: %s", name, raw)
 		}
+	}
+	if result["network_connected"] != false || result["network_error"] == nil {
+		t.Fatal(string(raw))
 	}
 	if result["app_container"] != float64(1) {
 		t.Fatal(string(raw))

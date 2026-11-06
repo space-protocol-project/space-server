@@ -31,7 +31,7 @@ func TestWindowsRestrictedRecoveryHelper(t *testing.T) {
 			t.Fatal(failure)
 		}
 		c = h.platform.container
-		input, _ := json.Marshal(workerRequest{Request: []byte(`"child"`)})
+		input, _ := json.Marshal(workerRequest{Request: []byte(`"hang"`)})
 		go func() {
 			output, err := h.run(context.Background(), input)
 			// Нельзя скрывать досрочное завершение worker в аварийном тесте.

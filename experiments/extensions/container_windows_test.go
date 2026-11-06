@@ -163,20 +163,27 @@ func TestWindowsRestrictedMemory(t *testing.T) {
 	t.Log(string(raw))
 }
 
-func TestWindowsRestrictedTree(t *testing.T) {
+func TestWindowsRestrictedChildDenied(t *testing.T) {
 	h := restrictedHost(t, "P1_PRESSURE")
 	input, _ := json.Marshal(workerRequest{Request: []byte(`"child"`)})
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	done := make(chan error, 1)
-	go func() { _, err := h.run(ctx, input); done <- err }()
-	pids := waitJobPIDs(t, h.platform.job, 2)
-	cancel()
-	if err := <-done; err == nil {
-		t.Fatal("Отмена не доставлена")
+	raw, err := h.run(ctx, input)
+	if !errors.Is(err, ErrWorker) {
+		t.Fatalf("Ожидался отказ запуска: %s %v", raw, err)
+	}
+	var result struct {
+		Error string
+		Code  uint32
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Code != uint32(windows.ERROR_ACCESS_DENIED) {
+		t.Fatalf("Неожиданная причина отказа: %s", raw)
 	}
 	winEmpty(t, h)
-	t.Logf("Остановлены worker и потомок: %v", pids)
+	t.Logf("child_spawn_denied=true code=%d", result.Code)
 }
 
 func TestWindowsRestrictedPolicy(t *testing.T) {

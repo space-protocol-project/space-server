@@ -63,13 +63,13 @@ func waitRecoveryWorkers(t *testing.T, h *ProcessHost) []uint32 {
 				workers = append(workers, pid)
 			}
 		}
-		if len(workers) == 2 {
-			t.Logf("worker_images=2 job_processes=%d", len(pids))
+		if len(workers) == 1 {
+			t.Logf("worker_images=1 job_processes=%d", len(pids))
 			return workers
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatal("Нет двух настоящих worker в Job")
+	t.Fatal("Нет настоящего worker в Job")
 	return nil
 }
 

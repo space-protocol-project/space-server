@@ -3,10 +3,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"syscall"
 	"time"
 )
 
@@ -54,7 +56,12 @@ func main() {
 		child.Stdin = os.Stdin
 		child.Stdout, child.Stderr = os.Stdout, os.Stderr
 		if err := child.Start(); err != nil {
-			fmt.Printf("child_start_error=%v\n", err)
+			var code syscall.Errno
+			_ = errors.As(err, &code)
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Error string
+				Code  uint32
+			}{err.Error(), uint32(code)})
 			os.Exit(3)
 		}
 		spin()

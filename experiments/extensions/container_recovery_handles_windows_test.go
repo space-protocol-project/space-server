@@ -8,9 +8,70 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+func recoveryJobPIDs(t *testing.T, job windows.Handle) []uint32 {
+	t.Helper()
+	var info struct {
+		Assigned, Count uint32
+		IDs             [64]uintptr
+	}
+	if err := windows.QueryInformationJobObject(job, windows.JobObjectBasicProcessIdList, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil); err != nil {
+		t.Fatal(err)
+	}
+	if info.Count > uint32(len(info.IDs)) {
+		t.Fatal("Переполнение списка процессов")
+	}
+	var pids []uint32
+	for _, id := range info.IDs[:info.Count] {
+		pids = append(pids, uint32(id))
+	}
+	return pids
+}
+
+func recoveryWorkerImage(t *testing.T, pid uint32, executable string) bool {
+	t.Helper()
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	// Снимок Job может содержать уже завершающийся вспомогательный conhost.
+	if err == windows.ERROR_INVALID_PARAMETER {
+		return false
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(handle)
+	var path [32768]uint16
+	size := uint32(len(path))
+	if err := windows.QueryFullProcessImageName(handle, 0, &path[0], &size); err != nil {
+		t.Fatal(err)
+	}
+	return strings.EqualFold(windows.UTF16ToString(path[:size]), executable)
+}
+
+func waitRecoveryWorkers(t *testing.T, h *ProcessHost) []uint32 {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var workers []uint32
+		pids := recoveryJobPIDs(t, h.platform.job)
+		for _, pid := range pids {
+			if recoveryWorkerImage(t, pid, h.executable) {
+				workers = append(workers, pid)
+			}
+		}
+		if len(workers) == 2 {
+			t.Logf("worker_images=2 job_processes=%d", len(pids))
+			return workers
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("Нет двух настоящих worker в Job")
+	return nil
+}
 
 func pinRecoveryProcesses(t *testing.T, pids []uint32, executable string) {
 	t.Helper()

@@ -39,7 +39,7 @@ func TestWindowsRestrictedRecoveryHelper(t *testing.T) {
 			_ = os.WriteFile(os.Getenv("P1_LPAC_MARKER")+".worker-result", data, 0600)
 			fmt.Fprintf(os.Stderr, "LPAC worker завершился до остановки supervisor: %s\n", data)
 		}()
-		workers := waitJobPIDs(t, h.platform.job, 2)
+		workers := waitRecoveryWorkers(t, h)
 		// Удерживаем объекты процессов до смерти supervisor: PID из снимка
 		// Job не является ссылкой, сохраняющей время жизни объекта Windows.
 		pinRecoveryProcesses(t, workers, h.executable)

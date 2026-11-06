@@ -16,6 +16,7 @@ type pipeExchangeRequest struct {
 	Mode, Pipe               string
 	ServerPID, ServerSession uint32
 	Nonce                    []byte
+	Async                    bool
 }
 
 func pipeExchangeProbe(raw []byte) bool {
@@ -48,7 +49,11 @@ func openVerifiedPipe(request pipeExchangeRequest) (windows.Handle, error) {
 		return 0, err
 	}
 	access := uint32(windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE)
-	handle, err := windows.CreateFile(pointer, access, 0, nil, windows.OPEN_EXISTING, windows.SECURITY_SQOS_PRESENT|windows.SECURITY_IDENTIFICATION, 0)
+	flags := uint32(windows.SECURITY_SQOS_PRESENT | windows.SECURITY_IDENTIFICATION)
+	if request.Async {
+		flags |= windows.FILE_FLAG_OVERLAPPED
+	}
+	handle, err := windows.CreateFile(pointer, access, 0, nil, windows.OPEN_EXISTING, flags, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -90,7 +95,13 @@ func verifyPipeServer(handle windows.Handle, request pipeExchangeRequest) error 
 	}
 	var nonce [16]byte
 	var count uint32
-	if err := windows.ReadFile(handle, nonce[:], &count, nil); err != nil {
+	var err error
+	if request.Async {
+		count, err = asyncPipeIO(handle, nonce[:], false)
+	} else {
+		err = windows.ReadFile(handle, nonce[:], &count, nil)
+	}
+	if err != nil {
 		return err
 	}
 	if count != uint32(len(nonce)) || subtle.ConstantTimeCompare(nonce[:], request.Nonce) != 1 {

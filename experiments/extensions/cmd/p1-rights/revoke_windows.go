@@ -14,6 +14,7 @@ type pipeRevokeResult struct {
 	Read, Write, Reopen accessResult
 	ReadBytes           uint32
 	PID                 int
+	Pending             bool
 }
 
 func pipeRevokeProbe(raw []byte) bool {
@@ -24,7 +25,11 @@ func pipeRevokeProbe(raw []byte) bool {
 	if json.Unmarshal(raw, &request) != nil || request.Mode != "pipe-revoke" {
 		return false
 	}
-	result, err := revokeNamedPipe(request.pipeExchangeRequest, request.Control)
+	run := revokeNamedPipe
+	if request.Async {
+		run = revokePendingPipe
+	}
+	result, err := run(request.pipeExchangeRequest, request.Control)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(4)

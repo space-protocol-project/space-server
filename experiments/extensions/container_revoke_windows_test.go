@@ -39,7 +39,7 @@ func sendRevocationPong(t *testing.T, pipe windows.Handle) {
 	}
 }
 
-func requireRevocationResult(t *testing.T, done <-chan pipeWorkerResult, pid uint32) {
+func requireRevocationResult(t *testing.T, done <-chan pipeWorkerResult, pid uint32, pending bool) {
 	t.Helper()
 	result := awaitPipeClient(t, done)
 	if result.err != nil {
@@ -49,11 +49,12 @@ func requireRevocationResult(t *testing.T, done <-chan pipeWorkerResult, pid uin
 		Read, Write, Reopen resourceResult
 		ReadBytes           uint32
 		PID                 uint32
+		Pending             bool
 	}
 	if err := json.Unmarshal(result.output, &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.PID != pid || response.ReadBytes != 0 {
+	if response.PID != pid || response.ReadBytes != 0 || response.Pending != pending {
 		t.Fatal("Изменился процесс или прочитаны отозванные данные", string(result.output))
 	}
 	for name, access := range map[string]resourceResult{"read": response.Read, "write": response.Write} {
@@ -64,10 +65,10 @@ func requireRevocationResult(t *testing.T, done <-chan pipeWorkerResult, pid uin
 	if response.Reopen.Allowed || response.Reopen.Code != uint32(windows.ERROR_PIPE_BUSY) {
 		t.Fatal("Отозванный endpoint доступен", string(result.output))
 	}
-	t.Logf("same_pid=%d read_bytes=0 old_handle_read=%d old_handle_write=%d reopen=%d control_survived=true", pid, response.Read.Code, response.Write.Code, response.Reopen.Code)
+	t.Logf("same_pid=%d read_bytes=0 old_handle_read=%d old_handle_write=%d reopen=%d control_survived=true pending_read=%v", pid, response.Read.Code, response.Write.Code, response.Reopen.Code, response.Pending)
 }
 
-func revokeProfilePipe(t *testing.T, buffered bool) {
+func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	h := restrictedHost(t, "P1_RIGHTS")
 	a, b := newProfileIPC(t, h), newProfileIPC(t, h)
 	launch := prepareProfileClient(t, h)
@@ -75,7 +76,7 @@ func revokeProfilePipe(t *testing.T, buffered bool) {
 	defer windows.CloseHandle(data)
 	control := b.openServerFlags(t, windows.FILE_FLAG_OVERLAPPED)
 	defer windows.CloseHandle(control)
-	cancel, done := launch.startRequest(t, map[string]any{"Mode": "pipe-revoke", "Pipe": a.pipeLocal, "Control": b.pipeLocal})
+	cancel, done := launch.startRequest(t, map[string]any{"Mode": "pipe-revoke", "Pipe": a.pipeLocal, "Control": b.pipeLocal, "Async": pending})
 	defer cancel()
 	acceptRevocationPipe(t, h, data, launch)
 	sendRevocationPong(t, data)
@@ -98,12 +99,13 @@ func revokeProfilePipe(t *testing.T, buffered bool) {
 		t.Fatal("Другой канал потерял клиент", pid, err)
 	}
 	sendRevocationPong(t, control)
-	requireRevocationResult(t, done, launch.process.ProcessId)
+	requireRevocationResult(t, done, launch.process.ProcessId, pending)
 	winEmpty(t, h)
 	t.Logf("buffered_response_discarded=%v job_termination_used=false", buffered)
 }
 
 func TestWindowsRestrictedPipeRevocation(t *testing.T) {
-	t.Run("idle", func(t *testing.T) { revokeProfilePipe(t, false) })
-	t.Run("buffered-response", func(t *testing.T) { revokeProfilePipe(t, true) })
+	t.Run("idle", func(t *testing.T) { revokeProfilePipe(t, false, false) })
+	t.Run("buffered-response", func(t *testing.T) { revokeProfilePipe(t, true, false) })
+	t.Run("pending-read", func(t *testing.T) { revokeProfilePipe(t, false, true) })
 }

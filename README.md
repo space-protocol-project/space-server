@@ -216,3 +216,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Проверка транспорта P1: [гонки отзыва доступа при Connect-отправке по TLS и HTTP/2](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-TLS.md). Рабочее подключение и прежний gRPC-мост остаются отдельными этапами.
 
 Продолжение транспорта P1: [отмена HTTP/2-потока, обрыв записи и освобождение SQL-блокировок](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-FAILURES.md).
+
+Проверка транспорта P1: [медленный HTTP/2-получатель, окно потока и независимые параллельные запросы](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-FLOW.md).

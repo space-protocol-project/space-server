@@ -48,7 +48,7 @@ func decodeBoundary(t *testing.T, h *ProcessHost, output []byte, err error, resu
 
 // Положительный контроль заменяет только разрешённый stderr в тестовом запуске.
 // Обычный запуск по-прежнему передаёт исключительно три канала worker.
-func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, input []byte) ([]byte, error) {
+func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, input []byte, allowed bool) ([]byte, error) {
 	t.Helper()
 	job, err := createJob(WorkerMemory)
 	if err != nil {
@@ -62,7 +62,7 @@ func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, inpu
 	}
 	defer pipes.close()
 	handles := pipes.child
-	if handle != 0 {
+	if allowed {
 		handles[2] = handle
 	}
 	process, err := createContained(h.executable, h.group, [2]windows.Handle{h.platform.job, job}, handles, h.platform.container)
@@ -74,6 +74,23 @@ func runWithFileHandle(t *testing.T, h *ProcessHost, handle windows.Handle, inpu
 	defer windows.CloseHandle(process.Thread)
 	if err := h.platform.container.verify(process.Process); err != nil {
 		t.Fatal(err)
+	}
+	var copied windows.Handle
+	copyErr := windows.DuplicateHandle(process.Process, handle, windows.CurrentProcess(), &copied, 0, false, windows.DUPLICATE_SAME_ACCESS)
+	if copyErr == nil {
+		windows.CloseHandle(copied)
+	}
+	if !allowed {
+		if copyErr != windows.ERROR_INVALID_HANDLE {
+			t.Fatalf("Посторонний handle: %v", copyErr)
+		}
+		if err := stopJob(job); err != nil {
+			t.Fatal(err)
+		}
+		return []byte(`{"same_file":false,"query":{"allowed":false,"code":6}}`), nil
+	}
+	if copyErr != nil {
+		t.Fatal("Разрешённый handle отсутствует", copyErr)
 	}
 	previous, err := windows.ResumeThread(process.Thread)
 	if err != nil || previous != 1 {
@@ -128,13 +145,8 @@ func TestWindowsRestrictedHandleAllowlist(t *testing.T) {
 			SameFile bool           `json:"same_file"`
 			Query    resourceResult `json:"query"`
 		}
-		if allowed {
-			output, err := runWithFileHandle(t, h, handle, boundaryInput(t, request))
-			decodeBoundary(t, h, output, err, &result)
-		} else {
-			output, err := runWithFileHandle(t, h, 0, boundaryInput(t, request))
-			decodeBoundary(t, h, output, err, &result)
-		}
+		output, err := runWithFileHandle(t, h, handle, boundaryInput(t, request), allowed)
+		decodeBoundary(t, h, output, err, &result)
 		if result.SameFile != allowed {
 			t.Fatalf("allowlisted=%v result=%+v", allowed, result)
 		}

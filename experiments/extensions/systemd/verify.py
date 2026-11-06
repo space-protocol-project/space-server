@@ -88,6 +88,11 @@ def smoke():
                     'stop_state': stopped['ActiveState'], 'stop_result': stopped['Result']})
 
 
+def state_when(expected):
+    current = state()
+    return current if current['ActiveState'] == expected else None
+
+
 def crash(stage):
     reset()
     override('ExecStart=/opt/space-p1/isolation.test -test.run=^TestServiceHelper$ -test.timeout=90s\n'
@@ -96,9 +101,10 @@ def crash(stage):
              'P1_WORKER=/opt/space-p1/p1-worker P1_PRESSURE=/opt/space-p1/p1-pressure\n')
     ctl('start', '--no-block', UNIT)
     old = wait(lambda: status() if status().get('phase') == stage else None, 'барьер аварии')
-    current = state()
     expected = 'active' if stage == 'running' else 'activating'
-    assert current['ActiveState'] == expected, current
+    # Файл барьера и обработка READY=1 менеджером systemd независимы.
+    # Авария должна происходить только после наблюдения нужного состояния.
+    current = wait(lambda: state_when(expected), f'состояние {expected}')
     root = Path('/sys/fs/cgroup') / current['ControlGroup'].lstrip('/')
     pids = processes(root)
     assert old['pid'] in pids

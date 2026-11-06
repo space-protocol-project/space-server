@@ -187,4 +187,6 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 
 Продолжение E03: [проверка подписи и целостности образа перед запуском macOS VM](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-MACOS-IMAGE.md). Релиз отложен до завершения согласованного плана; E03 и P1 остаются открытыми.
 
-Продолжение E03: [отдельный прототип Windows LPAC без capabilities](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-LPAC.md). Рабочее приложение пока не переключено на этот профиль; аварийная очистка и расширенная проверка прав остаются открытыми.
+Продолжение E03: [отдельный прототип Windows LPAC без capabilities](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-LPAC.md). Рабочее приложение пока не переключено на этот профиль; расширенная проверка прав остаётся открытой.
+
+Продолжение E03: [журнал и восстановление Windows LPAC после аварии supervisor](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-RECOVERY.md); очистка профиля и временного executable перед повторным запуском, отказ повреждённому состоянию.

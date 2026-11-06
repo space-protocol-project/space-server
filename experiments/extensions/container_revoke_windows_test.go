@@ -4,6 +4,8 @@ package extensions
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 
 	"golang.org/x/sys/windows"
@@ -81,14 +83,22 @@ func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	acceptRevocationPipe(t, h, data, launch)
 	sendRevocationPong(t, data)
 	acceptRevocationPipe(t, h, control, launch)
+	grant := newDeliveryGrant(pipeDeliveryWriter(t, data), func() error { return windows.DisconnectNamedPipe(data) })
+	prepared, err := grant.prepare([]byte("data"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if buffered {
-		if count, err := profilePipeIO(t, data, []byte("data"), true); err != nil || count != 4 {
-			t.Fatal("Не подготовлены непрочитанные данные", count, err)
+		if err := grant.deliver(prepared); err != nil {
+			t.Fatal("Не подготовлены непрочитанные данные", err)
 		}
 	}
 	// Не меняем DACL и не завершаем Job: разрывается только этот экземпляр.
-	if err := windows.DisconnectNamedPipe(data); err != nil {
+	if err := grant.revoke(); err != nil {
 		t.Fatal(err)
+	}
+	if !errors.Is(grant.deliver(prepared), errDeliveryRevoked) {
+		t.Fatal("Подготовленный ответ отправлен после отзыва")
 	}
 	sendRevocationPong(t, control)
 	receiveRevocationPing(t, control)
@@ -98,10 +108,37 @@ func revokeProfilePipe(t *testing.T, buffered, pending bool) {
 	if pid, err := verifyPipeClient(h, control); err != nil || pid != launch.process.ProcessId {
 		t.Fatal("Другой канал потерял клиент", pid, err)
 	}
-	sendRevocationPong(t, control)
+	// Новое поколение использует другой, уже проверенный канал того же worker.
+	if err := grant.renew(pipeDeliveryWriter(t, control), func() error { return windows.DisconnectNamedPipe(control) }); err != nil {
+		t.Fatal(err)
+	}
+	if !errors.Is(grant.deliver(prepared), errDeliveryRevoked) {
+		t.Fatal("Старый ответ отправлен по новому каналу")
+	}
+	fresh, err := grant.prepare([]byte("pong"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := grant.deliver(fresh); err != nil {
+		t.Fatal(err)
+	}
 	requireRevocationResult(t, done, launch.process.ProcessId, pending)
 	winEmpty(t, h)
-	t.Logf("buffered_response_discarded=%v job_termination_used=false", buffered)
+	t.Logf("buffered_response_discarded=%v job_termination_used=false stale_generation_denied=true renewed_delivery=true", buffered)
+}
+
+func pipeDeliveryWriter(t *testing.T, pipe windows.Handle) func([]byte) error {
+	t.Helper()
+	return func(body []byte) error {
+		count, err := profilePipeIO(t, pipe, body, true)
+		if err != nil {
+			return err
+		}
+		if count != uint32(len(body)) {
+			return fmt.Errorf("Неполный ответ: %d/%d", count, len(body))
+		}
+		return nil
+	}
 }
 
 func TestWindowsRestrictedPipeRevocation(t *testing.T) {

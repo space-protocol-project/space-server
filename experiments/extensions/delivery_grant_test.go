@@ -13,7 +13,11 @@ func TestDeliveryGeneration(t *testing.T) {
 	close := func() error { return nil }
 	g := newDeliveryGrant(write, close)
 	body := []byte("ready")
-	old, err := g.prepare(body)
+	call, err := g.begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := g.prepare(call, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +32,7 @@ func TestDeliveryGeneration(t *testing.T) {
 	if err := g.revoke(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := g.prepare(body); !errors.Is(err, errDeliveryRevoked) {
+	if _, err := g.prepare(call, body); !errors.Is(err, errDeliveryRevoked) {
 		t.Fatal(err)
 	}
 	if err := g.renew(write, close); err != nil {
@@ -37,7 +41,11 @@ func TestDeliveryGeneration(t *testing.T) {
 	if !errors.Is(g.deliver(old), errDeliveryRevoked) {
 		t.Fatal("Старое поколение ожило")
 	}
-	fresh, err := g.prepare([]byte("fresh"))
+	freshCall, err := g.begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := g.prepare(freshCall, []byte("fresh"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +61,8 @@ func TestDeliveryRevokeFailure(t *testing.T) {
 	failure := errors.New("transport failure")
 	write := func([]byte) error { return nil }
 	g := newDeliveryGrant(write, func() error { return failure })
-	p, _ := g.prepare([]byte("ready"))
+	call, _ := g.begin()
+	p, _ := g.prepare(call, []byte("ready"))
 	if !errors.Is(g.revoke(), failure) {
 		t.Fatal("Нет ошибки отключения")
 	}
@@ -75,7 +84,8 @@ func TestDeliveryRevokeFailure(t *testing.T) {
 
 func TestDeliveryWriteFailure(t *testing.T) {
 	g := newDeliveryGrant(func([]byte) error { return errors.New("partial write") }, func() error { return nil })
-	p, _ := g.prepare([]byte("ready"))
+	call, _ := g.begin()
+	p, _ := g.prepare(call, []byte("ready"))
 	if g.deliver(p) == nil {
 		t.Fatal("Нет ошибки записи")
 	}
@@ -90,7 +100,8 @@ func TestDeliveryConcurrentRevoke(t *testing.T) {
 		var events []string
 		appendEvent := func(event string) { mu.Lock(); defer mu.Unlock(); events = append(events, event) }
 		g := newDeliveryGrant(func([]byte) error { appendEvent("write"); return nil }, func() error { appendEvent("revoke"); return nil })
-		p, _ := g.prepare([]byte("ready"))
+		call, _ := g.begin()
+		p, _ := g.prepare(call, []byte("ready"))
 		start := make(chan struct{})
 		written, revoked := make(chan error, 1), make(chan error, 1)
 		go func() { <-start; written <- g.deliver(p) }()

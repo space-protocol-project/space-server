@@ -25,17 +25,50 @@ type preparedDelivery struct {
 	body       []byte
 }
 
+// Снимок выдаётся доверенному исполнителю до начала вычисления, не гостю.
+type deliveryCall struct {
+	owner      *deliveryGrant
+	generation uint64
+}
+
 func newDeliveryGrant(write func([]byte) error, disconnect func() error) *deliveryGrant {
 	return &deliveryGrant{generation: 1, active: true, write: write, disconnect: disconnect}
 }
 
-func (g *deliveryGrant) prepare(body []byte) (preparedDelivery, error) {
+func (g *deliveryGrant) begin() (deliveryCall, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !g.active || len(body) > 65536 {
+	if !g.active {
+		return deliveryCall{}, errDeliveryRevoked
+	}
+	return deliveryCall{g, g.generation}, nil
+}
+
+func (g *deliveryGrant) prepare(call deliveryCall, body []byte) (preparedDelivery, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !g.active || call.owner != g || call.generation != g.generation || len(body) > 65536 {
 		return preparedDelivery{}, errDeliveryRevoked
 	}
 	return preparedDelivery{g, g.generation, bytes.Clone(body)}, nil
+}
+
+// Вычисление не удерживает mutex: отзыв не ждёт его завершения. Этот адаптер
+// не разрешает побочные эффекты: транзакционные команды требуют COMMIT-барьера.
+func (g *deliveryGrant) invoke(compute func() ([]byte, error)) error {
+	call, err := g.begin()
+	if err != nil {
+		return err
+	}
+	body, err := compute()
+	if err != nil {
+		return err
+	}
+	prepared, err := g.prepare(call, body)
+	if err != nil {
+		return err
+	}
+	return g.deliver(prepared)
 }
 
 func (g *deliveryGrant) deliver(p preparedDelivery) error {

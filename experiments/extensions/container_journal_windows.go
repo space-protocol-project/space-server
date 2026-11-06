@@ -21,6 +21,8 @@ import (
 
 const containerJournal = "lpac-state.json"
 
+var openContainerJob = windows.NewLazySystemDLL("kernel32.dll").NewProc("OpenJobObjectW")
+
 type containerIntent struct {
 	Version int    `json:"version"`
 	Root    string `json:"root"`
@@ -156,13 +158,15 @@ func beginLockedContainer(root string) (*appContainer, error) {
 
 // Именованный Job позволяет дождаться старого дерева до удаления профиля.
 func (c *appContainer) stopRecordedJob() error {
-	job, err := windows.OpenJobObject(windows.JOB_OBJECT_QUERY|windows.JOB_OBJECT_TERMINATE, false, c.jobName)
-	if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) {
+	// JOB_OBJECT_QUERY (0x4) | JOB_OBJECT_TERMINATE (0x8), без наследования.
+	handle, _, err := openContainerJob.Call(0x4|0x8, 0, uintptr(unsafe.Pointer(c.jobName)))
+	if handle == 0 && errors.Is(err, windows.ERROR_FILE_NOT_FOUND) {
 		return nil
 	}
-	if err != nil {
+	if handle == 0 {
 		return err
 	}
+	job := windows.Handle(handle)
 	defer windows.CloseHandle(job)
 	return stopJob(job)
 }

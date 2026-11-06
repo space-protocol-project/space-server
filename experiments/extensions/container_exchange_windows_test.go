@@ -44,16 +44,15 @@ func finishPipeIO(handle windows.Handle, operation *windows.Overlapped, started 
 	return count, err
 }
 
-func connectProfilePipe(t *testing.T, pipe windows.Handle) {
+func connectProfilePipe(t *testing.T, pipe windows.Handle) error {
 	t.Helper()
 	operation := pipeEvent(t)
 	err := windows.ConnectNamedPipe(pipe, &operation)
 	if err == windows.ERROR_PIPE_CONNECTED {
-		return
+		return nil
 	}
-	if _, err := finishPipeIO(pipe, &operation, err); err != nil {
-		t.Fatal(err)
-	}
+	_, err = finishPipeIO(pipe, &operation, err)
+	return err
 }
 
 func profilePipeIO(t *testing.T, pipe windows.Handle, data []byte, write bool) (uint32, error) {
@@ -129,7 +128,11 @@ func profileExchange(t *testing.T, h, other *ProcessHost, cancelCall bool) {
 	defer windows.CloseHandle(pipe)
 	cancel, done := startPipeClient(t, h, f.pipeLocal)
 	defer cancel()
-	connectProfilePipe(t, pipe)
+	if err := connectProfilePipe(t, pipe); err != nil {
+		cancel()
+		result := awaitPipeClient(t, done)
+		t.Fatalf("ConnectNamedPipe: %v; worker=%s err=%v", err, result.output, result.err)
+	}
 	pid, err := verifyPipeClient(h, pipe)
 	if err != nil {
 		t.Fatal("Клиент не подтверждён", err)
@@ -180,9 +183,9 @@ func cancelProfileExchange(t *testing.T, h *ProcessHost, pipe windows.Handle, ca
 		t.Fatal("Чтение не перешло в ожидание", started)
 	}
 	cancel()
-	result := awaitPipeClient(t, done)
 	count, err := finishPipeIO(pipe, &operation, started)
 	runtime.KeepAlive(data)
+	result := awaitPipeClient(t, done)
 	if !errors.Is(result.err, context.Canceled) {
 		t.Fatal("Нет отмены", result.err)
 	}

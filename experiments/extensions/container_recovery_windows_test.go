@@ -5,6 +5,7 @@ package extensions
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,8 +32,18 @@ func TestWindowsRestrictedRecoveryHelper(t *testing.T) {
 		}
 		c = h.platform.container
 		input, _ := json.Marshal(workerRequest{Request: []byte(`"child"`)})
-		go func() { _, _ = h.run(context.Background(), input) }()
-		pids = append(pids, waitJobPIDs(t, h.platform.job, 2)...)
+		go func() {
+			output, err := h.run(context.Background(), input)
+			// Нельзя скрывать досрочное завершение worker в аварийном тесте.
+			data, _ := json.Marshal(struct{ Output, Error string }{string(output), fmt.Sprint(err)})
+			_ = os.WriteFile(os.Getenv("P1_LPAC_MARKER")+".worker-result", data, 0600)
+			fmt.Fprintf(os.Stderr, "LPAC worker завершился до остановки supervisor: %s\n", data)
+		}()
+		workers := waitJobPIDs(t, h.platform.job, 2)
+		// Удерживаем объекты процессов до смерти supervisor: PID из снимка
+		// Job не является ссылкой, сохраняющей время жизни объекта Windows.
+		pinRecoveryProcesses(t, workers)
+		pids = append(pids, workers...)
 	} else {
 		c, err = beginContainer(root)
 		if err != nil {
@@ -98,11 +109,13 @@ func recoveryCrash(t *testing.T, stage string) {
 	}
 	var handles []windows.Handle
 	for _, pid := range pids[1:] {
-		handle, err := windows.OpenProcess(windows.SYNCHRONIZE, false, pid)
+		handle, err := windows.OpenProcess(windows.SYNCHRONIZE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 		if err != nil {
-			t.Fatal(err)
+			result, _ := os.ReadFile(marker + ".worker-result")
+			t.Fatalf("OpenProcess pid=%d: %v; worker=%s", pid, err, result)
 		}
 		t.Cleanup(func() { windows.CloseHandle(handle) })
+		requireRecoveryAlive(t, handle, pid)
 		handles = append(handles, handle)
 	}
 	if err := cmd.Process.Kill(); err != nil {

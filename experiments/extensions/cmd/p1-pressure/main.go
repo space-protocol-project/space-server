@@ -50,6 +50,7 @@ func main() {
 		}
 	case `"child"`:
 		child := exec.Command(os.Args[0], "spin")
+		configureChild(child)
 		child.Stdin = os.Stdin
 		child.Stdout, child.Stderr = os.Stdout, os.Stderr
 		if err := child.Start(); err != nil {

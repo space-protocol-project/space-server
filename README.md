@@ -192,3 +192,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Продолжение E03: [журнал и восстановление Windows LPAC после аварии supervisor](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-RECOVERY.md); очистка профиля и временного executable перед повторным запуском, отказ повреждённому состоянию.
 
 Продолжение E03: [проверки реестра, IPC и сетевых операций Windows LPAC](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-RESOURCES.md). Отказ Winsock отделён от ещё не принятой проверки сетевого фильтра.
+
+Продолжение E03: [наследование handles и файловые границы двух Windows LPAC-профилей](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-HANDLES.md). Полная матрица успешна; единичный сбой прежнего аварийного сценария восстановления остаётся предметом разбора.

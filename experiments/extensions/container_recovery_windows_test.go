@@ -157,7 +157,7 @@ func recoveryCrash(t *testing.T, stage string) {
 	t.Logf("stage=%s old_workers=%d recovered=true healthy=true", stage, len(handles))
 }
 
-func profileSentinel(t *testing.T, c *appContainer) {
+func containerFolder(t *testing.T, c *appContainer) string {
 	t.Helper()
 	sid, err := windows.UTF16PtrFromString(c.sid.String())
 	if err != nil {
@@ -173,6 +173,12 @@ func profileSentinel(t *testing.T, c *appContainer) {
 	if err := os.MkdirAll(folder, 0700); err != nil {
 		t.Fatal(err)
 	}
+	return folder
+}
+
+func profileSentinel(t *testing.T, c *appContainer) {
+	t.Helper()
+	folder := containerFolder(t, c)
 	if err := os.WriteFile(filepath.Join(folder, "recovery-sentinel"), []byte("temporary profile data"), 0600); err != nil {
 		t.Fatal(err)
 	}

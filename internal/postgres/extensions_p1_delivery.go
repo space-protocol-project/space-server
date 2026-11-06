@@ -46,14 +46,14 @@ func (s *ExtensionP1ManagedService) deliverySnapshot(ctx context.Context, instan
 func (s *ExtensionP1ManagedService) checkDelivery(ctx context.Context, instance string) error {
 	before, ok := ctx.Value(extensionDeliveryKey{}).(extensionDeliverySnapshot)
 	if !ok || before.principal.Instance != instance {
-		return denied()
+		return mutationError(codes.PermissionDenied, "delivery_snapshot_required")
 	}
 	after, err := s.deliverySnapshot(ctx, instance, before.write)
 	if err != nil {
 		return err
 	}
 	if after.principal != before.principal {
-		return denied()
+		return mutationError(codes.PermissionDenied, "delivery_authority_changed")
 	}
 	if after != before {
 		return mutationError(codes.FailedPrecondition, "delivery_snapshot_changed")

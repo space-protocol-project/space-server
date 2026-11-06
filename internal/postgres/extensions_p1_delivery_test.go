@@ -82,7 +82,11 @@ func TestExtensionP1DeliveryAuthoritySnapshot(t *testing.T) {
 				f.acl(t, c, roleRule("member", permissions(false, false, false, false)))
 				f.acl(t, c, roleRule("member", permissions(true, true, true, false)))
 			}
-			requireCode(t, s.checkDelivery(call, "demo"), codes.PermissionDenied)
+			expected := codes.PermissionDenied
+			if kind == "logout" {
+				expected = codes.Unauthenticated
+			}
+			requireCode(t, s.checkDelivery(call, "demo"), expected)
 			if kind == "acl-roundtrip" {
 				fresh, finish, err := s.begin(ctx, "demo", false)
 				if err != nil {

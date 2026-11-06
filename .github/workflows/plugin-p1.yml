@@ -187,9 +187,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           go build -o p1-pressure.exe ./cmd/p1-pressure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go build -o p1-rights.exe ./cmd/p1-rights
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:P1_RIGHTS = Join-Path $PWD 'p1-rights.exe'
           $env:P1_WORKER = Join-Path $PWD 'p1-worker.exe'
           $env:P1_PRESSURE = Join-Path $PWD 'p1-pressure.exe'
-          go test -race -count=1 -timeout=120s -json -run '^TestWindowsIsolation' . > windows-isolation.jsonl
+          go test -race -count=1 -timeout=120s -json -run '^TestWindows(Isolation|Restricted)' . > windows-isolation.jsonl
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()

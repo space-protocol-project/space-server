@@ -13,7 +13,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-type processPlatform struct{ job windows.Handle }
+type processPlatform struct {
+	job       windows.Handle
+	container *appContainer
+}
 
 type jobAccounting struct {
 	UserTime, KernelTime, PeriodUser, PeriodKernel               int64
@@ -134,7 +137,7 @@ func (h *ProcessHost) Close() error {
 		return ErrQuota
 	}
 	if !h.ready {
-		return nil
+		return h.platform.container.close()
 	}
 	if err := stopJob(h.platform.job); err != nil {
 		return err
@@ -143,6 +146,7 @@ func (h *ProcessHost) Close() error {
 	if err == nil {
 		h.ready = false
 		h.platform.job = 0
+		err = h.platform.container.close()
 	}
 	return err
 }

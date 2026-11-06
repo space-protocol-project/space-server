@@ -20,12 +20,21 @@ const procThreadAttributeJobList = 0x0002000d
 // Возвращает приостановленный процесс, уже принадлежащий обоим Job.
 // Старого запуска с последующим AssignProcessToJobObject здесь нет.
 func createAssigned(executable, directory string, jobs [2]windows.Handle, handles [3]windows.Handle) (windows.ProcessInformation, error) {
+	return createContained(executable, directory, jobs, handles, nil)
+}
+
+func createContained(executable, directory string, jobs [2]windows.Handle, handles [3]windows.Handle, container *appContainer) (windows.ProcessInformation, error) {
 	var process windows.ProcessInformation
-	attributes, err := windows.NewProcThreadAttributeList(2)
+	attributes, err := windows.NewProcThreadAttributeList(4)
 	if err != nil {
 		return process, err
 	}
 	defer attributes.Delete()
+	if container != nil {
+		if err := container.attributes(attributes); err != nil {
+			return process, err
+		}
+	}
 	if err := attributes.Update(procThreadAttributeJobList, unsafe.Pointer(&jobs[0]), unsafe.Sizeof(jobs)); err != nil {
 		return process, err
 	}
@@ -63,13 +72,19 @@ func (h *ProcessHost) runAssigned(ctx context.Context, input []byte, job windows
 		return nil, ErrIsolation
 	}
 	defer pipes.close()
-	process, err := createAssigned(h.executable, h.group, [2]windows.Handle{h.platform.job, job}, pipes.child)
+	process, err := createContained(h.executable, h.group, [2]windows.Handle{h.platform.job, job}, pipes.child, h.platform.container)
 	pipes.closeChild()
 	if err != nil {
 		return nil, fmt.Errorf("%w: create assigned: %v", ErrIsolation, err)
 	}
 	defer windows.CloseHandle(process.Process)
 	defer windows.CloseHandle(process.Thread)
+	if h.platform.container != nil {
+		if err := h.platform.container.verify(process.Process); err != nil {
+			_ = windows.TerminateJobObject(job, 1)
+			return nil, fmt.Errorf("%w: token: %v", ErrIsolation, err)
+		}
+	}
 	previous, err := windows.ResumeThread(process.Thread)
 	if err != nil || previous != 1 {
 		_ = windows.TerminateJobObject(job, 1)

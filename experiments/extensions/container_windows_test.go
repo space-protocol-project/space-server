@@ -5,6 +5,7 @@ package extensions
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -102,7 +103,7 @@ func TestWindowsRestrictedPressure(t *testing.T) {
 			input, _ := json.Marshal(workerRequest{Request: request})
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
-			if _, err := h.run(ctx, input); err == nil {
+			if _, err := h.run(ctx, input); err == nil || errors.Is(err, ErrIsolation) {
 				t.Fatal("Нет отказа нагрузки")
 			}
 			winEmpty(t, h)

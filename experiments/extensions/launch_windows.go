@@ -53,7 +53,15 @@ func createContained(executable, directory string, jobs [2]windows.Handle, handl
 	if err != nil {
 		return process, err
 	}
-	environment := utf16.Encode([]rune(strings.Join([]string{"GOMAXPROCS=2", "GOMEMLIMIT=64MiB", "SystemRoot=" + os.Getenv("SystemRoot"), "", ""}, "\x00")))
+	values := []string{"GOMAXPROCS=2", "GOMEMLIMIT=64MiB", "SystemRoot=" + os.Getenv("SystemRoot")}
+	if container != nil {
+		local := os.Getenv("LOCALAPPDATA")
+		if local == "" {
+			return process, ErrIsolation
+		}
+		values = append(values, "LOCALAPPDATA="+local)
+	}
+	environment := utf16.Encode([]rune(strings.Join(append(values, "", ""), "\x00")))
 	startup := windows.StartupInfoEx{ProcThreadAttributeList: attributes.List()}
 	startup.Cb = uint32(unsafe.Sizeof(startup))
 	startup.Flags = windows.STARTF_USESTDHANDLES

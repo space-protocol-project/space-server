@@ -5,6 +5,8 @@ permissions:
   contents: read
 jobs:
   image:
+    outputs:
+      public_key: ${{ steps.sign.outputs.public_key }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -18,12 +20,19 @@ jobs:
           go-version-file: experiments/extensions/go.mod
           cache-dependency-path: experiments/extensions/go.sum
       - run: bash macos/build-guest.sh
+      - id: sign
+        name: Подпись тестового образа одноразовым ключом
+        run: |
+          public_key=$(go run ./cmd/p1-image-fixture vm-image "$GITHUB_SHA")
+          echo "public_key=$public_key" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: p1-linux-guest-image
           path: experiments/extensions/vm-image
   guest:
     needs: image
+    env:
+      P1_IMAGE_PUBLIC_KEY: ${{ needs.image.outputs.public_key }}
     runs-on: macos-15-intel
     timeout-minutes: 15
     defaults:
@@ -32,13 +41,19 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
       - uses: actions/download-artifact@v4
         with:
           name: p1-linux-guest-image
           path: experiments/extensions/vm-image
-      - name: Проверка образа и сборка launcher
+      - name: РџСЂРѕРІРµСЂРєР° РѕР±СЂР°Р·Р° Рё СЃР±РѕСЂРєР° launcher
         run: |
           (cd vm-image && shasum -a 256 -c SHA256SUMS)
+          go build -o image-verify ./cmd/p1-image-verify
+          python3 macos/check-image-gate.py
           clang -O2 -Wall -Wextra -Werror macos/process-memory.c -o process-memory
           swiftc macos/guest.swift -framework Virtualization -o guest-launcher
           codesign --force --sign - --entitlements macos/probe.entitlements guest-launcher
@@ -58,3 +73,6 @@ jobs:
             experiments/extensions/vm-image/SHA256SUMS
             experiments/extensions/vm-image/packages.txt
             experiments/extensions/vm-image/kernel-config.txt
+            experiments/extensions/vm-image-trust.json
+            experiments/extensions/vm-image/image.json
+            experiments/extensions/vm-image/image.sig

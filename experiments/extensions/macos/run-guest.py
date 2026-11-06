@@ -3,11 +3,12 @@ import json
 import subprocess
 import time
 from pathlib import Path
+from verified_image import verified_image
 
 samples = []
 started = time.monotonic()
-with open("vm-launcher.log", "w") as log:
-    process = subprocess.Popen(["./guest-launcher", "vm-image/vmlinuz", "vm-image/initramfs.gz", "guest-console.txt"], stdout=log, stderr=log)
+with verified_image() as (snapshot, images), open("vm-launcher.log", "w") as log:
+    process = subprocess.Popen(["./guest-launcher", *images, "guest-console.txt"], stdout=log, stderr=log)
     try:
         while process.poll() is None:
             if time.monotonic() - started > 260:

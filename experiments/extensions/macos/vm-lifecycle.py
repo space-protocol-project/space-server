@@ -5,6 +5,7 @@ from pathlib import Path
 import signal
 import subprocess
 import time
+from verified_image import verified_image
 
 OUT = Path("vm-lifecycle")
 OUT.mkdir(exist_ok=True)
@@ -95,10 +96,11 @@ def run_case(name, target=None):
     console = OUT / (name + "-console.txt")
     record = {"name": name, "target": target, "samples": [], "started": time.monotonic()}
     records.append(record)
-    command = ["./guest-launcher", "vm-image/vmlinuz", "vm-image/initramfs.gz", str(console)]
-    if target:
-        command.append("hold")
-    with (OUT / (name + "-launcher.log")).open("w") as log:
+    with verified_image() as (snapshot, images), (OUT / (name + "-launcher.log")).open("w") as log:
+        record["image"] = {key: snapshot[key] for key in ("manifest_sha256", "arch")}
+        command = ["./guest-launcher", *images, str(console)]
+        if target:
+            command.append("hold")
         launcher = subprocess.Popen(command, stdout=log, stderr=log)
         record["launcher_pid"] = launcher.pid
         try:

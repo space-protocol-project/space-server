@@ -13,8 +13,20 @@ import (
 
 type profileIPC struct {
 	eventName, pipeName string
+	pipeLocal, sid      string
 	event               windows.Handle
 	pipeSD              *windows.SECURITY_DESCRIPTOR
+}
+
+func profileObjectPath(t *testing.T, sid *windows.SID) string {
+	t.Helper()
+	var buffer [1024]uint16
+	var size uint32
+	ok, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetAppContainerNamedObjectPath").Call(0, uintptr(unsafe.Pointer(sid)), uintptr(len(buffer)), uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)))
+	if ok == 0 {
+		t.Fatal("GetAppContainerNamedObjectPath", err)
+	}
+	return windows.UTF16ToString(buffer[:])
 }
 
 func profileObjectSD(t *testing.T, sid *windows.SID, mask uint32) *windows.SECURITY_DESCRIPTOR {
@@ -35,7 +47,8 @@ func profileObjectSD(t *testing.T, sid *windows.SID, mask uint32) *windows.SECUR
 func newProfileIPC(t *testing.T, h *ProcessHost) *profileIPC {
 	t.Helper()
 	name := "SpaceP1IPC-" + rand.Text()
-	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe\LOCAL\` + name}
+	root := profileObjectPath(t, h.platform.container.sid)
+	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe` + root + `\` + name, pipeLocal: `\\.\pipe\LOCAL\` + name, sid: h.platform.container.sid.String()}
 	sd := profileObjectSD(t, h.platform.container.sid, windows.EVENT_MODIFY_STATE|windows.SYNCHRONIZE)
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
 	pointer, err := windows.UTF16PtrFromString(f.eventName)
@@ -74,7 +87,11 @@ func checkProfileIPC(t *testing.T, h *ProcessHost, f *profileIPC, allowed bool) 
 	pipe := f.openServer(t)
 	defer windows.CloseHandle(pipe)
 	var results map[string]resourceResult
-	boundaryRun(t, h, map[string]string{"Mode": "profile-ipc", "Event": f.eventName, "Pipe": f.pipeName}, &results)
+	pipeName := f.pipeName
+	if h.platform.container != nil && h.platform.container.sid.String() == f.sid {
+		pipeName = f.pipeLocal
+	}
+	boundaryRun(t, h, map[string]string{"Mode": "profile-ipc", "Event": f.eventName, "Pipe": pipeName}, &results)
 	if len(results) != 2 {
 		t.Fatal("Неполный результат", results)
 	}

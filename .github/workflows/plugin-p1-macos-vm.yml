@@ -49,7 +49,7 @@ jobs:
         with:
           name: p1-linux-guest-image
           path: experiments/extensions/vm-image
-      - name: РџСЂРѕРІРµСЂРєР° РѕР±СЂР°Р·Р° Рё СЃР±РѕСЂРєР° launcher
+      - name: Проверка образа и сборка launcher
         run: |
           (cd vm-image && shasum -a 256 -c SHA256SUMS)
           go build -o image-verify ./cmd/p1-image-verify

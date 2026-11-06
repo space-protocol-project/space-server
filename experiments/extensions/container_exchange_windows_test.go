@@ -100,16 +100,6 @@ type pipeWorkerResult struct {
 	err    error
 }
 
-func startPipeClient(t *testing.T, h *ProcessHost, name string) (context.CancelFunc, <-chan pipeWorkerResult) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	t.Cleanup(cancel)
-	input := boundaryInput(t, map[string]string{"Mode": "pipe-exchange", "Pipe": name})
-	done := make(chan pipeWorkerResult, 1)
-	go func() { output, err := h.run(ctx, input); done <- pipeWorkerResult{output, err} }()
-	return cancel, done
-}
-
 func awaitPipeClient(t *testing.T, done <-chan pipeWorkerResult) pipeWorkerResult {
 	t.Helper()
 	select {
@@ -124,9 +114,10 @@ func awaitPipeClient(t *testing.T, done <-chan pipeWorkerResult) pipeWorkerResul
 func profileExchange(t *testing.T, h, other *ProcessHost, cancelCall bool) {
 	t.Helper()
 	f := newProfileIPC(t, h)
+	launch := prepareProfileClient(t, h)
 	pipe := f.openServerFlags(t, windows.FILE_FLAG_OVERLAPPED)
 	defer windows.CloseHandle(pipe)
-	cancel, done := startPipeClient(t, h, f.pipeLocal)
+	cancel, done := launch.start(t, f.pipeLocal)
 	defer cancel()
 	if err := connectProfilePipe(t, pipe); err != nil {
 		cancel()

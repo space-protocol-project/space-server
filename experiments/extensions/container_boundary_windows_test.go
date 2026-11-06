@@ -94,11 +94,12 @@ func boundaryExchange(t *testing.T, ctx context.Context, process, job windows.Ha
 	if failure := stopJob(job); failure != nil {
 		t.Fatal(failure)
 	}
-	if failure := drainPipes(done); failure != nil {
-		t.Fatal(failure)
-	}
+	pipeError := drainPipes(done)
 	if len(stderr.data) != 0 {
 		t.Logf("worker stderr: %s", stderr.data)
+	}
+	if pipeError != nil {
+		t.Fatal(pipeError)
 	}
 	if stdout.exceeded || stderr.exceeded {
 		return nil, ErrQuota

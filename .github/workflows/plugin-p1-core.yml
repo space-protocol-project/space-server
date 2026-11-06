@@ -44,7 +44,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(line) for line in Path('.local/p1-core/delivery.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand'):
+          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Delivery'+name for e in events)==5
           PY
           go test -race -json ./internal/postgres -run '^TestExtensionP1RegistryAPI' -count=5 -timeout=8m > .local/p1-core/registry-api.jsonl
@@ -108,7 +108,7 @@ jobs:
           # Миграции/история/группы требуют иных WASM fixtures и принимаются
           # в plugin-p1-publish.yml, plugin-p1-versions.yml, plugin-p1-groups.yml.
           assert not any(e['Action']=='skip' for e in events)
-          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand'):
+          for name in ('RegistrySnapshot', 'AuthoritySnapshot', 'CommittedCommand', 'AdmissionCommit', 'HTTPRevokeFirst', 'HTTPWriteFirst'):
               assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Delivery'+name for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1RealIsolatedWASM' for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1MutationRealWASM' for e in events)

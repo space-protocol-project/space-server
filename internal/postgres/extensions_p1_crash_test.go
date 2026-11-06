@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 )
 
 // Отдельный процесс содержит настоящий Store, executor и gRPC. Только гостевой
@@ -249,21 +248,4 @@ func verifyExtensionCrashData(t *testing.T, f *channelFixture) string {
 		t.Fatal("Данные или событие повреждены", value, event, kind, payload, err)
 	}
 	return event
-}
-
-func verifyExtensionCrashReceipt(t *testing.T, f *channelFixture, response *pb.ExecuteExtensionCommandResponse) {
-	t.Helper()
-	var raw []byte
-	if err := f.store.pool.QueryRow(f.ctx, "SELECT response FROM extension_p1_receipts WHERE instance='demo'").Scan(&raw); err != nil {
-		t.Fatal(err)
-	}
-	saved := new(pb.ExecuteExtensionCommandResponse)
-	if err := proto.Unmarshal(raw, saved); err != nil {
-		t.Fatal(err)
-	}
-	actual := proto.Clone(response).(*pb.ExecuteExtensionCommandResponse)
-	actual.Replayed = false
-	if !proto.Equal(saved, actual) {
-		t.Fatal("Ответ не совпал с сохранённой квитанцией")
-	}
 }

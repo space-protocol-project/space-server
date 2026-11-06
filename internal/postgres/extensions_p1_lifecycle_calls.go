@@ -36,6 +36,9 @@ func (s *ExtensionP1ManagedService) begin(ctx context.Context, instance string, 
 	if err != nil {
 		return nil, nil, mutationError(codes.FailedPrecondition, "extension_not_enabled")
 	}
+	if capture, ok := ctx.Value(extensionWireKey{}).(*extensionWireCapture); ok {
+		capture.snapshot = &snapshot
+	}
 	return context.WithValue(call, extensionDeliveryKey{}, snapshot), release, nil
 }
 

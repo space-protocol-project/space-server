@@ -6,6 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/space-protocol-project/space-server/experiments/extensions/internal/wintoken"
+	"golang.org/x/sys/windows"
 	"net"
 	"os"
 	"path/filepath"
@@ -84,7 +87,7 @@ func TestWindowsRestrictedRights(t *testing.T) {
 			t.Fatalf("%s: %s", name, raw)
 		}
 	}
-	if result["app_container"] != float64(1) || result["lpac"] != float64(1) {
+	if result["app_container"] != float64(1) {
 		t.Fatal(string(raw))
 	}
 	content, err := os.ReadFile(file)
@@ -149,4 +152,48 @@ func TestWindowsRestrictedTree(t *testing.T) {
 	}
 	winEmpty(t, h)
 	t.Logf("Остановлены worker и потомок: %v", pids)
+}
+
+func TestWindowsRestrictedPolicy(t *testing.T) {
+	h := restrictedHost(t, "P1_WORKER")
+	for _, policy := range []uint32{0, 1} {
+		t.Run(fmt.Sprint(policy), func(t *testing.T) { checkPackagePolicy(t, h, policy) })
+	}
+}
+
+func checkPackagePolicy(t *testing.T, h *ProcessHost, policy uint32) {
+	t.Helper()
+	container := *h.platform.container
+	container.policy = policy
+	job, err := createJob(WorkerMemory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(job)
+	defer stopJob(job)
+	pipes, err := newWorkerPipes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pipes.close()
+	process, err := createContained(h.executable, h.group, [2]windows.Handle{h.platform.job, job}, pipes.child, &container)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(process.Process)
+	defer windows.CloseHandle(process.Thread)
+	var token windows.Token
+	if err := windows.OpenProcessToken(process.Process, windows.TOKEN_QUERY|windows.TOKEN_DUPLICATE, &token); err != nil {
+		t.Fatal(err)
+	}
+	defer token.Close()
+	broad, err := wintoken.PackageAccess(token, "S-1-15-2-1")
+	if err != nil || broad != (policy == 0) {
+		t.Fatalf("policy=%d broad=%v err=%v", policy, broad, err)
+	}
+	err = h.platform.container.verify(process.Process)
+	if (err == nil) != (policy == 1) {
+		t.Fatalf("policy=%d verification=%v", policy, err)
+	}
+	t.Logf("policy=%d ALL_APPLICATION_PACKAGES=%v", policy, broad)
 }

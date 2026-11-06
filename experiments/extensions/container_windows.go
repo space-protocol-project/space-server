@@ -22,6 +22,7 @@ type appContainer struct {
 	name      *uint16
 	sid       *windows.SID
 	directory string
+	policy    uint32
 }
 
 type securityCapabilities struct {
@@ -57,7 +58,7 @@ func prepareContainer(root, executable string) (*appContainer, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &appContainer{name: name}
+	c := &appContainer{name: name, policy: 1}
 	result, _, _ := createProfile.Call(uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(name)), uintptr(unsafe.Pointer(name)), 0, 0, uintptr(unsafe.Pointer(&c.sid)))
 	if int32(result) < 0 {
 		return nil, fmt.Errorf("CreateAppContainerProfile: %#x", result)
@@ -141,17 +142,17 @@ func (c *appContainer) attributes(list *windows.ProcThreadAttributeListContainer
 		return err
 	}
 	policy := new(uint32)
-	*policy = 1 // PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT.
+	*policy = c.policy // PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT.
 	return list.Update(0x0002000f, unsafe.Pointer(policy), unsafe.Sizeof(*policy))
 }
 
 func (c *appContainer) verify(process windows.Handle) error {
 	var token windows.Token
-	if err := windows.OpenProcessToken(process, windows.TOKEN_QUERY, &token); err != nil {
+	if err := windows.OpenProcessToken(process, windows.TOKEN_QUERY|windows.TOKEN_DUPLICATE, &token); err != nil {
 		return err
 	}
 	defer token.Close()
-	for _, class := range []uint32{29, 46} { // TokenIsAppContainer, TokenIsLessPrivilegedAppContainer.
+	for _, class := range []uint32{29} { // TokenIsAppContainer.
 		flag, err := wintoken.Flag(token, class)
 		if err != nil {
 			return err
@@ -174,6 +175,14 @@ func (c *appContainer) verify(process windows.Handle) error {
 	}
 	if *(*uint32)(unsafe.Pointer(&buffer[0])) != 0 {
 		return ErrIsolation
+	}
+	own, err := wintoken.PackageAccess(token, c.sid.String())
+	if err != nil || !own {
+		return fmt.Errorf("own package ACL: %v", err)
+	}
+	broad, err := wintoken.PackageAccess(token, "S-1-15-2-1")
+	if err != nil || broad {
+		return fmt.Errorf("ALL APPLICATION PACKAGES ACL: %v", err)
 	}
 	return nil
 }

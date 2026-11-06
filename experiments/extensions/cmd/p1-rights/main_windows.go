@@ -36,7 +36,7 @@ func main() {
 		connection.Close()
 	}
 	result := map[string]any{
-		"app_container": tokenFlag(29), "lpac": tokenFlag(46),
+		"app_container":  tokenFlag(29),
 		"read_denied":    errors.Is(readErr, os.ErrPermission),
 		"write_denied":   errors.Is(writeErr, os.ErrPermission),
 		"create_denied":  errors.Is(createErr, os.ErrPermission),

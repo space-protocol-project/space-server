@@ -49,11 +49,15 @@ func TestWindowsRestrictedRecoveryHelper(t *testing.T) {
 			}
 		}
 		if stage == "cleanup" {
+			profileSentinel(t, c)
 			result, _, _ := deleteProfile.Call(uintptr(unsafe.Pointer(c.name)))
 			if int32(result) < 0 {
 				t.Fatal(result)
 			}
 		}
+	}
+	if stage != "intent" && stage != "cleanup" {
+		profileSentinel(t, c)
 	}
 	data, _ := json.Marshal(pids)
 	if err := os.WriteFile(os.Getenv("P1_LPAC_MARKER"), data, 0600); err != nil {
@@ -123,6 +127,13 @@ func recoveryCrash(t *testing.T, stage string) {
 		}
 	}
 	previous := intentContainer(root, *old)
+	if path, err := os.ReadFile(marker + ".profile"); err == nil {
+		if _, err := os.Stat(string(path)); !os.IsNotExist(err) {
+			t.Fatal("Осталось хранилище профиля", err)
+		}
+	} else if stage != "intent" {
+		t.Fatal(err)
+	}
 	if _, err := os.Stat(previous.directory); !os.IsNotExist(err) {
 		t.Fatal("Остался старый снимок", err)
 	}
@@ -144,6 +155,68 @@ func recoveryCrash(t *testing.T, stage string) {
 		t.Fatal("Журнал не удалён", err)
 	}
 	t.Logf("stage=%s old_workers=%d recovered=true healthy=true", stage, len(handles))
+}
+
+func profileSentinel(t *testing.T, c *appContainer) {
+	t.Helper()
+	sid, err := windows.UTF16PtrFromString(c.sid.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var path *uint16
+	result, _, _ := userenv.NewProc("GetAppContainerFolderPath").Call(uintptr(unsafe.Pointer(sid)), uintptr(unsafe.Pointer(&path)))
+	if int32(result) < 0 {
+		t.Fatal(result)
+	}
+	defer windows.NewLazySystemDLL("ole32.dll").NewProc("CoTaskMemFree").Call(uintptr(unsafe.Pointer(path)))
+	folder := windows.UTF16PtrToString(path)
+	if err := os.MkdirAll(folder, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "recovery-sentinel"), []byte("temporary profile data"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("P1_LPAC_MARKER")+".profile", []byte(folder), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWindowsRestrictedForeignJournal(t *testing.T) {
+	h := restrictedHost(t, "P1_WORKER")
+	raw, err := os.ReadFile(h.platform.container.journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := t.TempDir()
+	if err := os.WriteFile(filepath.Join(other, containerJournal), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if candidate, err := NewWindowsRestrictedHost(other, os.Getenv("P1_WORKER")); err == nil {
+		candidate.Close()
+		t.Fatal("Чужой журнал принят")
+	}
+	winHealthy(t, h)
+}
+
+func TestWindowsRestrictedJournalLink(t *testing.T) {
+	if os.Getenv("P1_WORKER") == "" {
+		t.Skip("Требуется Windows CI")
+	}
+	root := t.TempDir()
+	target := filepath.Join(t.TempDir(), "preserve")
+	if err := os.WriteFile(target, []byte("sentinel"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, containerJournal)); err != nil {
+		t.Fatal(err)
+	}
+	if h, err := NewWindowsRestrictedHost(root, os.Getenv("P1_WORKER")); err == nil {
+		h.Close()
+		t.Fatal("Ссылка вместо журнала принята")
+	}
+	if raw, err := os.ReadFile(target); err != nil || string(raw) != "sentinel" {
+		t.Fatal("Внешний файл изменён", err)
+	}
 }
 
 func TestWindowsRestrictedCorruptJournal(t *testing.T) {

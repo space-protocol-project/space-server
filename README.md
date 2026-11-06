@@ -218,3 +218,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Продолжение транспорта P1: [отмена HTTP/2-потока, обрыв записи и освобождение SQL-блокировок](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-FAILURES.md).
 
 Проверка транспорта P1: [медленный HTTP/2-получатель, окно потока и независимые параллельные запросы](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-FLOW.md).
+
+Продолжение транспорта P1: [общее окно HTTP/2-соединения и два независимых медленных клиента](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-CONNECTION.md).

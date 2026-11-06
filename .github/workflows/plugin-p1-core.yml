@@ -94,7 +94,7 @@ jobs:
             SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
             SPACE_P1_MODULE="$PWD/experiments/extensions/testdata/demo.wasm" \
             SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
-            go test -race -json ./internal/postgres -run '^TestExtensionP1' -count=1 > .local/p1-core/isolated.jsonl
+            go test -race -json ./internal/postgres -run '^TestExtensionP1' -skip '^TestExtensionP1(Group|Publish|Versions)' -count=1 > .local/p1-core/isolated.jsonl
           sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
             SPACE_P1_CRASH_STOP_WORKER=/tmp/space-p1-crash-worker \
             SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
@@ -105,7 +105,11 @@ jobs:
           import json
           from pathlib import Path
           events=[json.loads(line) for line in Path('.local/p1-core/isolated.jsonl').read_text().splitlines()]
+          # Миграции/история/группы требуют иных WASM fixtures и принимаются
+          # в plugin-p1-publish.yml, plugin-p1-versions.yml, plugin-p1-groups.yml.
           assert not any(e['Action']=='skip' for e in events)
+          for name in ('RegistrySnapshot', 'AuthoritySnapshot'):
+              assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Delivery'+name for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1RealIsolatedWASM' for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1MutationRealWASM' for e in events)
           assert any(e['Action']=='pass' and e.get('Test')=='TestExtensionP1LifecycleRealWASM' for e in events)

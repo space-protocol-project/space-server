@@ -5,6 +5,7 @@ package extensions
 import (
 	"crypto/rand"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"unsafe"
@@ -27,7 +28,12 @@ func profileObjectPath(t *testing.T, sid *windows.SID) string {
 	if ok == 0 {
 		t.Fatal("GetAppContainerNamedObjectPath", err)
 	}
-	return windows.UTF16ToString(buffer[:])
+	var session uint32
+	ok, _, err = windows.NewLazySystemDLL("kernel32.dll").NewProc("ProcessIdToSessionId").Call(uintptr(os.Getpid()), uintptr(unsafe.Pointer(&session)))
+	if ok == 0 {
+		t.Fatal("ProcessIdToSessionId", err)
+	}
+	return fmt.Sprintf(`Sessions\%d\%s`, session, windows.UTF16ToString(buffer[:]))
 }
 
 func profileObjectSD(t *testing.T, sid *windows.SID, mask uint32) *windows.SECURITY_DESCRIPTOR {

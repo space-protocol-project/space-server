@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -61,6 +60,12 @@ func TestExtensionP1DeliveryAdmissionCommit(t *testing.T) {
 }
 
 func TestExtensionP1DeliveryHTTPRevokeFirst(t *testing.T) {
+	for _, mode := range deliveryTransportModes {
+		t.Run(mode, func(t *testing.T) { deliveryHTTPRevokeFirst(t, mode) })
+	}
+}
+
+func deliveryHTTPRevokeFirst(t *testing.T, mode string) {
 	for _, kind := range []string{"acl", "logout", "registry"} {
 		t.Run(kind, func(t *testing.T) {
 			f := newChannelFixture(t)
@@ -75,7 +80,7 @@ func TestExtensionP1DeliveryHTTPRevokeFirst(t *testing.T) {
 			managedChange(t, f, s, "enable", 1)
 			ready, resume := make(chan struct{}), make(chan struct{})
 			inner := s.deliveryMux()
-			server := httptest.NewServer(s.deliveryHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := newDeliveryTestServer(t, mode, s.deliveryHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				inner.ServeHTTP(w, r)
 				close(ready)
 				select {
@@ -124,6 +129,12 @@ func TestExtensionP1DeliveryHTTPRevokeFirst(t *testing.T) {
 }
 
 func TestExtensionP1DeliveryHTTPCommittedRevoke(t *testing.T) {
+	for _, mode := range deliveryTransportModes {
+		t.Run(mode, func(t *testing.T) { deliveryHTTPCommittedRevoke(t, mode) })
+	}
+}
+
+func deliveryHTTPCommittedRevoke(t *testing.T, mode string) {
 	f := newChannelFixture(t)
 	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return mutationOutput(0), nil }}
 	s, api := managedFixture(t, f, h)
@@ -134,7 +145,7 @@ func TestExtensionP1DeliveryHTTPCommittedRevoke(t *testing.T) {
 	}
 	ready, resume := make(chan struct{}), make(chan struct{})
 	inner := s.deliveryMux()
-	server := httptest.NewServer(s.deliveryHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newDeliveryTestServer(t, mode, s.deliveryHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		inner.ServeHTTP(w, r)
 		if r.URL.Path == extensionDeliveryPath+"ExecuteExtensionCommand" {
 			close(ready)
@@ -203,6 +214,12 @@ func (w *deliveryBlockingWriter) Write(body []byte) (int, error) {
 }
 
 func TestExtensionP1DeliveryHTTPWriteFirst(t *testing.T) {
+	for _, mode := range deliveryTransportModes {
+		t.Run(mode, func(t *testing.T) { deliveryHTTPWriteFirst(t, mode) })
+	}
+}
+
+func deliveryHTTPWriteFirst(t *testing.T, mode string) {
 	f := newChannelFixture(t)
 	c := f.create(t, "wire_after")
 	f.acl(t, c, roleRule("member", permissions(true, true, true, false)))
@@ -215,12 +232,15 @@ func TestExtensionP1DeliveryHTTPWriteFirst(t *testing.T) {
 	managedChange(t, f, s, "enable", 1)
 	_, handler := s.NewDeliveryHandler()
 	sent, resume := make(chan struct{}), make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newDeliveryTestServer(t, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(&deliveryBlockingWriter{w, sent, resume}, r)
 	}))
 	defer server.Close()
 	defer close(resume)
-	client := rpc.NewExtensionP1ServiceClient(server.Client(), server.URL)
+	read := make(chan struct{})
+	httpClient := server.Client()
+	httpClient.Transport = deliveryReadTransport{httpClient.Transport, read}
+	client := rpc.NewExtensionP1ServiceClient(httpClient, server.URL)
 	request := connect.NewRequest(extensionP1Query())
 	request.Header().Set("Authorization", outgoingAuthorization(member))
 	done := make(chan error, 1)
@@ -232,9 +252,7 @@ func TestExtensionP1DeliveryHTTPWriteFirst(t *testing.T) {
 		done <- err
 	}()
 	deliverySignal(t, sent)
-	if err := deliveryAwait(t, done); err != nil {
-		t.Fatal("Клиент не прочитал настоящий ответ", err)
-	}
+	deliverySignal(t, read)
 	changed := make(chan error, 1)
 	go func() {
 		_, err := f.channels.UpdateChannelAccess(f.owner, &pb.UpdateChannelAccessRequest{ChannelId: c.Id, ExpectedRevision: c.Revision, Rules: []*pb.ChannelAccessRule{roleRule("member", permissions(false, false, false, false))}})
@@ -242,6 +260,9 @@ func TestExtensionP1DeliveryHTTPWriteFirst(t *testing.T) {
 	}()
 	waitExtensionSQLLock(t, f, "FROM channels WHERE id")
 	resume <- struct{}{}
+	if err := deliveryAwait(t, done); err != nil {
+		t.Fatal("Клиент не прочитал настоящий ответ", err)
+	}
 	if err := deliveryAwait(t, changed); err != nil {
 		t.Fatal(err)
 	}

@@ -80,6 +80,7 @@ func TestWindowsRestrictedPipeSpoofHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := &profileIPC{pipeName: os.Getenv("P1_SPOOF_PIPE"), pipeSD: profileObjectSD(t, sid, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE)}
+	f.instances = 2
 	pipe := f.openServerFlags(t, windows.FILE_FLAG_OVERLAPPED)
 	defer windows.CloseHandle(pipe)
 	raw, _ := json.Marshal([]uint32{uint32(os.Getpid())})
@@ -98,6 +99,7 @@ func TestWindowsRestrictedPipeSpoofHelper(t *testing.T) {
 func TestWindowsRestrictedPipeSpoof(t *testing.T) {
 	h := restrictedHost(t, "P1_RIGHTS")
 	f := newProfileIPC(t, h)
+	f.instances = 2
 	launch := prepareProfileClient(t, h)
 	marker := filepath.Join(t.TempDir(), "ready.json")
 	cmd := exec.Command(os.Args[0], "-test.run=^TestWindowsRestrictedPipeSpoofHelper$", "-test.timeout=15s")
@@ -135,4 +137,9 @@ func assertEndpointClaimed(t *testing.T, f *profileIPC) {
 	if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
 		t.Fatal("Неожиданный отказ занятому имени", err)
 	}
+	control, err := f.createServerMode(windows.FILE_FLAG_OVERLAPPED, false)
+	if err != nil {
+		t.Fatal("Второй слот без FIRST_PIPE_INSTANCE недоступен", err)
+	}
+	windows.CloseHandle(control)
 }

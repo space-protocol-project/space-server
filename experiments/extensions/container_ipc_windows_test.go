@@ -18,6 +18,7 @@ type profileIPC struct {
 	pipeLocal, sid      string
 	event               windows.Handle
 	pipeSD              *windows.SECURITY_DESCRIPTOR
+	instances           uint32
 }
 
 func profileObjectPath(t *testing.T, sid *windows.SID) string {
@@ -86,13 +87,26 @@ func (f *profileIPC) openServerFlags(t *testing.T, flags uint32) windows.Handle 
 }
 
 func (f *profileIPC) createServer(flags uint32) (windows.Handle, error) {
+	return f.createServerMode(flags, true)
+}
+
+func (f *profileIPC) createServerMode(flags uint32, first bool) (windows.Handle, error) {
 	pointer, err := windows.UTF16PtrFromString(f.pipeName)
 	if err != nil {
 		return 0, err
 	}
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: f.pipeSD}
-	// Duplex, первая и единственная инстанция, локальные клиенты, byte mode.
-	handle, _, failure := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateNamedPipeW").Call(uintptr(unsafe.Pointer(pointer)), uintptr(0x3|0x80000|flags), 0x8, 1, 1024, 1024, 1000, uintptr(unsafe.Pointer(&attributes)))
+	// По умолчанию первая и единственная инстанция; два слота нужны только
+	// отдельному контролю FIRST_PIPE_INSTANCE, чтобы исключить PIPE_BUSY.
+	instances := f.instances
+	if instances == 0 {
+		instances = 1
+	}
+	mode := uint32(0x3) | flags
+	if first {
+		mode |= 0x80000
+	}
+	handle, _, failure := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateNamedPipeW").Call(uintptr(unsafe.Pointer(pointer)), uintptr(mode), 0x8, uintptr(instances), 1024, 1024, 1000, uintptr(unsafe.Pointer(&attributes)))
 	if windows.Handle(handle) == windows.InvalidHandle {
 		return 0, failure
 	}

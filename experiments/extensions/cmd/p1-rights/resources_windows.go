@@ -56,6 +56,21 @@ func resourceProbe(raw []byte) bool {
 	return true
 }
 
+func profileIPCProbe(raw []byte) bool {
+	var request struct{ Mode, Event, Pipe string }
+	if json.Unmarshal(raw, &request) != nil || request.Mode != "profile-ipc" {
+		return false
+	}
+	result := map[string]accessResult{
+		"event": resultOf(signalEvent(request.Event)),
+		"pipe":  resultOf(openPipeAccess(request.Pipe, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA|windows.SYNCHRONIZE)),
+	}
+	if json.NewEncoder(os.Stdout).Encode(result) != nil {
+		os.Exit(3)
+	}
+	return true
+}
+
 func readRegistry(path string) error {
 	key, err := registry.OpenKey(registry.USERS, path, registry.QUERY_VALUE)
 	if err != nil {
@@ -103,11 +118,15 @@ func signalEvent(name string) error {
 }
 
 func openPipe(name string) error {
+	return openPipeAccess(name, windows.GENERIC_READ|windows.GENERIC_WRITE)
+}
+
+func openPipeAccess(name string, access uint32) error {
 	pointer, err := windows.UTF16PtrFromString(name)
 	if err != nil {
 		return err
 	}
-	handle, err := windows.CreateFile(pointer, windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_EXISTING, 0, 0)
+	handle, err := windows.CreateFile(pointer, access, 0, nil, windows.OPEN_EXISTING, 0, 0)
 	if err != nil {
 		return err
 	}

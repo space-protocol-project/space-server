@@ -32,6 +32,9 @@ func main() {
 	if resourceProbe(wire.Request) {
 		return
 	}
+	if profileIPCProbe(wire.Request) {
+		return
+	}
 	if networkProbe(wire.Request) {
 		return
 	}

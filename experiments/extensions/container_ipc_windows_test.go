@@ -1,0 +1,112 @@
+//go:build windows
+
+package extensions
+
+import (
+	"crypto/rand"
+	"fmt"
+	"testing"
+	"unsafe"
+
+	"golang.org/x/sys/windows"
+)
+
+type profileIPC struct {
+	eventName, pipeName string
+	event               windows.Handle
+	pipeSD              *windows.SECURITY_DESCRIPTOR
+}
+
+func profileObjectSD(t *testing.T, sid *windows.SID, mask uint32) *windows.SECURITY_DESCRIPTOR {
+	t.Helper()
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Low integrity допускает запись LPAC, но DACL ограничивает её одним SID.
+	sddl := fmt.Sprintf("D:P(A;;GA;;;%s)(A;;GA;;;SY)(A;;0x%x;;;%s)S:(ML;;NW;;;LW)", user.User.Sid.String(), mask, sid.String())
+	sd, err := windows.SecurityDescriptorFromString(sddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sd
+}
+
+func newProfileIPC(t *testing.T, h *ProcessHost) *profileIPC {
+	t.Helper()
+	name := "SpaceP1IPC-" + rand.Text()
+	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe\` + name}
+	sd := profileObjectSD(t, h.platform.container.sid, windows.EVENT_MODIFY_STATE|windows.SYNCHRONIZE)
+	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
+	pointer, err := windows.UTF16PtrFromString(f.eventName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.event, err = windows.CreateEvent(&attributes, 1, 0, pointer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { windows.CloseHandle(f.event) })
+	f.pipeSD = profileObjectSD(t, h.platform.container.sid, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA|windows.SYNCHRONIZE)
+	return f
+}
+
+func (f *profileIPC) openServer(t *testing.T) windows.Handle {
+	t.Helper()
+	pointer, err := windows.UTF16PtrFromString(f.pipeName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: f.pipeSD}
+	// Duplex, первая и единственная инстанция, локальные клиенты, byte mode.
+	handle, _, failure := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateNamedPipeW").Call(uintptr(unsafe.Pointer(pointer)), 0x3|0x80000, 0x8, 1, 1024, 1024, 1000, uintptr(unsafe.Pointer(&attributes)))
+	if windows.Handle(handle) == windows.InvalidHandle {
+		t.Fatal(failure)
+	}
+	return windows.Handle(handle)
+}
+
+func checkProfileIPC(t *testing.T, h *ProcessHost, f *profileIPC, allowed bool) {
+	t.Helper()
+	if err := windows.ResetEvent(f.event); err != nil {
+		t.Fatal(err)
+	}
+	pipe := f.openServer(t)
+	defer windows.CloseHandle(pipe)
+	var results map[string]resourceResult
+	boundaryRun(t, h, map[string]string{"Mode": "profile-ipc", "Event": f.eventName, "Pipe": f.pipeName}, &results)
+	if len(results) != 2 {
+		t.Fatal("Неполный результат", results)
+	}
+	wantCode := uint32(windows.ERROR_ACCESS_DENIED)
+	wantState := uint32(windows.WAIT_TIMEOUT)
+	if allowed {
+		wantCode, wantState = 0, windows.WAIT_OBJECT_0
+	}
+	for _, name := range []string{"event", "pipe"} {
+		result, exists := results[name]
+		if !exists || result.Allowed != allowed || result.Code != wantCode {
+			t.Fatalf("%s allowed=%v result=%+v", name, allowed, result)
+		}
+	}
+	state, err := windows.WaitForSingleObject(f.event, 0)
+	if err != nil || state != wantState {
+		t.Fatal("Неверное состояние события", state, err)
+	}
+}
+
+func TestWindowsRestrictedProfileIPC(t *testing.T) {
+	a, b := restrictedHost(t, "P1_RIGHTS"), restrictedHost(t, "P1_RIGHTS")
+	first, second := newProfileIPC(t, a), newProfileIPC(t, b)
+	t.Run("own-a", func(t *testing.T) { checkProfileIPC(t, a, first, true) })
+	t.Run("own-b", func(t *testing.T) { checkProfileIPC(t, b, second, true) })
+	t.Run("a-to-b", func(t *testing.T) { checkProfileIPC(t, a, second, false) })
+	t.Run("b-to-a", func(t *testing.T) { checkProfileIPC(t, b, first, false) })
+	if err := a.Close(); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("surviving-b", func(t *testing.T) { checkProfileIPC(t, b, second, true) })
+	c := restrictedHost(t, "P1_RIGHTS")
+	t.Run("replacement-to-old-a", func(t *testing.T) { checkProfileIPC(t, c, first, false) })
+	t.Run("replacement-to-b", func(t *testing.T) { checkProfileIPC(t, c, second, false) })
+}

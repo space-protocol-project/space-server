@@ -51,7 +51,8 @@ func main() {
 	case `"child"`:
 		child := exec.Command(os.Args[0], "spin")
 		child.Stdout, child.Stderr = os.Stdout, os.Stderr
-		if child.Start() != nil {
+		if err := child.Start(); err != nil {
+			fmt.Printf("child_start_error=%v\n", err)
 			os.Exit(3)
 		}
 		spin()

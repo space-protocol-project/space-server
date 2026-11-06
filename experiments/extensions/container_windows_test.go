@@ -109,3 +109,43 @@ func TestWindowsRestrictedPressure(t *testing.T) {
 		})
 	}
 }
+
+func TestWindowsRestrictedMemory(t *testing.T) {
+	h := restrictedHost(t, "P1_PRESSURE")
+	input, _ := json.Marshal(workerRequest{Request: []byte(`{"NativeMemory":384}`)})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	raw, err := h.run(ctx, input)
+	if err != nil {
+		t.Fatalf("%s %v", raw, err)
+	}
+	var result struct {
+		Allocated int
+		Denied    bool
+		Code      uint32
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.Denied || result.Code == 0 || result.Allocated == 0 || result.Allocated >= WorkerMemory {
+		t.Fatal(string(raw))
+	}
+	winEmpty(t, h)
+	t.Log(string(raw))
+}
+
+func TestWindowsRestrictedTree(t *testing.T) {
+	h := restrictedHost(t, "P1_PRESSURE")
+	input, _ := json.Marshal(workerRequest{Request: []byte(`"child"`)})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { _, err := h.run(ctx, input); done <- err }()
+	pids := waitJobPIDs(t, h.platform.job, 2)
+	cancel()
+	if err := <-done; err == nil {
+		t.Fatal("Отмена не доставлена")
+	}
+	winEmpty(t, h)
+	t.Logf("Остановлены worker и потомок: %v", pids)
+}

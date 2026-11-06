@@ -198,3 +198,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Уточнение E03: [25 аварийных циклов настоящего LPAC worker и диагностика отказа child spawn](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-RECOVERY.md). Исправлены тестовые предположения о NUL, conhost и готовности systemd; прежний вывод о проверенном LPAC-потомке отозван.
 
 Продолжение E03: [межпрофильный доступ к событиям и именованным каналам Windows LPAC](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Проверены свои и чужие объекты, удаление и новый профиль; рабочий broker пока не подключён.
+
+Дополнение E03: [настоящий обмен по LPAC pipe, проверка клиента и отмена](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-WINDOWS-IPC.md). Проверены повторное соединение после отмены и подготовка endpoint до ResumeThread; рабочий broker остаётся отдельным этапом.

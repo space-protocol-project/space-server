@@ -5,6 +5,7 @@ package extensions
 import (
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -48,7 +49,8 @@ func newProfileIPC(t *testing.T, h *ProcessHost) *profileIPC {
 	t.Helper()
 	name := "SpaceP1IPC-" + rand.Text()
 	root := profileObjectPath(t, h.platform.container.sid)
-	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe` + root + `\` + name, pipeLocal: `\\.\pipe\LOCAL\` + name, sid: h.platform.container.sid.String()}
+	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe\` + strings.TrimPrefix(root, `\`) + `\` + name, pipeLocal: `\\.\pipe\LOCAL\` + name, sid: h.platform.container.sid.String()}
+	t.Logf("container_objects=%q pipe=%q", root, f.pipeName)
 	sd := profileObjectSD(t, h.platform.container.sid, windows.EVENT_MODIFY_STATE|windows.SYNCHRONIZE)
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
 	pointer, err := windows.UTF16PtrFromString(f.eventName)

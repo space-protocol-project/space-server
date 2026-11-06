@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -26,7 +27,7 @@ func boundaryProbe(raw []byte) bool {
 	switch request.Mode {
 	case "handle":
 		var info windows.ByHandleFileInformation
-		err := windows.GetFileInformationByHandle(windows.Handle(request.Handle), &info)
+		err := handleIdentity(windows.Handle(request.Handle), &info)
 		result = map[string]any{
 			"query":     resultOf(err),
 			"same_file": err == nil && info.VolumeSerialNumber == request.Volume && info.FileIndexHigh == request.High && info.FileIndexLow == request.Low,
@@ -44,6 +45,17 @@ func boundaryProbe(raw []byte) bool {
 		os.Exit(3)
 	}
 	return true
+}
+
+func handleIdentity(handle windows.Handle, info *windows.ByHandleFileInformation) error {
+	// GetFileInformationByHandle на отсутствующем handle вызывает исключение
+	// STATUS_INVALID_HANDLE в LPAC runner. Сначала проверяем наличие handle.
+	var flags uint32
+	ok, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation").Call(uintptr(handle), uintptr(unsafe.Pointer(&flags)))
+	if ok == 0 {
+		return err
+	}
+	return windows.GetFileInformationByHandle(handle, info)
 }
 
 func nativeFile(path string, write bool, disposition uint32) error {

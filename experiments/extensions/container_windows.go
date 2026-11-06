@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"unsafe"
 
+	"github.com/space-protocol-project/space-server/experiments/extensions/internal/wintoken"
 	"golang.org/x/sys/windows"
 )
 
@@ -151,9 +152,9 @@ func (c *appContainer) verify(process windows.Handle) error {
 	}
 	defer token.Close()
 	for _, class := range []uint32{29, 46} { // TokenIsAppContainer, TokenIsLessPrivilegedAppContainer.
-		var flag, size uint32
-		if err := windows.GetTokenInformation(token, class, (*byte)(unsafe.Pointer(&flag)), 4, &size); err != nil {
-			return fmt.Errorf("token class %d: %w", class, err)
+		flag, err := wintoken.Flag(token, class)
+		if err != nil {
+			return err
 		}
 		if flag != 1 {
 			return ErrIsolation

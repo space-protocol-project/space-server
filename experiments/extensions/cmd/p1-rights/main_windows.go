@@ -9,14 +9,14 @@ import (
 	"net"
 	"os"
 	"time"
-	"unsafe"
 
+	"github.com/space-protocol-project/space-server/experiments/extensions/internal/wintoken"
 	"golang.org/x/sys/windows"
 )
 
 func tokenFlag(class uint32) uint32 {
-	var value, size uint32
-	if windows.GetTokenInformation(windows.GetCurrentProcessToken(), class, (*byte)(unsafe.Pointer(&value)), 4, &size) != nil {
+	value, err := wintoken.Flag(windows.GetCurrentProcessToken(), class)
+	if err != nil {
 		os.Exit(5)
 	}
 	return value

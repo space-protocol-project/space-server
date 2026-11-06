@@ -47,7 +47,7 @@ func newProfileIPC(t *testing.T, h *ProcessHost) *profileIPC {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { windows.CloseHandle(f.event) })
-	f.pipeSD = profileObjectSD(t, h.platform.container.sid, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA|windows.SYNCHRONIZE)
+	f.pipeSD = profileObjectSD(t, h.platform.container.sid, windows.FILE_READ_DATA|windows.FILE_WRITE_DATA|windows.FILE_READ_ATTRIBUTES|windows.SYNCHRONIZE)
 	return f
 }
 
@@ -98,6 +98,9 @@ func checkProfileIPC(t *testing.T, h *ProcessHost, f *profileIPC, allowed bool) 
 func TestWindowsRestrictedProfileIPC(t *testing.T) {
 	a, b := restrictedHost(t, "P1_RIGHTS"), restrictedHost(t, "P1_RIGHTS")
 	first, second := newProfileIPC(t, a), newProfileIPC(t, b)
+	control := windowsHost(t, "P1_RIGHTS")
+	t.Run("control-a", func(t *testing.T) { checkProfileIPC(t, control, first, true) })
+	t.Run("control-b", func(t *testing.T) { checkProfileIPC(t, control, second, true) })
 	t.Run("own-a", func(t *testing.T) { checkProfileIPC(t, a, first, true) })
 	t.Run("own-b", func(t *testing.T) { checkProfileIPC(t, b, second, true) })
 	t.Run("a-to-b", func(t *testing.T) { checkProfileIPC(t, a, second, false) })

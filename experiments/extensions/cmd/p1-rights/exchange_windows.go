@@ -31,22 +31,35 @@ func pipeExchangeProbe(raw []byte) bool {
 }
 
 func exchangeNamedPipe(request pipeExchangeRequest) error {
-	if request.ServerPID == 0 || len(request.Nonce) != 16 {
-		return windows.ERROR_ACCESS_DENIED
-	}
-	pointer, err := windows.UTF16PtrFromString(request.Pipe)
-	if err != nil {
-		return err
-	}
-	access := uint32(windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE)
-	handle, err := windows.CreateFile(pointer, access, 0, nil, windows.OPEN_EXISTING, windows.SECURITY_SQOS_PRESENT|windows.SECURITY_IDENTIFICATION, 0)
+	handle, err := openVerifiedPipe(request)
 	if err != nil {
 		return err
 	}
 	defer windows.CloseHandle(handle)
-	if err := verifyPipeServer(handle, request); err != nil {
-		return err
+	return pipeRoundTrip(handle)
+}
+
+func openVerifiedPipe(request pipeExchangeRequest) (windows.Handle, error) {
+	if request.ServerPID == 0 || len(request.Nonce) != 16 {
+		return 0, windows.ERROR_ACCESS_DENIED
 	}
+	pointer, err := windows.UTF16PtrFromString(request.Pipe)
+	if err != nil {
+		return 0, err
+	}
+	access := uint32(windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE)
+	handle, err := windows.CreateFile(pointer, access, 0, nil, windows.OPEN_EXISTING, windows.SECURITY_SQOS_PRESENT|windows.SECURITY_IDENTIFICATION, 0)
+	if err != nil {
+		return 0, err
+	}
+	if err := verifyPipeServer(handle, request); err != nil {
+		windows.CloseHandle(handle)
+		return 0, err
+	}
+	return handle, nil
+}
+
+func pipeRoundTrip(handle windows.Handle) error {
 	var count uint32
 	if err := windows.WriteFile(handle, []byte("ping"), &count, nil); err != nil {
 		return err

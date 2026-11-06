@@ -38,6 +38,9 @@ func main() {
 	if pipeExchangeProbe(wire.Request) {
 		return
 	}
+	if pipeRevokeProbe(wire.Request) {
+		return
+	}
 	if networkProbe(wire.Request) {
 		return
 	}

@@ -54,6 +54,11 @@ func prepareProfileClient(t *testing.T, h *ProcessHost) *profileClientLaunch {
 
 func (l *profileClientLaunch) start(t *testing.T, name string) (context.CancelFunc, <-chan pipeWorkerResult) {
 	t.Helper()
+	return l.startRequest(t, map[string]any{"Mode": "pipe-exchange", "Pipe": name})
+}
+
+func (l *profileClientLaunch) startRequest(t *testing.T, request map[string]any) (context.CancelFunc, <-chan pipeWorkerResult) {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	l.cancel = cancel
 	var session uint32
@@ -62,7 +67,10 @@ func (l *profileClientLaunch) start(t *testing.T, name string) (context.CancelFu
 		t.Fatal(failure)
 	}
 	session += l.sessionOffset
-	input := boundaryInput(t, map[string]any{"Mode": "pipe-exchange", "Pipe": name, "ServerPID": uint32(os.Getpid()), "ServerSession": session, "Nonce": l.nonce[:]})
+	request["ServerPID"] = uint32(os.Getpid())
+	request["ServerSession"] = session
+	request["Nonce"] = l.nonce[:]
+	input := boundaryInput(t, request)
 	previous, err := windows.ResumeThread(l.process.Thread)
 	if err != nil || previous != 1 {
 		t.Fatal("ResumeThread", previous, err)

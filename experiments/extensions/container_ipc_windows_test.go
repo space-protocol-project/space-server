@@ -35,7 +35,7 @@ func profileObjectSD(t *testing.T, sid *windows.SID, mask uint32) *windows.SECUR
 func newProfileIPC(t *testing.T, h *ProcessHost) *profileIPC {
 	t.Helper()
 	name := "SpaceP1IPC-" + rand.Text()
-	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe\` + name}
+	f := &profileIPC{eventName: `Global\` + name, pipeName: `\\.\pipe\LOCAL\` + name}
 	sd := profileObjectSD(t, h.platform.container.sid, windows.EVENT_MODIFY_STATE|windows.SYNCHRONIZE)
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), SecurityDescriptor: sd}
 	pointer, err := windows.UTF16PtrFromString(f.eventName)

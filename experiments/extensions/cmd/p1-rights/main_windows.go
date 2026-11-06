@@ -29,6 +29,12 @@ func main() {
 	if json.NewDecoder(os.Stdin).Decode(&wire) != nil || json.Unmarshal(wire.Request, &request) != nil {
 		os.Exit(2)
 	}
+	if resourceProbe(wire.Request) {
+		return
+	}
+	if networkProbe(wire.Request) {
+		return
+	}
 	_, readErr := os.ReadFile(request.File)
 	writeErr := os.WriteFile(request.File, []byte("tampered"), 0600)
 	createErr := os.WriteFile(request.Directory+"\\created", []byte("tampered"), 0600)

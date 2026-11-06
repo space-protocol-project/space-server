@@ -42,7 +42,7 @@ func TestWindowsRestrictedRecoveryHelper(t *testing.T) {
 		workers := waitJobPIDs(t, h.platform.job, 2)
 		// Удерживаем объекты процессов до смерти supervisor: PID из снимка
 		// Job не является ссылкой, сохраняющей время жизни объекта Windows.
-		pinRecoveryProcesses(t, workers)
+		pinRecoveryProcesses(t, workers, h.executable)
 		pids = append(pids, workers...)
 	} else {
 		c, err = beginContainer(root)

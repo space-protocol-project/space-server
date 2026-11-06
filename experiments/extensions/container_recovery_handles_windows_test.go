@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/windows"
 )
 
-func pinRecoveryProcesses(t *testing.T, pids []uint32) {
+func pinRecoveryProcesses(t *testing.T, pids []uint32, executable string) {
 	t.Helper()
 	for _, pid := range pids {
 		handle, err := windows.OpenProcess(windows.SYNCHRONIZE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
@@ -20,6 +21,15 @@ func pinRecoveryProcesses(t *testing.T, pids []uint32) {
 		}
 		t.Cleanup(func() { windows.CloseHandle(handle) })
 		requireRecoveryAlive(t, handle, pid)
+		var path [32768]uint16
+		size := uint32(len(path))
+		if err := windows.QueryFullProcessImageName(handle, 0, &path[0], &size); err != nil {
+			t.Fatal(err)
+		}
+		image := windows.UTF16ToString(path[:size])
+		if !strings.EqualFold(image, executable) {
+			t.Fatalf("Неожиданный процесс pid=%d image=%s expected=%s", pid, image, executable)
+		}
 	}
 }
 
@@ -55,7 +65,7 @@ func TestWindowsRestrictedRecoveryExitedHandle(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 	pid := uint32(cmd.Process.Pid)
-	pinRecoveryProcesses(t, []uint32{pid})
+	pinRecoveryProcesses(t, []uint32{pid}, cmd.Path)
 	if err := cmd.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}

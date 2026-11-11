@@ -65,18 +65,34 @@ func (c *appContainer) sealProfile() error {
 	if err != nil {
 		return err
 	}
-	count := 0
-	return filepath.WalkDir(folder, func(path string, entry fs.DirEntry, failure error) error {
+	paths, err := profileTree(folder)
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if err := setContainerACL(path, acl); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Проверяем всё дерево до изменения ACL: распространение наследуемых ACE
+// не должно начаться, пока в дереве остаётся непроверенный reparse point.
+func profileTree(folder string) ([]string, error) {
+	var paths []string
+	err := filepath.WalkDir(folder, func(path string, entry fs.DirEntry, failure error) error {
 		if failure != nil {
 			return failure
 		}
-		count++
-		if count > 1024 {
+		if len(paths) >= 1024 {
 			return ErrIsolation
 		}
 		if err := plainPath(path); err != nil {
 			return err
 		}
-		return setContainerACL(path, acl)
+		paths = append(paths, path)
+		return nil
 	})
+	return paths, err
 }

@@ -63,6 +63,22 @@ func TestWindowsRestrictedProfileReadOnly(t *testing.T) {
 	prepareProfileProbe(t, baseline)
 	profileProbe(t, control, baseline, true)
 	folder := containerFolder(t, h.platform.container)
+	root, err := h.platform.container.profilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{root, folder, h.group} {
+		var results map[string]resourceResult
+		boundaryRun(t, h, map[string]string{"Mode": "profile-root", "Directory": target}, &results)
+		if len(results) != 4 {
+			t.Fatal(results)
+		}
+		for _, result := range results {
+			if result.Allowed || result.Code != 5 {
+				t.Fatal(results)
+			}
+		}
+	}
 	for _, name := range []string{"files", filepath.Join("nested", "files")} {
 		target := filepath.Join(folder, name)
 		if err := os.MkdirAll(target, 0700); err != nil {

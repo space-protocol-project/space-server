@@ -39,7 +39,7 @@ jobs:
           from pathlib import Path
           rows=[json.loads(s) for s in Path('.local/p2-registry/registry.jsonl').read_text().splitlines()]
           assert not any(r['Action'] in ('skip','fail') for r in rows)
-          for name in ('Adapters','Authority','Transaction','Upgrade','Visibility'):
+          for name in ('Adapters','Authority','Transaction','Upgrade','Visibility','ViewChange'):
               assert sum(r['Action']=='pass' and r.get('Test')=='TestBuiltinRegistry'+name for r in rows)==5,name
           PY
       - name: Полное ядро и анализ

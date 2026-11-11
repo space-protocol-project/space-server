@@ -188,14 +188,16 @@ func loadClient(t *testing.T, f *channelFixture, api pb.ExtensionP1ServiceClient
 
 func loadOperation(f *channelFixture, api pb.ExtensionP1ServiceClient, r *pb.ExecuteExtensionCommandRequest, kind int, m *loadMetrics) (string, error) {
 	switch kind {
-	case 0, 7:
+	case 0:
 		q := extensionP1Query()
 		q.InstanceId = r.InstanceId
-		if kind == 7 {
-			q.InstanceId = "other"
-		}
 		_, err := api.QueryExtension(f.owner, q)
 		return "query", err
+	case 7:
+		q := extensionP1Command()
+		q.InstanceId = "other"
+		_, err := api.ExecuteExtensionCommand(f.owner, q)
+		return "independent_command", err
 	case 3:
 		r.PayloadJson = []byte(`{ }`)
 		_, err := api.ExecuteExtensionCommand(f.owner, r)
@@ -299,7 +301,11 @@ func loadResource(t *testing.T, f *channelFixture, host *extensions.ProcessHost,
 	if err != nil {
 		t.Fatal(err)
 	}
-	row := map[string]any{"phase": phase, "elapsed_seconds": time.Since(start).Seconds(), "host": host.Stats(), "server_memory": rss, "pool_total": pool.TotalConns(), "pool_acquired": pool.AcquiredConns(), "pool_max": pool.MaxConns(), "pool_acquire_duration_ns": pool.AcquireDuration().Nanoseconds(), "pool_empty_acquires": pool.EmptyAcquireCount(), "data_bytes": data, "receipt_bytes": receipts, "outbox_bytes": outbox}
+	var lockWaiters int64
+	if err = f.store.pool.QueryRow(f.ctx, "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'").Scan(&lockWaiters); err != nil {
+		t.Fatal(err)
+	}
+	row := map[string]any{"db_lock_waiters": lockWaiters, "phase": phase, "elapsed_seconds": time.Since(start).Seconds(), "host": host.Stats(), "server_memory": rss, "pool_total": pool.TotalConns(), "pool_acquired": pool.AcquiredConns(), "pool_max": pool.MaxConns(), "pool_acquire_duration_ns": pool.AcquireDuration().Nanoseconds(), "pool_empty_acquires": pool.EmptyAcquireCount(), "data_bytes": data, "receipt_bytes": receipts, "outbox_bytes": outbox}
 	if err = json.NewEncoder(file).Encode(row); err != nil {
 		t.Fatal(err)
 	}

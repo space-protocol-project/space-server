@@ -55,7 +55,12 @@ func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensio
 			return nil, mutationError(codes.InvalidArgument, "invalid_binding")
 		}
 		binding.Registration.Module = bytes.Clone(binding.Registration.Module)
+		binding.Registration.SourceManifest = bytes.Clone(binding.Registration.SourceManifest)
 		item := extensionMutationBinding{binding.Installation, binding.Channel, binding.Registration.Manifest.Command, mutationPackageHash(binding), make(map[string]bool)}
+		// Полный manifest пока допускает только stateless-профиль без storage.own.
+		if len(binding.Registration.SourceManifest) != 0 {
+			item.command = ""
+		}
 		for _, event := range binding.Events {
 			if !channelIDPattern.MatchString(event) {
 				return nil, mutationError(codes.InvalidArgument, "invalid_event")
@@ -78,7 +83,11 @@ func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensio
 func mutationPackageHash(binding ExtensionP1MutationBinding) [32]byte {
 	events := append([]string(nil), binding.Events...)
 	sort.Strings(events)
-	raw, _ := json.Marshal([]any{binding.Registration.Module, binding.Registration.Manifest, events})
+	parts := []any{binding.Registration.Module, binding.Registration.Manifest, events}
+	if len(binding.Registration.SourceManifest) != 0 {
+		parts = append(parts, binding.Registration.SourceManifest)
+	}
+	raw, _ := json.Marshal(parts)
 	return sha256.Sum256(raw)
 }
 
@@ -123,7 +132,7 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 
 func (m *extensionMutations) Handles(instance, command string) bool {
 	b, ok := m.bindings[instance]
-	return ok && b.command == command
+	return ok && command != "" && b.command == command
 }
 
 var mutationKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{16,128}$`)

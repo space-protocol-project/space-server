@@ -1,0 +1,101 @@
+name: P1 контракт пакета и SDK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: experiments/extensions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: 987d227a8cb7afb479ed8f03535658241833b369
+          path: .local/protocol
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+      - name: Общий manifest и отрицательные сценарии
+        run: |
+          mkdir -p .local/package
+          cmp manifest/testdata/manifest.json ../../.local/protocol/docs/extensions/p1/manifest.json
+          go test -race -json ./manifest ./packagep1 ./sdk ./demo -skip '^TestStarterIsolated$' -count=3 > .local/package/tests.jsonl
+          go vet ./manifest ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./manifest ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
+      - name: Воспроизводимая сборка и подпись
+        run: |
+          go run ./cmd/p1-sdk -fixture -plugin org.example.starter -title Starter -license sdk/LICENSE -out .local/package/starter.zip > .local/package/build.json
+          go run ./cmd/p1-sdk -fixture -plugin org.example.starter -title Starter -license sdk/LICENSE -out .local/package/repeated.zip > .local/package/repeated.json
+          cmp .local/package/starter.zip .local/package/repeated.zip
+          go run ./cmd/p1-package-verify -archive .local/package/starter.zip -publisher .local/package/starter.zip.publisher.key -plugin org.example.starter > .local/package/verified.json
+          if go run ./cmd/p1-package-verify -archive .local/package/starter.zip -publisher .local/package/starter.zip.publisher.key -plugin org.example.starter -revoked; then exit 1; fi
+      - name: Изолированное исполнение каркаса Linux
+        if: runner.os == 'Linux'
+        run: |
+          go build -o /tmp/space-p1-sdk-worker ./cmd/p1-worker
+          sudo mkdir /sys/fs/cgroup/space-p1-sdk
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-sdk/cgroup.subtree_control'
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_P1_SDK_WORKER=/tmp/space-p1-sdk-worker SPACE_P1_SDK_CGROUP=/sys/fs/cgroup/space-p1-sdk go test -race -json ./sdk -run '^TestStarterIsolated$' -count=3 > .local/package/isolated.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-sdk
+      - name: Изолированная отрицательная матрица проверки пакета
+        if: runner.os == 'Linux'
+        run: |
+          go test -c ./packagep1 -o .local/package/package.test
+          sudo install -D -m 0755 .local/package/package.test /usr/local/libexec/space-p1-package-test
+          sudo systemd-run --unit=space-p1-package-check --wait --pipe \
+            -p DynamicUser=yes -p NoNewPrivileges=yes -p PrivateNetwork=yes \
+            -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes \
+            -p MemoryMax=128M -p MemorySwapMax=0 -p TasksMax=32 -p CPUQuota=100% -p RuntimeMaxSec=60 \
+            /usr/local/libexec/space-p1-package-test -test.run '^TestPackage' -test.count=3 -test.v \
+            | go tool test2json -p packagep1 > .local/package/package-isolated.jsonl
+          sudo systemctl show space-p1-package-check -p Result -p MemoryPeak -p MemoryMax -p TasksMax -p CPUQuotaPerSecUSec > .local/package/package-isolation.txt
+          rm .local/package/package.test
+      - name: Обязательные результаты
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          events=[json.loads(x) for x in Path('.local/package/tests.jsonl').read_text(encoding='utf-8').splitlines()]
+          assert not any(x['Action'] in ('fail','skip') for x in events)
+          for name in ('TestSharedManifest','TestManifestRequired','TestManifestRejects','TestPackageReproducible','TestPackageTrust','TestPackageArchiveRejects','TestPackageSignedInvalidManifest','TestStarterABI','TestFullManifestDispatcher','TestFullManifestUnsupported'):
+              assert sum(x['Action']=='pass' and x.get('Test')==name for x in events)==3,name
+          if os.environ['RUNNER_OS']=='Linux':
+              events=[json.loads(x) for x in Path('.local/package/isolated.jsonl').read_text(encoding='utf-8').splitlines()]
+              assert not any(x['Action'] in ('fail','skip') for x in events)
+              assert sum(x['Action']=='pass' and x.get('Test')=='TestStarterIsolated' for x in events)==3
+              events=[json.loads(x) for x in Path('.local/package/package-isolated.jsonl').read_text(encoding='utf-8').splitlines()]
+              assert not any(x['Action'] in ('fail','skip') for x in events)
+              for name in ('Reproducible','Trust','ArchiveRejects','SignedInvalidManifest'):
+                  assert sum(x['Action']=='pass' and x.get('Test')=='TestPackage'+name for x in events)==3
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-${{ matrix.os }}
+          path: experiments/extensions/.local/package
+          include-hidden-files: true
+          retention-days: 1
+  reproducible:
+    needs: package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: packages
+      - name: Одинаковые байты на Linux и Windows
+        run: |
+          cmp packages/package-ubuntu-24.04/starter.zip packages/package-windows-2025/starter.zip
+          sha256sum packages/package-*/starter.zip

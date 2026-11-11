@@ -41,8 +41,9 @@ type Manifest struct {
 	Command      string `json:"command"`
 }
 type Registration struct {
-	Manifest Manifest
-	Module   []byte
+	Manifest       Manifest
+	Module         []byte
+	SourceManifest []byte `json:"source_manifest,omitempty"`
 }
 type Dispatcher struct {
 	host          extensions.Runtime
@@ -56,6 +57,11 @@ func New(host extensions.Runtime, authorize Authorize, registrations map[string]
 	}
 	copied := make(map[string]Registration)
 	for id, item := range registrations {
+		if len(item.SourceManifest) != 0 {
+			if err := checkSourceManifest(item); err != nil {
+				return nil, err
+			}
+		}
 		m := item.Manifest
 		if id == "" || m.HostAPI != "space.plugin.p1" || m.ABI != "space_plugin_p1" || m.UI != "space.ui.p1" {
 			return nil, ErrVersion
@@ -67,6 +73,7 @@ func New(host extensions.Runtime, authorize Authorize, registrations map[string]
 			return nil, ErrRequest
 		}
 		item.Module = bytes.Clone(item.Module)
+		item.SourceManifest = bytes.Clone(item.SourceManifest)
 		copied[id] = item
 	}
 	return &Dispatcher{host, authorize, copied}, nil

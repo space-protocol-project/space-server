@@ -246,6 +246,11 @@ func loadOperation(f *channelFixture, api pb.ExtensionP1ServiceClient, r *pb.Exe
 }
 
 func loadExpected(kind int, code codes.Code) bool {
+	// Чтение не имеет эффекта. Исчерпание прежнего бюджета учитывается отдельно,
+	// не считается успешным ответом и не разрешается для изменения данных.
+	if kind == 0 && code == codes.DeadlineExceeded {
+		return true
+	}
 	if kind == 6 {
 		return code == codes.InvalidArgument
 	}

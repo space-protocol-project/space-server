@@ -128,7 +128,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	}
 	principal, err := d.authorize(ctx, credential, request.Instance, request.Kind == "command")
 	if err != nil {
-		return nil, ErrDenied
+		return nil, authorizationError(ctx, err)
 	}
 	if !validPrincipal(principal, request.Instance) {
 		return nil, ErrDenied
@@ -141,7 +141,10 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 		return nil, executionError(err)
 	}
 	current, err := d.authorize(ctx, credential, request.Instance, request.Kind == "command")
-	if err != nil || current != principal {
+	if err != nil {
+		return nil, authorizationError(ctx, err)
+	}
+	if current != principal {
 		return nil, ErrDenied
 	}
 	if ctx.Err() != nil {
@@ -157,6 +160,19 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 		return nil, ErrVersion
 	}
 	return output, nil
+}
+
+func authorizationError(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return context.DeadlineExceeded
+	}
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	return ErrDenied
 }
 
 func allowed(r Request, m Manifest) bool {

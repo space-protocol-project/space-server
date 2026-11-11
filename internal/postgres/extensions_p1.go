@@ -42,6 +42,9 @@ func (s *Store) extensionP1Principal(ctx context.Context, channel, instance stri
 	defer tx.Rollback(ctx)
 	p, err = s.extensionP1PrincipalTx(ctx, tx, channel, instance, command)
 	if err != nil {
+		if ctx.Err() != nil {
+			return demo.Principal{}, ctx.Err()
+		}
 		return p, err
 	}
 	if err = tx.Commit(ctx); err != nil {

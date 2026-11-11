@@ -56,7 +56,7 @@ jobs:
             SPACE_P1_LOAD=1 SPACE_P1_LOAD_OUTPUT="$PWD/.local/p1-load" \
             SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-load SPACE_P1_WORKER=/tmp/space-p1-load-worker \
             SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
-            go test -race -json ./internal/postgres -run '^TestExtensionP1Load$' -count=1 -timeout=20m > .local/p1-load/tests.jsonl
+            go test -race -json ./internal/postgres -run '^TestExtensionP1(Load|AuthorizationDeadline)$' -failfast -count=1 -timeout=20m > .local/p1-load/tests.jsonl
           sudo rmdir /sys/fs/cgroup/space-p1-load
           python3 - <<'PY'
           import json
@@ -65,6 +65,7 @@ jobs:
           assert not any(x['Action'] in ('skip','fail') for x in events)
           test=[x for x in events if x['Action']=='pass' and x.get('Test')=='TestExtensionP1Load']
           assert len(test)==1 and test[0]['Elapsed']>=900,test
+          assert any(x['Action']=='pass' and x.get('Test')=='TestExtensionP1AuthorizationDeadline' for x in events)
           rows=[json.loads(x) for x in Path('.local/p1-load/resources.jsonl').read_text().splitlines()]
           assert max(x['cgroup_processes'] for x in rows)>0
           assert rows[-1]['cgroup_processes']==0

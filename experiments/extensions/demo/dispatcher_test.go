@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	"strings"
 	"testing"
@@ -58,6 +59,26 @@ func TestAccessBeforeWASM(t *testing.T) {
 	d := setup(t, h, func(context.Context, string, string, bool) (Principal, error) { return Principal{}, ErrDenied })
 	if _, err := d.Dispatch(context.Background(), "", request()); !errors.Is(err, ErrDenied) || h.calls != 0 {
 		t.Fatal(err, h.calls)
+	}
+}
+
+func TestAuthorizationCancellation(t *testing.T) {
+	for _, failure := range []error{context.Canceled, context.DeadlineExceeded} {
+		for _, after := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%v/after=%v", failure, after), func(t *testing.T) {
+				h := &fakeHost{}
+				d := setup(t, h, func(ctx context.Context, token, instance string, command bool) (Principal, error) {
+					if after && h.calls == 0 {
+						return grant(ctx, token, instance, command)
+					}
+					return Principal{}, fmt.Errorf("private backend detail: %w", failure)
+				})
+				output, err := d.Dispatch(context.Background(), "", request())
+				if err != failure || output != nil || (!after && h.calls != 0) || (after && h.calls != 1) {
+					t.Fatal(err, string(output), h.calls)
+				}
+			})
+		}
 	}
 }
 func TestTrustedEnvelope(t *testing.T) {

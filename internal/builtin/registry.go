@@ -22,6 +22,7 @@ type Backend interface {
 	BuiltinSections(context.Context) ([]Section, error)
 	BuiltinSection(context.Context, string) (Section, error)
 	List(context.Context, *pb.ListContentRequest) (*pb.ListContentResponse, error)
+	ListMlsEnvelopes(context.Context, *pb.ListMlsEnvelopesRequest) (*pb.ListMlsEnvelopesResponse, error)
 	ListForumThreads(context.Context, *pb.ListForumThreadsRequest) (*pb.ListForumThreadsResponse, error)
 	ListFeedPosts(context.Context, *pb.ListFeedPostsRequest) (*pb.ListFeedPostsResponse, error)
 }
@@ -32,7 +33,7 @@ type Result struct {
 	Section Section
 	Content proto.Message
 }
-type reader func(context.Context, string) (proto.Message, error)
+type reader func(context.Context, *pb.Channel) (proto.Message, error)
 
 // Registry не предоставляет запись, установку пакетов или доступ к медиатранспорту.
 type Registry struct {
@@ -42,20 +43,23 @@ type Registry struct {
 
 func New(backend Backend, rooms Rooms) *Registry {
 	return &Registry{backend: backend, readers: map[string]reader{
-		"space.chat": func(ctx context.Context, channel string) (proto.Message, error) {
-			return backend.List(ctx, &pb.ListContentRequest{ChannelId: channel})
+		"space.chat": func(ctx context.Context, channel *pb.Channel) (proto.Message, error) {
+			if len(channel.MlsGroupId) != 0 {
+				return backend.ListMlsEnvelopes(ctx, &pb.ListMlsEnvelopesRequest{ChannelId: channel.Id})
+			}
+			return backend.List(ctx, &pb.ListContentRequest{ChannelId: channel.Id})
 		},
-		"space.discussions": func(ctx context.Context, channel string) (proto.Message, error) {
-			return backend.ListForumThreads(ctx, &pb.ListForumThreadsRequest{ChannelId: channel, Limit: 20})
+		"space.discussions": func(ctx context.Context, channel *pb.Channel) (proto.Message, error) {
+			return backend.ListForumThreads(ctx, &pb.ListForumThreadsRequest{ChannelId: channel.Id, Limit: 20})
 		},
-		"space.feed": func(ctx context.Context, channel string) (proto.Message, error) {
-			return backend.ListFeedPosts(ctx, &pb.ListFeedPostsRequest{ChannelId: channel, Limit: 20})
+		"space.feed": func(ctx context.Context, channel *pb.Channel) (proto.Message, error) {
+			return backend.ListFeedPosts(ctx, &pb.ListFeedPostsRequest{ChannelId: channel.Id, Limit: 20})
 		},
-		"space.rooms": func(ctx context.Context, channel string) (proto.Message, error) {
+		"space.rooms": func(ctx context.Context, channel *pb.Channel) (proto.Message, error) {
 			if rooms == nil {
 				return nil, status.Error(codes.Unavailable, "Служба комнат недоступна")
 			}
-			return rooms.GetVoiceRoom(ctx, &pb.GetVoiceRoomRequest{ChannelId: channel})
+			return rooms.GetVoiceRoom(ctx, &pb.GetVoiceRoomRequest{ChannelId: channel.Id})
 		},
 	}}
 }
@@ -73,7 +77,7 @@ func (r *Registry) Open(ctx context.Context, instance string) (*Result, error) {
 	if !ok {
 		return nil, status.Error(codes.FailedPrecondition, "Встроенный адаптер не поддерживается")
 	}
-	content, err := read(ctx, section.Channel.Id)
+	content, err := read(ctx, section.Channel)
 	if err != nil {
 		return nil, err
 	}

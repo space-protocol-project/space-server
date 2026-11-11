@@ -93,6 +93,9 @@ func (s *ExtensionP1ManagedService) publishGroupRegistry(ctx context.Context, tx
 	if err != nil {
 		return err
 	}
+	if err = admitHistory(ctx, tx, p.Installation, len(raw)); err != nil {
+		return err
+	}
 	_, err = tx.Exec(ctx, `INSERT INTO extension_p1_group_versions(installation,sequence,digest,revision,principal,generation,record,record_hash)
  SELECT $1,COALESCE(max(sequence),0)+1,$2,$3,$4,$5,$6,$7 FROM extension_p1_group_versions WHERE installation=$1`, p.Installation, g.digest(), d.Revision, principal, s.generation, raw, upgradeHash(raw))
 	return err

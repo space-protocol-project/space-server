@@ -82,12 +82,13 @@ jobs:
             SPACE_P1_PUBLISH_MODULES="$PWD/experiments/extensions/testdata" \
             go test -race -json ./internal/postgres -run '^TestExtensionP1Group' -count=3 -timeout=8m > .local/groups/groups.jsonl
           sudo rmdir /sys/fs/cgroup/space-p1-publish
+          go test -race -json ./internal/postgres -run '^TestExtensionP1HistoryBudget' -count=3 > .local/groups/history-budget.jsonl
           python3 - <<'PY'
           import json
           from pathlib import Path
           events=[json.loads(line) for line in Path('.local/groups/groups.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('Sequential','Rejects','Failure','AtomicFailure','ActiveCalls','RestoreGeneration','CommitRecovery','ProcessRecovery','Corruption'):
+          for name in ('Sequential','Rejects','Failure','AtomicFailure','ActiveCalls','RestoreGeneration','CommitRecovery','ProcessRecovery','Corruption','HistoryQuota'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Group'+name for e in events)==3
           events=[json.loads(line) for line in Path('.local/groups/publish.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
@@ -95,8 +96,12 @@ jobs:
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Publish'+name for e in events)==3
           events=[json.loads(line) for line in Path('.local/groups/versions.jsonl').read_text().splitlines()]
           assert not any(e['Action'] in ('skip','fail') for e in events)
-          for name in ('Sequential','PermissionsAndSource','Backfill','Corruption','PrepareRecovery','CommitRecovery','ProcessRecovery'):
+          for name in ('Sequential','PermissionsAndSource','Backfill','Corruption','PrepareRecovery','CommitRecovery','ProcessRecovery','HistoryQuota'):
               assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Versions'+name for e in events)==3
+          events=[json.loads(line) for line in Path('.local/groups/history-budget.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          for name in ('Bounds','Accounting'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1HistoryBudget'+name for e in events)==3
           PY
       - name: Регрессия постоянного журнала
         run: go test -race -json ./internal/postgres -run '^TestExtensionP1Upgrade' -count=3 -timeout=8m > .local/groups/recovery.jsonl

@@ -89,6 +89,9 @@ func archiveVersion(ctx context.Context, tx pgx.Tx, p ExtensionP1UpgradeProgress
 	if err != nil {
 		return err
 	}
+	if err = admitHistory(ctx, tx, p.Plan.Installation, len(raw)); err != nil {
+		return err
+	}
 	_, err = tx.Exec(ctx, `INSERT INTO extension_p1_versions(installation,sequence,digest,source,target,schema_from,schema_to,revision,principal,generation,record,record_hash)
  SELECT $1,COALESCE(max(sequence),0)+1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11 FROM extension_p1_versions WHERE installation=$1`, p.Plan.Installation, p.Digest, p.Plan.Source, p.Plan.Target, p.Plan.SchemaFrom, p.Plan.SchemaTo, p.Plan.Revision+1, r.PublishedBy, r.Generation, raw, upgradeHash(raw))
 	return err

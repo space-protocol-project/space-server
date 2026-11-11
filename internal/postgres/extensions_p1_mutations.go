@@ -28,7 +28,7 @@ type ExtensionP1MutationBinding struct {
 	Registration          demo.Registration
 	Events                []string
 	// Capabilities задаёт доверенный установщик после согласия владельца.
-	Capabilities []string
+	Capabilities []string `json:",omitempty"`
 }
 type extensionMutationBinding struct {
 	installation, channel, command string

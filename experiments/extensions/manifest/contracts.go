@@ -26,17 +26,24 @@ func contractsFields(raw json.RawMessage) bool {
 			return false
 		}
 		for _, op := range ops {
-			if len(op) != 4 {
+			if !operationFields(op) {
 				return false
-			}
-			for _, name := range []string{"result", "effect", "capabilities", "events"} {
-				if op[name] == nil {
-					return false
-				}
 			}
 		}
 	}
 	return fields["events"] != nil
+}
+
+func operationFields(op map[string]json.RawMessage) bool {
+	if len(op) != 4 {
+		return false
+	}
+	for _, name := range []string{"result", "effect", "capabilities", "events"} {
+		if op[name] == nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (m Manifest) validContracts() bool {

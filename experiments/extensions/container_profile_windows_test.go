@@ -70,7 +70,7 @@ func TestWindowsRestrictedProfileReadOnly(t *testing.T) {
 	for _, target := range []string{root, folder, h.group} {
 		var results map[string]resourceResult
 		boundaryRun(t, h, map[string]string{"Mode": "profile-root", "Directory": target}, &results)
-		if len(results) != 4 {
+		if len(results) != 6 {
 			t.Fatal(results)
 		}
 		for _, result := range results {

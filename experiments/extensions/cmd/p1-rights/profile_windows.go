@@ -20,10 +20,12 @@ func profileDiskProbe(raw []byte) bool {
 	path := func(name string) string { return filepath.Join(request.Directory, name) }
 	if request.Mode == "profile-root" {
 		result := map[string]accessResult{
-			"create":                 resultOf(nativeFile(path("root-created"), true, windows.CREATE_NEW)),
-			"mkdir":                  resultOf(os.Mkdir(path("root-directory"), 0700)),
-			"dacl":                   resultOf(changeProfileDACL(request.Directory)),
-			"private_registry_write": resultOf(writePrivateRegistry()),
+			"create":                  resultOf(nativeFile(path("root-created"), true, windows.CREATE_NEW)),
+			"mkdir":                   resultOf(os.Mkdir(path("root-directory"), 0700)),
+			"dacl":                    resultOf(changeProfileDACL(request.Directory)),
+			"private_registry_write":  resultOf(writePrivateRegistry()),
+			"private_registry_create": resultOf(privateRegistryAccess(registry.CREATE_SUB_KEY)),
+			"private_registry_dacl":   resultOf(privateRegistryAccess(windows.WRITE_DAC)),
 		}
 		if json.NewEncoder(os.Stdout).Encode(result) != nil {
 			os.Exit(3)
@@ -50,16 +52,32 @@ func profileDiskProbe(raw []byte) bool {
 }
 
 func writePrivateRegistry() error {
-	var key registry.Key
-	result, _, _ := windows.NewLazySystemDLL("userenv.dll").NewProc("GetAppContainerRegistryLocation").Call(uintptr(registry.SET_VALUE), uintptr(unsafe.Pointer(&key)))
-	if int32(result) < 0 {
-		if uint32(result)&0xffff0000 == 0x80070000 {
-			return windows.Errno(uint32(result) & 0xffff)
-		}
-		return fmt.Errorf("GetAppContainerRegistryLocation: %#x", result)
+	key, err := openPrivateRegistry(registry.SET_VALUE)
+	if err != nil {
+		return err
 	}
 	defer key.Close()
 	return key.SetStringValue("SpaceP1Boundary", "probe")
+}
+
+func privateRegistryAccess(access uint32) error {
+	key, err := openPrivateRegistry(access)
+	if err != nil {
+		return err
+	}
+	return key.Close()
+}
+
+func openPrivateRegistry(access uint32) (registry.Key, error) {
+	var key registry.Key
+	result, _, _ := windows.NewLazySystemDLL("userenv.dll").NewProc("GetAppContainerRegistryLocation").Call(uintptr(access), uintptr(unsafe.Pointer(&key)))
+	if int32(result) < 0 {
+		if uint32(result)&0xffff0000 == 0x80070000 {
+			return 0, windows.Errno(uint32(result) & 0xffff)
+		}
+		return 0, fmt.Errorf("GetAppContainerRegistryLocation: %#x", result)
+	}
+	return key, nil
 }
 
 func appendProfileFile(path string) error {

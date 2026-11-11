@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
@@ -180,5 +181,48 @@ func TestPackageSignedInvalidManifest(t *testing.T) {
 	}
 	if _, err = packagep1.Verify(raw, trust); err == nil {
 		t.Fatal("Подпись разрешила неизвестный ABI")
+	}
+}
+
+func TestPackageCryptography(t *testing.T) {
+	for _, mode := range []string{"signature_bit", "index_bytes", "wrong_domain", "module_bytes"} {
+		t.Run(mode, func(t *testing.T) {
+			raw, key, trust := fixture(t)
+			raw = rewritten(t, raw, func(h *zip.FileHeader, data []byte) (*zip.FileHeader, []byte) {
+				if mode == "signature_bit" && h.Name == "index.sig" {
+					signature, err := base64.StdEncoding.DecodeString(string(data))
+					if err != nil {
+						t.Fatal(err)
+					}
+					signature[0] ^= 1
+					data = []byte(base64.StdEncoding.EncodeToString(signature))
+				}
+				if mode == "index_bytes" && h.Name == "index.json" {
+					data = append(data, ' ')
+				}
+				if mode == "module_bytes" && h.Name == "server.wasm" {
+					data[len(data)-1] ^= 1
+				}
+				if mode == "wrong_domain" && h.Name == "index.sig" {
+					p, err := sdk.Starter("org.example.starter", "Пример", []byte("MIT"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					index := packagep1.Index{Format: "space.package.index.p1", Files: map[string]string{}}
+					for name, bytes := range p {
+						index.Files[name] = packagep1.Fingerprint(bytes)
+					}
+					bytes, err := json.Marshal(index)
+					if err != nil {
+						t.Fatal(err)
+					}
+					data = []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(key, bytes)))
+				}
+				return h, data
+			})
+			if _, err := packagep1.Verify(raw, trust); err == nil {
+				t.Fatal("Криптографическая подмена принята", mode)
+			}
+		})
 	}
 }

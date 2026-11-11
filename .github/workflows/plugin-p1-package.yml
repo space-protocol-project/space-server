@@ -71,7 +71,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(x) for x in Path('.local/package/tests.jsonl').read_text(encoding='utf-8').splitlines()]
           assert not any(x['Action'] in ('fail','skip') for x in events)
-          for name in ('TestSharedManifest','TestManifestRequired','TestManifestRejects','TestPackageReproducible','TestPackageTrust','TestPackageArchiveRejects','TestPackageSignedInvalidManifest','TestStarterABI','TestFullManifestDispatcher','TestFullManifestUnsupported','TestSharedFormPayload','TestFormSchemaRejects','TestLegacyPayloadRejectedBeforeWASM','TestFormPayloadBeforeWASM'):
+          for name in ('TestSharedManifest','TestManifestRequired','TestManifestRejects','TestPackageReproducible','TestPackageTrust','TestPackageArchiveRejects','TestPackageSignedInvalidManifest','TestPackageCryptography','TestStarterABI','TestFullManifestDispatcher','TestFullManifestUnsupported','TestSharedFormPayload','TestFormSchemaRejects','TestLegacyPayloadRejectedBeforeWASM','TestFormPayloadBeforeWASM'):
               assert sum(x['Action']=='pass' and x.get('Test')==name for x in events)==3,name
           if os.environ['RUNNER_OS']=='Linux':
               events=[json.loads(x) for x in Path('.local/package/isolated.jsonl').read_text(encoding='utf-8').splitlines()]
@@ -79,7 +79,7 @@ jobs:
               assert sum(x['Action']=='pass' and x.get('Test')=='TestStarterIsolated' for x in events)==3
               events=[json.loads(x) for x in Path('.local/package/package-isolated.jsonl').read_text(encoding='utf-8').splitlines()]
               assert not any(x['Action'] in ('fail','skip') for x in events)
-              for name in ('Reproducible','Trust','ArchiveRejects','SignedInvalidManifest'):
+              for name in ('Reproducible','Trust','ArchiveRejects','SignedInvalidManifest','Cryptography'):
                   assert sum(x['Action']=='pass' and x.get('Test')=='TestPackage'+name for x in events)==3
           PY
       - uses: actions/upload-artifact@v4

@@ -127,7 +127,7 @@ space-server -home-verify-export /path/to/space.zip
 
 В готовящемся выпуске доступна диагностика без запуска базы: `space-server doctor -home-data 'C:\Space\data'`. Для проверки из другой сети укажите `-endpoint`, `-fingerprint` и `-server-id` из команды, скопированной в «Эфире». Подробности и ограничения: [диагностика сети](https://github.com/space-protocol-project/space-app/blob/main/docs/NETWORK-DOCTOR.md). Локальный успех не подтверждает внешнюю доступность; doctor доступен в runtime v0.3.3 и новее.
 
-Нужны Go 1.27.2+ и отдельная PostgreSQL. Из корня этого репозитория:
+Нужны Go 1.27.4+ и отдельная PostgreSQL. Из корня этого репозитория:
 
 ```powershell
 $env:SPACE_DATABASE_URL = 'postgres://space:YOUR_PASSWORD@127.0.0.1:5432/space?sslmode=disable'
@@ -221,4 +221,4 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 
 Продолжение транспорта P1: [общее окно HTTP/2-соединения и два независимых медленных клиента](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-CONNECTION.md).
 
-[Сводная ревизия P1 от 11 ноября: E01–E07 и конечный план закрытия](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-AUDIT.md). Следующий блок — архив групповой истории нескольких экземпляров; стабильный 0.9.0 требует завершения P1–P3 и остаётся отложенным.
+[Сводная ревизия P1 от 11 ноября: E01–E07 и конечный план закрытия](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-AUDIT.md). [Групповые архивы приняты в CI](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-GROUP-ARCHIVE.md): 142 конечных результата на Linux/Windows/macOS, регрессия одиночных архивов и ядра успешна. Следующий блок — кандидат контрактов и бюджет истории; стабильный 0.9.0 требует завершения P1–P3 и остаётся отложенным.

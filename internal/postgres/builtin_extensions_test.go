@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -200,6 +201,12 @@ func TestBuiltinRegistryTransaction(t *testing.T) {
 }
 
 func TestBuiltinRegistryUpgrade(t *testing.T) {
+	for _, version := range []int{46, 47} {
+		t.Run(strconv.Itoa(version), func(t *testing.T) { builtinRegistryUpgrade(t, version) })
+	}
+}
+
+func builtinRegistryUpgrade(t *testing.T, version int) {
 	ctx, url := isolatedDatabase(t)
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
@@ -212,7 +219,7 @@ func TestBuiltinRegistryUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	for i := 12; i < 46; i++ {
+	for i := 12; i < version; i++ {
 		if err = applyMigration(ctx, tx, i+1, migrationFiles[i]); err != nil {
 			t.Fatal(err)
 		}

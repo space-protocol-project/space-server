@@ -18,13 +18,14 @@ var createProfile = userenv.NewProc("CreateAppContainerProfile")
 var deleteProfile = userenv.NewProc("DeleteAppContainerProfile")
 
 type appContainer struct {
-	name      *uint16
-	sid       *windows.SID
-	directory string
-	policy    uint32
-	jobName   *uint16
-	journal   string
-	lock      *os.File
+	name         *uint16
+	sid          *windows.SID
+	directory    string
+	policy       uint32
+	jobName      *uint16
+	journal      string
+	lock         *os.File
+	capabilities []windows.SIDAndAttributes
 }
 
 type securityCapabilities struct {
@@ -157,6 +158,10 @@ func (c *appContainer) close() error {
 
 func (c *appContainer) attributes(list *windows.ProcThreadAttributeListContainer) error {
 	capabilities := &securityCapabilities{SID: c.sid}
+	if len(c.capabilities) != 0 {
+		capabilities.Capabilities = &c.capabilities[0]
+		capabilities.Count = uint32(len(c.capabilities))
+	}
 	if err := list.Update(0x00020009, unsafe.Pointer(capabilities), unsafe.Sizeof(*capabilities)); err != nil {
 		return err
 	}
@@ -192,8 +197,14 @@ func (c *appContainer) verify(process windows.Handle) error {
 	if err := windows.GetTokenInformation(token, 30, &buffer[0], uint32(len(buffer)), &size); err != nil {
 		return fmt.Errorf("token capabilities: %w", err)
 	}
-	if *(*uint32)(unsafe.Pointer(&buffer[0])) != 0 {
+	groups := (*windows.Tokengroups)(unsafe.Pointer(&buffer[0]))
+	if groups.GroupCount != uint32(len(c.capabilities)) {
 		return ErrIsolation
+	}
+	for i, capability := range groups.AllGroups() {
+		if !windows.EqualSid(capability.Sid, c.capabilities[i].Sid) || capability.Attributes != c.capabilities[i].Attributes {
+			return ErrIsolation
+		}
 	}
 	own, err := wintoken.PackageAccess(token, c.sid.String())
 	if err != nil || !own {

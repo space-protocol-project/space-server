@@ -1,0 +1,31 @@
+name: P1 Windows network and profile boundary
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: experiments/extensions
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Winsock и запрет без сетевых capabilities
+        run: |
+          go build -o p1-rights.exe ./cmd/p1-rights
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:P1_RIGHTS = Join-Path $PWD 'p1-rights.exe'
+          go test -race -count=1 -timeout=120s -json -run '^TestWindowsRestricted(WinsockReady|NetworkMatrix)$' . > windows-boundary.jsonl
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-boundary
+          path: experiments/extensions/windows-boundary.jsonl

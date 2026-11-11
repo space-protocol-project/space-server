@@ -31,6 +31,7 @@ type loadMetrics struct {
 	sync.Mutex
 	samples   []loadSample
 	committed atomic.Int64
+	failed    atomic.Bool
 }
 
 // Только явный профиль CI. Длительность и квоты не настраиваются переменными.
@@ -97,7 +98,7 @@ func TestExtensionP1Load(t *testing.T) {
 			wg.Add(1)
 			go func(client int) { defer wg.Done(); loadClient(t, f, api, metrics, phase, client, start, deadline) }(client)
 		}
-		for time.Now().Before(deadline) {
+		for time.Now().Before(deadline) && !metrics.failed.Load() {
 			if time.Since(start) >= 30*time.Second && time.Since(start) < 35*time.Second {
 				loadRevokeDuringTraffic(t, f, api, channel)
 			}
@@ -106,6 +107,9 @@ func TestExtensionP1Load(t *testing.T) {
 		}
 		wg.Wait()
 		loadResource(t, f, host, resources, phase, start)
+		if metrics.failed.Load() {
+			t.Fatal("Нагрузка остановлена после неожиданного ответа; журнал сохранён")
+		}
 	}
 	stats := host.Stats()
 	if stats.Active != 0 || stats.ReservedBytes != 0 || stats.OSProcesses != 0 {
@@ -163,7 +167,7 @@ func loadInstance(phase, client, slot int) string {
 
 func loadClient(t *testing.T, f *channelFixture, api pb.ExtensionP1ServiceClient, m *loadMetrics, phase, client int, start, deadline time.Time) {
 	confirmed := map[int]bool{}
-	for sequence := 0; time.Now().Before(deadline); sequence++ {
+	for sequence := 0; time.Now().Before(deadline) && !m.failed.Load(); sequence++ {
 		slot := min(int(time.Since(start)/(20*time.Second)), 14)
 		instance := loadInstance(phase, client, slot)
 		r := mutationRequest("load-command-0001", 0)
@@ -178,13 +182,14 @@ func loadClient(t *testing.T, f *channelFixture, api pb.ExtensionP1ServiceClient
 		if (kind == 1 || kind == 2) && err == nil {
 			confirmed[slot] = true
 		}
-		if !loadExpected(kind, code) {
-			t.Errorf("phase=%d client=%d case=%s unexpected=%v", phase, client, name, err)
-			return
-		}
 		m.Lock()
 		m.samples = append(m.samples, loadSample{phase, client, name, code.String(), float64(time.Since(before).Microseconds()) / 1000, time.Since(start) < time.Minute})
 		m.Unlock()
+		if !loadExpected(kind, code) {
+			m.failed.Store(true)
+			t.Errorf("phase=%d client=%d case=%s unexpected=%v", phase, client, name, err)
+			return
+		}
 		time.Sleep(20 * time.Millisecond)
 	}
 }
@@ -318,13 +323,16 @@ func loadResource(t *testing.T, f *channelFixture, host *extensions.ProcessHost,
 }
 
 func loadWrite(t *testing.T, out string, m *loadMetrics) {
+	m.Lock()
+	samples := append([]loadSample(nil), m.samples...)
+	m.Unlock()
 	file, err := os.Create(filepath.Join(out, "requests.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
 	groups := map[string][]float64{}
-	for _, sample := range m.samples {
+	for _, sample := range samples {
 		if err = json.NewEncoder(file).Encode(sample); err != nil {
 			t.Fatal(err)
 		}

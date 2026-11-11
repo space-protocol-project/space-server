@@ -103,7 +103,7 @@ jobs:
             SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \
             SPACE_P1_MODULE="$PWD/experiments/extensions/testdata/demo.wasm" \
             SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
-            go test -race -json ./internal/postgres -run '^TestExtensionP1' -skip '^TestExtensionP1(Group|Publish|Versions)' -count=1 > .local/p1-core/isolated.jsonl
+            go test -race -json ./internal/postgres -run '^TestExtensionP1' -skip '^TestExtensionP1(Group|Publish|Versions|Load)' -count=1 > .local/p1-core/isolated.jsonl
           sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
             SPACE_P1_CRASH_STOP_WORKER=/tmp/space-p1-crash-worker \
             SPACE_P1_WORKER=/tmp/space-p1-core-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-core \

@@ -1,0 +1,78 @@
+name: P1 limited load acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  load:
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Фиксация стенда и расписания
+        run: |
+          mkdir -p .local/p1-load
+          git rev-parse HEAD > .local/p1-load/server-sha.txt
+          echo 01558f35c1d704dcad286ca7f500d04343a4d604 > .local/p1-load/app-sha.txt
+          echo 4df076de4033f37a64d80cb76ea31f4c36c6e2e0 > .local/p1-load/protocol-sha.txt
+          go version > .local/p1-load/toolchain.txt
+          uname -a > .local/p1-load/runner.txt
+          lscpu >> .local/p1-load/runner.txt
+          cat /proc/meminfo >> .local/p1-load/runner.txt
+          cp docs/P1-LOAD-PROFILE.md .local/p1-load/profile.md
+      - name: Реальный WASM и прежние квоты
+        working-directory: experiments/extensions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          python3 demo/build.py --mutation
+          go build -o /tmp/space-p1-load-worker ./cmd/p1-worker
+          sudo mkdir /sys/fs/cgroup/space-p1-load
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-load/cgroup.subtree_control'
+      - name: Пятнадцать минут с проверкой гонок
+        env:
+          SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+        run: |
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_LOAD=1 SPACE_P1_LOAD_OUTPUT="$PWD/.local/p1-load" \
+            SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-load SPACE_P1_WORKER=/tmp/space-p1-load-worker \
+            SPACE_P1_MUTATION_MODULE="$PWD/experiments/extensions/testdata/mutation.wasm" \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1Load$' -count=1 -timeout=20m > .local/p1-load/tests.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-load
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(x) for x in Path('.local/p1-load/tests.jsonl').read_text().splitlines()]
+          assert not any(x['Action'] in ('skip','fail') for x in events)
+          test=[x for x in events if x['Action']=='pass' and x.get('Test')=='TestExtensionP1Load']
+          assert len(test)==1 and test[0]['Elapsed']>=900,test
+          rows=[json.loads(x) for x in Path('.local/p1-load/resources.jsonl').read_text().splitlines()]
+          for phase in range(3):
+              assert max(x['elapsed_seconds'] for x in rows if x['phase']==phase)>=300
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-load-${{ matrix.run }}
+          path: .local/p1-load
+          include-hidden-files: true
+          retention-days: 7

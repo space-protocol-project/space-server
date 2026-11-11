@@ -61,7 +61,7 @@ func (m Manifest) valid() bool {
 	if len(m.PluginID) > 128 || !pluginID.MatchString(m.PluginID) || len(m.Version) > 32 || !versionID.MatchString(m.Version) || m.DataSchema < 1 || m.DataSchema > 2147483647 {
 		return false
 	}
-	return unique(m.Permissions, 8, map[string]bool{"storage.own": true, "events.own": true}) && unique(m.RequiredComponents, 16, map[string]bool{"section.v1": true, "text.v1": true, "button.v1": true}) && operations(m.Commands) && operations(m.Queries)
+	return unique(m.Permissions, 8, map[string]bool{"storage.own": true, "events.own": true}) && unique(m.RequiredComponents, 16, map[string]bool{"section.v1": true, "text.v1": true, "button.v1": true, "form.v1": true, "input.v1": true, "toggle.v1": true, "choice.v1": true}) && operations(m.Commands) && operations(m.Queries)
 }
 
 func unique(values []string, limit int, allowed map[string]bool) bool {

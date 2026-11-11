@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "kind": {
+      "type": "string",
+      "maxLength": 1,
+      "enum": [
+        "a",
+        "b"
+      ]
+    },
+    "enabled": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "message",
+    "kind",
+    "enabled"
+  ],
+  "additionalProperties": false
+}

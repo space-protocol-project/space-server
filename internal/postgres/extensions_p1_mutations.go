@@ -56,6 +56,7 @@ func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensio
 		}
 		binding.Registration.Module = bytes.Clone(binding.Registration.Module)
 		binding.Registration.SourceManifest = bytes.Clone(binding.Registration.SourceManifest)
+		binding.Registration.SourceSchemas = cloneExtensionSchemas(binding.Registration.SourceSchemas)
 		item := extensionMutationBinding{binding.Installation, binding.Channel, binding.Registration.Manifest.Command, mutationPackageHash(binding), make(map[string]bool)}
 		// Полный manifest пока допускает только stateless-профиль без storage.own.
 		if len(binding.Registration.SourceManifest) != 0 {
@@ -80,12 +81,26 @@ func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensio
 	return svc, nil
 }
 
+func cloneExtensionSchemas(source map[string][]byte) map[string][]byte {
+	if source == nil {
+		return nil
+	}
+	result := make(map[string][]byte, len(source))
+	for name, raw := range source {
+		result[name] = bytes.Clone(raw)
+	}
+	return result
+}
+
 func mutationPackageHash(binding ExtensionP1MutationBinding) [32]byte {
 	events := append([]string(nil), binding.Events...)
 	sort.Strings(events)
 	parts := []any{binding.Registration.Module, binding.Registration.Manifest, events}
 	if len(binding.Registration.SourceManifest) != 0 {
 		parts = append(parts, binding.Registration.SourceManifest)
+	}
+	if binding.Registration.SourceSchemas != nil {
+		parts = append(parts, binding.Registration.SourceSchemas)
 	}
 	raw, _ := json.Marshal(parts)
 	return sha256.Sum256(raw)

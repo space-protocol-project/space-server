@@ -1,0 +1,59 @@
+{
+  "ui_api": "space.ui.p1",
+  "strings": {
+    "en": {
+      "submit": "Send",
+      "message": "Message",
+      "kind": "Kind",
+      "enabled": "Enabled",
+      "a": "First",
+      "b": "Second"
+    },
+    "ru": {
+      "submit": "Отправить",
+      "message": "Сообщение",
+      "kind": "Вариант",
+      "enabled": "Включено",
+      "a": "Первый",
+      "b": "Второй"
+    }
+  },
+  "body": [
+    {
+      "id": "form",
+      "component": "form.v1",
+      "label_key": "submit",
+      "command": "acknowledge",
+      "children": [
+        {
+          "id": "message",
+          "component": "input.v1",
+          "label_key": "message",
+          "required": true,
+          "max_length": 64
+        },
+        {
+          "id": "kind",
+          "component": "choice.v1",
+          "label_key": "kind",
+          "required": true,
+          "options": [
+            {
+              "value": "a",
+              "label_key": "a"
+            },
+            {
+              "value": "b",
+              "label_key": "b"
+            }
+          ]
+        },
+        {
+          "id": "enabled",
+          "component": "toggle.v1",
+          "label_key": "enabled"
+        }
+      ]
+    }
+  ]
+}

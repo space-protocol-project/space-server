@@ -10,6 +10,7 @@ import (
 	"fmt"
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
+	"github.com/space-protocol-project/space-server/experiments/extensions/sdk"
 	"net"
 	"net/http"
 	"os"
@@ -32,6 +33,7 @@ func run() error {
 	broken := flag.String("broken", "testdata/loop.wasm", "failure fixture")
 	credentials := flag.String("credentials", "", "CI credentials JSON")
 	address := flag.String("address-file", "", "ready address file")
+	form := flag.Bool("form", false, "bounded form fixture")
 	flag.Parse()
 	raw, err := os.ReadFile(*credentials)
 	if err != nil {
@@ -53,19 +55,7 @@ func run() error {
 		}
 		return demo.Principal{Space: "space_demo", Instance: instance, User: user, Device: "ci_device", Revision: "1"}, nil
 	}
-	raw, err = os.ReadFile(*manifestPath)
-	if err != nil {
-		return err
-	}
-	var manifest demo.Manifest
-	if json.Unmarshal(raw, &manifest) != nil {
-		return demo.ErrRequest
-	}
-	wasm, err := os.ReadFile(*module)
-	if err != nil {
-		return err
-	}
-	bad, err := os.ReadFile(*broken)
+	registrations, err := loadRegistrations(*form, *manifestPath, *module, *broken)
 	if err != nil {
 		return err
 	}
@@ -74,7 +64,7 @@ func run() error {
 		return err
 	}
 	defer host.Close()
-	dispatcher, err := demo.New(tracedRuntime{host}, authorize, map[string]demo.Registration{"demo": {Manifest: manifest, Module: wasm}, "broken": {Manifest: manifest, Module: bad}})
+	dispatcher, err := demo.New(tracedRuntime{host}, authorize, registrations)
 	if err != nil {
 		return err
 	}
@@ -115,4 +105,33 @@ func (h tracedRuntime) Invoke(ctx context.Context, call extensions.Invocation) (
 		fmt.Fprintf(os.Stderr, "demo invocation failed: %v\n", err)
 	}
 	return result, err
+}
+
+func loadRegistrations(form bool, manifestPath, module, broken string) (map[string]demo.Registration, error) {
+	if form {
+		p, err := sdk.FormStarter()
+		if err != nil {
+			return nil, err
+		}
+		r, err := demo.FromManifest(p["manifest.json"], p["server.wasm"], map[string][]byte{"schemas/empty.json": p["schemas/empty.json"], "schemas/form.json": p["schemas/form.json"]})
+		return map[string]demo.Registration{"demo": r}, err
+	}
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	var manifest demo.Manifest
+	if json.Unmarshal(raw, &manifest) != nil {
+		return nil, demo.ErrRequest
+	}
+	wasm, err := os.ReadFile(module)
+	if err != nil {
+		return nil, err
+	}
+	bad, err := os.ReadFile(broken)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]demo.Registration{"demo": {Manifest: manifest, Module: wasm}, "broken": {Manifest: manifest, Module: bad}}, nil
 }

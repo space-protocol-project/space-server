@@ -43,7 +43,8 @@ type Manifest struct {
 type Registration struct {
 	Manifest       Manifest
 	Module         []byte
-	SourceManifest []byte `json:"source_manifest,omitempty"`
+	SourceManifest []byte            `json:"source_manifest,omitempty"`
+	SourceSchemas  map[string][]byte `json:"source_schemas,omitempty"`
 }
 type Dispatcher struct {
 	host          extensions.Runtime
@@ -74,6 +75,7 @@ func New(host extensions.Runtime, authorize Authorize, registrations map[string]
 		}
 		item.Module = bytes.Clone(item.Module)
 		item.SourceManifest = bytes.Clone(item.SourceManifest)
+		item.SourceSchemas = cloneSchemas(item.SourceSchemas)
 		copied[id] = item
 	}
 	return &Dispatcher{host, authorize, copied}, nil
@@ -95,7 +97,7 @@ func Decode(raw []byte) (Request, error) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&request) != nil || request.Payload == nil || len(request.Payload) != 0 {
+	if decoder.Decode(&request) != nil || request.Payload == nil {
 		return request, ErrRequest
 	}
 	if request.Protocol != Protocol {
@@ -111,7 +113,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	if request.Protocol != Protocol {
 		return nil, ErrVersion
 	}
-	if request.Payload == nil || len(request.Payload) != 0 {
+	if request.Payload == nil {
 		return nil, ErrRequest
 	}
 	registration, ok := d.registrations[request.Instance]
@@ -120,6 +122,9 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	}
 	if !allowed(request, registration.Manifest) {
 		return nil, ErrRequest
+	}
+	if err := validatePayload(registration, request); err != nil {
+		return nil, err
 	}
 	principal, err := d.authorize(ctx, credential, request.Instance, request.Kind == "command")
 	if err != nil {

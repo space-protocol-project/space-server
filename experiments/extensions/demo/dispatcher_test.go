@@ -45,7 +45,6 @@ func TestDecodeRejectsUntrustedContext(t *testing.T) {
 	for _, raw := range []string{
 		`{"Protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{}}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{},"context":{}}`,
-		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{"principal_id":"admin"}}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":null}`,
 		`{"protocol":"space.dispatch.p1","instance":"demo","kind":"query","name":"overview","payload":{},"name":"acknowledge"}`,
 	} {

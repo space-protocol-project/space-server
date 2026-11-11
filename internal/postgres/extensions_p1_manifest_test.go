@@ -53,4 +53,43 @@ func TestExtensionP1ManifestPackageIdentity(t *testing.T) {
 	if first == second || first == legacy || second == legacy {
 		t.Fatal("Manifest не входит в идентичность пакета")
 	}
+	b.Registration.SourceSchemas = map[string][]byte{"schemas/form.json": []byte(`{"type":"object"}`)}
+	if mutationPackageHash(b) == second {
+		t.Fatal("Схема не входит в идентичность пакета")
+	}
+}
+
+func TestExtensionP1FormPayload(t *testing.T) {
+	f := newChannelFixture(t)
+	c := f.create(t, "form_test")
+	p, err := sdk.FormStarter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := demo.FromManifest(p["manifest.json"], p["server.wasm"], map[string][]byte{"schemas/empty.json": p["schemas/empty.json"], "schemas/form.json": p["schemas/form.json"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := map[string]ExtensionP1MutationBinding{"demo": {Installation: "install", Channel: c.Id, Registration: r}}
+	h := &mutationProbe{run: func(context.Context) ([]byte, error) { return []byte(`{"ui_api":"space.ui.p1"}`), nil }}
+	s, err := f.store.NewExtensionP1ManagedService(f.ctx, h, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	managedChange(t, f, s, "enable", 1)
+	api := extensionP1RPCClient(t, f, s)
+	q := extensionP1Command()
+	q.PayloadJson = []byte(`{"message":"Привет 😀","kind":"a","enabled":true}`)
+	if _, err = api.ExecuteExtensionCommand(f.owner, q); err != nil {
+		t.Fatal(err)
+	}
+	for _, payload := range []string{`{}`, `{"message":"ok","kind":"a","enabled":true,"principal_id":"admin"}`, `{"message":"ok","kind":"a","enabled":"true"}`} {
+		q.PayloadJson = []byte(payload)
+		_, err = api.ExecuteExtensionCommand(f.owner, q)
+		requireCode(t, err, codes.InvalidArgument)
+	}
+	if h.calls.Load() != 1 {
+		t.Fatal("Неверная форма вызвала гостя", h.calls.Load())
+	}
+	mutationCounts(t, f, 0, 0, 0, 0)
 }

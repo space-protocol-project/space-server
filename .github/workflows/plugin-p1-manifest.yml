@@ -1,0 +1,127 @@
+name: P1 полный manifest и схемы мутаций
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tools/install_p1_linux_deps.sh wabt
+      - run: python3 experiments/extensions/fixtures.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifest-wasm-fixtures
+          path: experiments/extensions/testdata
+          retention-days: 7
+  modules:
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: experiments/extensions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: space-protocol-project/space-protocol
+          ref: f2a194b1ce1f78c472e866e79eca27f25b11176d
+          path: .local/protocol
+      - uses: actions/download-artifact@v4
+        with:
+          name: manifest-wasm-fixtures
+          path: experiments/extensions/testdata
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/extensions/go.mod
+          cache-dependency-path: experiments/extensions/go.sum
+      - name: Общие контракты и полный модуль
+        run: |
+          mkdir -p .local/manifest
+          cmp manifest/testdata/manifest-v2.json ../../.local/protocol/docs/extensions/p1/manifest-v2.json
+          cmp sdk/testdata/manifest-v2.json ../../.local/protocol/docs/extensions/p1/manifest-v2.json
+          for name in empty result event; do cmp sdk/testdata/contracts/$name.json ../../.local/protocol/docs/extensions/p1/contracts/$name.json; done
+          go test -json ./... > .local/manifest/module.jsonl
+          go test -race -json ./... > .local/manifest/module-race.jsonl
+          go test -race -json ./manifest ./valueschema ./demo ./packagep1 ./sdk -skip '^(TestStarterIsolated|TestPackageIsolatedLimits)$' -count=3 > .local/manifest/contracts.jsonl
+          go vet ./...
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[json.loads(s) for s in Path('.local/manifest/contracts.jsonl').read_text().splitlines()]
+          assert not any(r['Action'] in ('fail','skip') for r in rows)
+          for name in ('TestManifestV2Contracts','TestValueSchema','TestValueSchemaRejects','TestContractResult','TestPackageContracts'):
+              assert sum(r['Action']=='pass' and r.get('Test')==name for r in rows)==3,name
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manifest-${{ matrix.os }}
+          path: experiments/extensions/.local/manifest
+          include-hidden-files: true
+          retention-days: 7
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Полная регрессия ядра
+        run: |
+          mkdir -p .local/manifest
+          git rev-parse HEAD > .local/manifest/server-sha.txt
+          go test -json ./... > .local/manifest/core.jsonl
+          go test -race -json ./... > .local/manifest/core-race.jsonl
+          go vet ./...
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/extensionp1 ./internal/postgres
+      - name: Подписанный пакет, настоящие сессии и ACL, WASM, COMMIT и повтор
+        run: |
+          (cd experiments/extensions && go build -o /tmp/space-p1-manifest-worker ./cmd/p1-worker)
+          sudo mkdir /sys/fs/cgroup/space-p1-manifest
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-manifest/cgroup.subtree_control'
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_WORKER=/tmp/space-p1-manifest-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-manifest \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1Contracts' -count=3 -timeout=8m > .local/manifest/contracts.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-manifest
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[json.loads(s) for s in Path('.local/manifest/contracts.jsonl').read_text().splitlines()]
+          assert not any(r['Action'] in ('skip','fail') for r in rows)
+          for name in ('Replay','Access','RejectOutput','Revocation','WASM'):
+              assert sum(r['Action']=='pass' and r.get('Test')=='TestExtensionP1Contracts'+name for r in rows)==3,name
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manifest-core
+          path: .local/manifest
+          include-hidden-files: true
+          retention-days: 7

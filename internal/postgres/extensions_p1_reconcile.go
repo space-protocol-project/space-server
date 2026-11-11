@@ -30,7 +30,7 @@ func (m *extensionMutations) Reconcile(ctx context.Context, r *pb.ExecuteExtensi
 		return nil, mutationError(codes.InvalidArgument, "invalid_mutation_request")
 	}
 	b, ok := m.bindings[r.InstanceId]
-	if !ok || b.command != r.Command {
+	if !ok || !b.handles(r.Command) {
 		return nil, mutationError(codes.PermissionDenied, "permission_denied")
 	}
 	select {

@@ -12,6 +12,7 @@ import (
 
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
+	"github.com/space-protocol-project/space-server/experiments/extensions/manifest"
 	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"github.com/space-protocol-project/space-server/internal/authn"
 	"github.com/space-protocol-project/space-server/internal/extensionp1"
@@ -26,11 +27,15 @@ type ExtensionP1MutationBinding struct {
 	Installation, Channel string
 	Registration          demo.Registration
 	Events                []string
+	// Capabilities задаёт доверенный установщик после согласия владельца.
+	Capabilities []string
 }
 type extensionMutationBinding struct {
 	installation, channel, command string
 	packageHash                    [32]byte
 	events                         map[string]bool
+	contracts                      *manifest.Contracts
+	schemas                        map[string][]byte
 }
 type extensionMutations struct {
 	store     *Store
@@ -57,10 +62,9 @@ func (s *Store) newExtensionP1MutationService(ctx context.Context, host extensio
 		binding.Registration.Module = bytes.Clone(binding.Registration.Module)
 		binding.Registration.SourceManifest = bytes.Clone(binding.Registration.SourceManifest)
 		binding.Registration.SourceSchemas = cloneExtensionSchemas(binding.Registration.SourceSchemas)
-		item := extensionMutationBinding{binding.Installation, binding.Channel, binding.Registration.Manifest.Command, mutationPackageHash(binding), make(map[string]bool)}
-		// Полный manifest пока допускает только stateless-профиль без storage.own.
-		if len(binding.Registration.SourceManifest) != 0 {
-			item.command = ""
+		item := extensionMutationBinding{installation: binding.Installation, channel: binding.Channel, command: binding.Registration.Manifest.Command, packageHash: mutationPackageHash(binding), events: make(map[string]bool)}
+		if err := item.bindContracts(binding); err != nil {
+			return nil, err
 		}
 		for _, event := range binding.Events {
 			if !channelIDPattern.MatchString(event) {
@@ -101,6 +105,11 @@ func mutationPackageHash(binding ExtensionP1MutationBinding) [32]byte {
 	}
 	if binding.Registration.SourceSchemas != nil {
 		parts = append(parts, binding.Registration.SourceSchemas)
+	}
+	if len(binding.Capabilities) != 0 {
+		grants := append([]string(nil), binding.Capabilities...)
+		sort.Strings(grants)
+		parts = append(parts, grants)
 	}
 	raw, _ := json.Marshal(parts)
 	return sha256.Sum256(raw)
@@ -147,7 +156,7 @@ func (m *extensionMutations) prepare(ctx context.Context) error {
 
 func (m *extensionMutations) Handles(instance, command string) bool {
 	b, ok := m.bindings[instance]
-	return ok && command != "" && b.command == command
+	return ok && b.handles(command)
 }
 
 var mutationKeyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{16,128}$`)
@@ -171,7 +180,7 @@ func (m *extensionMutations) Execute(ctx context.Context, request *pb.ExecuteExt
 		return nil, mutationError(codes.ResourceExhausted, "mutation_slots")
 	}
 	b, ok := m.bindings[request.InstanceId]
-	if !ok || b.command != request.Command {
+	if !ok || !b.handles(request.Command) {
 		return nil, mutationError(codes.PermissionDenied, "permission_denied")
 	}
 	digest := mutationDigest(b, request)
@@ -191,8 +200,11 @@ func (m *extensionMutations) Execute(ctx context.Context, request *pb.ExecuteExt
 	if err != nil {
 		return nil, err
 	}
-	document, plan, err := extensionp1.ParseMutation(raw, request.ExpectedStateRevision, b.events)
+	document, plan, err := extensionp1.ParseMutation(raw, request.ExpectedStateRevision, b.allowedEvents(request.Command))
 	if err != nil {
+		return nil, err
+	}
+	if err = b.validateEvents(plan.Events); err != nil {
 		return nil, err
 	}
 	result, err := m.commit(ctx, conn, b, request, digest, p, document, plan)

@@ -30,6 +30,7 @@ type Manifest struct {
 	Commands           map[string]string `json:"commands"`
 	Queries            map[string]string `json:"queries"`
 	Contributions      []Contribution    `json:"contributions,omitzero"`
+	Contracts          *Contracts        `json:"contracts,omitempty"`
 }
 
 func Decode(raw []byte) (Manifest, error) {
@@ -38,11 +39,21 @@ func Decode(raw []byte) (Manifest, error) {
 		return m, ErrManifest
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil || (len(fields) != 12 && len(fields) != 13) {
+	if json.Unmarshal(raw, &fields) != nil {
 		return m, ErrManifest
 	}
 	contributions, hasContributions := fields["contributions"]
-	if len(fields) == 13 && !hasContributions {
+	want := 12
+	if hasContributions {
+		want++
+	}
+	if contract, ok := fields["contracts"]; ok {
+		want++
+		if !contractsFields(contract) {
+			return m, ErrManifest
+		}
+	}
+	if len(fields) != want {
 		return m, ErrManifest
 	}
 	if hasContributions && !contributionFields(contributions) {
@@ -59,14 +70,14 @@ func Decode(raw []byte) (Manifest, error) {
 	if d.Decode(&m) != nil || !m.valid() {
 		return Manifest{}, ErrManifest
 	}
-	if !validContributions(m.Contributions, m.Queries) {
+	if !validContributions(m.Contributions, m.Queries) || !m.validContracts() {
 		return Manifest{}, ErrManifest
 	}
 	return m, nil
 }
 
 func (m Manifest) valid() bool {
-	if m.ManifestVersion != 1 || m.HostAPI != "space.plugin.p1" || m.WasmABI != "space_plugin_p1" || m.UIAPI != "space.ui.p1" || m.Entrypoint != "server.wasm" {
+	if (m.ManifestVersion != 1 && m.ManifestVersion != 2) || m.HostAPI != "space.plugin.p1" || m.WasmABI != "space_plugin_p1" || m.UIAPI != "space.ui.p1" || m.Entrypoint != "server.wasm" {
 		return false
 	}
 	if len(m.PluginID) > 128 || !pluginID.MatchString(m.PluginID) || len(m.Version) > 32 || !versionID.MatchString(m.Version) || m.DataSchema < 1 || m.DataSchema > 2147483647 {

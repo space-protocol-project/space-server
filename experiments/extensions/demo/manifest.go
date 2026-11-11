@@ -7,6 +7,7 @@ import (
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
 	"github.com/space-protocol-project/space-server/experiments/extensions/manifest"
 	"github.com/space-protocol-project/space-server/experiments/extensions/payloadschema"
+	"github.com/space-protocol-project/space-server/experiments/extensions/valueschema"
 )
 
 // FromManifest подключает полный manifest к ограниченному dispatcher P1.
@@ -26,6 +27,23 @@ func FromManifest(raw, module []byte, schemas map[string][]byte) (Registration, 
 		}
 		structured = structured || len(s.Properties) != 0
 	}
+	if m.Contracts != nil {
+		for _, ops := range []map[string]manifest.Operation{m.Contracts.Commands, m.Contracts.Queries} {
+			for _, op := range ops {
+				expected[op.Result] = true
+				if _, err := valueschema.Decode(schemas[op.Result]); err != nil {
+					return Registration{}, ErrRequest
+				}
+			}
+		}
+		for _, path := range m.Contracts.Events {
+			expected[path] = true
+			if _, err := valueschema.Decode(schemas[path]); err != nil {
+				return Registration{}, ErrRequest
+			}
+		}
+		structured = true
+	}
 	if len(expected) != len(schemas) || len(module) == 0 || len(module) > extensions.MaxModule {
 		return Registration{}, ErrRequest
 	}
@@ -41,7 +59,7 @@ func supportedManifest(raw []byte) (manifest.Manifest, error) {
 	if err != nil {
 		return m, ErrRequest
 	}
-	if m.DataSchema != 1 || len(m.Permissions) != 0 {
+	if m.ManifestVersion == 1 && (m.DataSchema != 1 || len(m.Permissions) != 0) {
 		return m, ErrVersion
 	}
 	return m, nil
@@ -59,7 +77,7 @@ func checkSourceManifest(r Registration) error {
 		_, err = FromManifest(r.SourceManifest, r.Module, r.SourceSchemas)
 		return err
 	}
-	if !legacyOperations(m) {
+	if m.ManifestVersion != 1 || !legacyOperations(m) {
 		return ErrRequest
 	}
 	return nil

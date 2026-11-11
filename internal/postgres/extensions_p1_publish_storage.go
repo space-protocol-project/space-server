@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
+	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
+	"github.com/space-protocol-project/space-server/experiments/extensions/manifest"
 	"github.com/space-protocol-project/space-server/experiments/extensions/upgrade"
 )
 
@@ -40,6 +42,19 @@ func preparePublishStorage(ctx context.Context, tx pgx.Tx) error {
 
 func validateMigrationArtifacts(p upgrade.Plan, a migrationArtifacts) error {
 	b := a.Target
+	if len(b.Registration.SourceManifest) != 0 {
+		parsed, err := manifest.Decode(b.Registration.SourceManifest)
+		if err != nil || parsed.DataSchema != int64(p.SchemaTo) {
+			return upgradeError()
+		}
+		if _, err = demo.FromManifest(b.Registration.SourceManifest, b.Registration.Module, b.Registration.SourceSchemas); err != nil {
+			return upgradeError()
+		}
+		var check extensionMutationBinding
+		if check.bindContracts(b) != nil {
+			return upgradeError()
+		}
+	}
 	m := b.Registration.Manifest
 	if b.Installation != p.Installation || !channelIDPattern.MatchString(b.Channel) || len(b.Registration.Module) == 0 || len(b.Registration.Module) > extensions.MaxModule {
 		return upgradeError()

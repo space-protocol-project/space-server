@@ -99,6 +99,9 @@ func (s *Service) ExecuteExtensionCommand(ctx context.Context, r *pb.ExecuteExte
 			return s.invoke(ctx, r.InstanceId, "command", r.Command, r.PayloadJson)
 		})
 	}
+	if s.dispatcher.IsMutation(r.InstanceId, r.Command) {
+		return nil, status.Error(codes.FailedPrecondition, "mutation_not_supported")
+	}
 	// Прежний конструктор сохраняет только stateless acknowledge.
 	// Без явно подключённого исполнителя мутации запрещены.
 	if r.Effect != pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_NONE || r.IdempotencyKey != "" || r.ExpectedStateRevision != 0 {

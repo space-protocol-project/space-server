@@ -1,0 +1,74 @@
+{
+  "manifest_version": 2,
+  "plugin_id": "org.example.polls",
+  "version": "0.1.0",
+  "host_api": "space.plugin.p1",
+  "wasm_abi": "space_plugin_p1",
+  "ui_api": "space.ui.p1",
+  "entrypoint": "server.wasm",
+  "data_schema": 1,
+  "permissions": [
+    "storage.own",
+    "events.own"
+  ],
+  "required_components": [
+    "section.v1",
+    "text.v1",
+    "button.v1"
+  ],
+  "commands": {
+    "acknowledge": "schemas/empty.json",
+    "save": "schemas/empty.json"
+  },
+  "queries": {
+    "overview": "schemas/empty.json"
+  },
+  "contributions": [
+    {
+      "id": "overview",
+      "kind": "overview",
+      "title": {
+        "en": "Overview",
+        "ru": "Обзор"
+      },
+      "query": "overview"
+    }
+  ],
+  "contracts": {
+    "commands": {
+      "acknowledge": {
+        "result": "schemas/result.json",
+        "effect": "mutation",
+        "capabilities": [
+          "storage.own",
+          "events.own"
+        ],
+        "events": [
+          "note_changed"
+        ]
+      },
+      "save": {
+        "result": "schemas/result.json",
+        "effect": "mutation",
+        "capabilities": [
+          "storage.own",
+          "events.own"
+        ],
+        "events": [
+          "note_changed"
+        ]
+      }
+    },
+    "queries": {
+      "overview": {
+        "result": "schemas/result.json",
+        "effect": "none",
+        "capabilities": [],
+        "events": []
+      }
+    },
+    "events": {
+      "note_changed": "schemas/event.json"
+    }
+  }
+}

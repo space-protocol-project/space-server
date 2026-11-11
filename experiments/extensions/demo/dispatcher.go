@@ -159,6 +159,9 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	if json.Unmarshal(output, &document) != nil || document.UI != registration.Manifest.UI {
 		return nil, ErrVersion
 	}
+	if err := validateResult(registration, request, output); err != nil {
+		return nil, err
+	}
 	return output, nil
 }
 

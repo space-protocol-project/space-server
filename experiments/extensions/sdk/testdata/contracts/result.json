@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "ui_api": {
+      "type": "string",
+      "maxLength": 32,
+      "enum": [
+        "space.ui.p1"
+      ]
+    }
+  },
+  "required": [
+    "ui_api"
+  ],
+  "additionalProperties": false
+}

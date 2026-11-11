@@ -15,6 +15,7 @@ import (
 	"sort"
 
 	extensions "github.com/space-protocol-project/space-server/experiments/extensions"
+	"github.com/space-protocol-project/space-server/experiments/extensions/demo"
 	"github.com/space-protocol-project/space-server/experiments/extensions/manifest"
 )
 
@@ -75,6 +76,15 @@ func Verify(archive []byte, trust Trust) (Verified, error) {
 	if err = verifyPayload(files, index, m); err != nil {
 		return Verified{}, err
 	}
+	if m.ManifestVersion == 2 {
+		schemas := map[string][]byte{}
+		for _, path := range m.SchemaPaths() {
+			schemas[path] = files[path]
+		}
+		if _, err := demo.FromManifest(files["manifest.json"], files["server.wasm"], schemas); err != nil {
+			return Verified{}, ErrPackage
+		}
+	}
 	return Verified{m, fingerprint, Fingerprint(archive), files}, nil
 }
 
@@ -101,12 +111,10 @@ func verifyIndex(files map[string][]byte) (Index, error) {
 
 func verifyPayload(files map[string][]byte, index Index, m manifest.Manifest) error {
 	expected := map[string]bool{"manifest.json": true, "server.wasm": true, "LICENSE": true}
-	for _, operations := range []map[string]string{m.Commands, m.Queries} {
-		for _, path := range operations {
-			expected[path] = true
-			if extensions.CheckJSON(files[path]) != nil {
-				return ErrPackage
-			}
+	for _, path := range m.SchemaPaths() {
+		expected[path] = true
+		if extensions.CheckJSON(files[path]) != nil {
+			return ErrPackage
 		}
 	}
 	if len(expected) != len(index.Files) || len(files["LICENSE"]) == 0 {

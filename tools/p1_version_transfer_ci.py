@@ -1,5 +1,6 @@
 """Обязательные результаты архивного стенда истории версий."""
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -11,6 +12,8 @@ events = [json.loads(line) for line in (Path('.local/p1-version-transfer') / (ki
 if any(e['Action'] in ('fail', 'skip') for e in events):
     raise ValueError('Ошибки или пропуски в целевом наборе')
 states = ('published', 'pending', 'ready')
+if os.environ.get('SPACE_P1_ARCHIVE_GROUP') == '1':
+    states += ('partial',)
 prefix = 'TestExtensionP1VersionArchive'
 if kind == 'seed':
     names = {prefix + 'Seed/' + s for s in states}

@@ -33,7 +33,7 @@ func TestExtensionP1VersionArchiveSeed(t *testing.T) {
 	for _, state := range versionArchiveStates {
 		t.Run(state, func(t *testing.T) {
 			f := newHistoryBackupFixture(t, os.Getenv("SPACE_HOME_RUNTIME"))
-			svc, err := f.store.NewExtensionP1ManagedService(f.ctx, f.host, backupExtensionBindings())
+			svc, err := f.store.NewExtensionP1ManagedService(f.ctx, f.host, versionArchiveBindings())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +54,7 @@ func TestExtensionP1VersionArchiveSeed(t *testing.T) {
 				t.Fatal(err)
 			}
 			runVersionArchiveWorker(t, f.address, token, state)
-			m := versionArchiveFixture{State: state, Snapshot: versionArchiveSnapshot(t, f.address), Registry: registryTransferFixture{Format: 1, SourceOS: "linux", SourceArch: "amd64", SourceSHA: os.Getenv("GITHUB_SHA"), ServerID: f.identity.ServerID, Grant: f.grant, OldToken: token, DevicePrivate: f.devicePrivate, ConfirmedToken: confirmed, Leased: *leased}}
+			m := versionArchiveFixture{Group: versionArchiveGroup(), State: state, Snapshot: versionArchiveSnapshot(t, f.address), Registry: registryTransferFixture{Format: 1, SourceOS: "linux", SourceArch: "amd64", SourceSHA: os.Getenv("GITHUB_SHA"), ServerID: f.identity.ServerID, Grant: f.grant, OldToken: token, DevicePrivate: f.devicePrivate, ConfirmedToken: confirmed, Leased: *leased}}
 			conn, err := pgx.Connect(f.ctx, f.address)
 			if err != nil {
 				t.Fatal(err)
@@ -91,7 +91,7 @@ func runVersionArchiveWorker(t *testing.T, address, token, state string) {
 		t.Fatal(err)
 	}
 	// PostgreSQL принадлежит обычному runner; только изолированный WASM-хост требует root.
-	cmd := exec.Command("sudo", "--preserve-env=SPACE_P1_CGROUP,SPACE_P1_WORKER,SPACE_P1_PUBLISH_MODULES,SPACE_P1_VERSION_DATABASE,SPACE_P1_VERSION_TOKEN,SPACE_P1_VERSION_STATE", executable, "-test.run=^TestExtensionP1VersionArchiveWorker$", "-test.timeout=2m")
+	cmd := exec.Command("sudo", "--preserve-env=SPACE_P1_ARCHIVE_GROUP,SPACE_P1_CGROUP,SPACE_P1_WORKER,SPACE_P1_PUBLISH_MODULES,SPACE_P1_VERSION_DATABASE,SPACE_P1_VERSION_TOKEN,SPACE_P1_VERSION_STATE", executable, "-test.run=^TestExtensionP1VersionArchiveWorker$", "-test.timeout=2m")
 	cmd.Env = append(os.Environ(), "SPACE_P1_VERSION_DATABASE="+address, "SPACE_P1_VERSION_TOKEN="+token, "SPACE_P1_VERSION_STATE="+state)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -118,6 +118,10 @@ func TestExtensionP1VersionArchiveWorker(t *testing.T) {
 	}
 	defer store.Close()
 	token, state := os.Getenv("SPACE_P1_VERSION_TOKEN"), os.Getenv("SPACE_P1_VERSION_STATE")
+	if versionArchiveGroup() {
+		runGroupArchive(t, store, host, address, token, state)
+		return
+	}
 	if state == "resume" {
 		resumeVersionArchive(t, store, host, address, token)
 		return
@@ -128,11 +132,11 @@ func TestExtensionP1VersionArchiveWorker(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer active.Close()
-		svc, err := active.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+		svc, err := active.NewExtensionP1ManagedService(ctx, host, versionArchiveBindings())
 		if err != nil {
 			t.Fatal(err)
 		}
-		target := backupExtensionBindings()["demo"]
+		target := versionArchiveBindings()["demo"]
 		target.Registration.Module = versionArchiveModule(t, []string{"upgraded", "upgraded3"}[index])
 		raw, err := json.Marshal([]any{target.Registration.Module, target.Registration.Manifest, target.Events})
 		if err != nil {
@@ -229,7 +233,7 @@ func TestExtensionP1VersionArchiveResume(t *testing.T) {
 func resumeVersionArchive(t *testing.T, store *postgres.Store, host *extensions.ProcessHost, address, token string) {
 	t.Helper()
 	ctx := context.Background()
-	svc, err := store.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+	svc, err := store.NewExtensionP1ManagedService(ctx, host, versionArchiveBindings())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +263,7 @@ func resumeVersionArchive(t *testing.T, store *postgres.Store, host *extensions.
 		t.Fatal(err)
 	}
 	defer next.Close()
-	svc, err = next.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+	svc, err = next.NewExtensionP1ManagedService(ctx, host, versionArchiveBindings())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,210 @@
+name: P1 архивы групповой истории пакетов и схем
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  SPACE_P1_ARCHIVE_GROUP: "1"
+jobs:
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2025
+            platform: windows
+          - os: macos-15
+            platform: darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python packaging/build-home-runtime.py
+      - run: python tools/p1_transfer_ci.py pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: |
+            .local/runtime.tar.gz
+            .local/runtime.tar.sha256
+          retention-days: 1
+          if-no-files-found: error
+  seed:
+    needs: runtime
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-linux
+          path: .local/runtime
+      - run: python tools/p1_transfer_ci.py unpack
+      - name: Настоящие WASM-миграции и исходные ZIP
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          python3 experiments/extensions/demo/build.py --upgraded
+          python3 experiments/extensions/demo/build.py --upgrade-three
+          python3 experiments/extensions/upgrade/build.py
+          (cd experiments/extensions && go build -o /tmp/space-p1-publish-worker ./cmd/p1-worker)
+          sudo mkdir /sys/fs/cgroup/space-p1-version-archive
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-version-archive/cgroup.subtree_control'
+          mkdir -p .local/p1-version-transfer
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          export SPACE_P1_VERSION_CREATE="$PWD/.local/version-seed"
+          export SPACE_P1_PUBLISH_MODULES="$PWD/experiments/extensions/testdata"
+          export SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-version-archive
+          export SPACE_P1_WORKER=/tmp/space-p1-publish-worker
+          go test -race -json ./internal/home -run '^TestExtensionP1VersionArchiveSeed$' -count=1 -timeout=8m > .local/p1-version-transfer/seed.jsonl
+          python tools/p1_version_transfer_ci.py seed
+          sudo rmdir /sys/fs/cgroup/space-p1-version-archive
+      - uses: actions/upload-artifact@v4
+        with:
+          name: version-seed
+          path: .local/version-seed
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: version-seed-results
+          path: .local/p1-version-transfer
+          include-hidden-files: true
+  export:
+    needs: [runtime, seed]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2025
+            platform: windows
+          - os: macos-15
+            platform: darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: .local/runtime
+      - run: python tools/p1_transfer_ci.py unpack
+      - uses: actions/download-artifact@v4
+        with:
+          name: version-seed
+          path: .local/version-seed
+      - name: ZIP и эталон на исходной ОС
+        shell: bash
+        run: |
+          mkdir -p .local/p1-version-transfer
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          export SPACE_P1_VERSION_SEED="$PWD/.local/version-seed"
+          export SPACE_P1_VERSION_EXPORT="$PWD/.local/transfer"
+          go test -race -json ./internal/home -run '^TestExtensionP1VersionArchive(Export|Invalid)$' -count=1 -timeout=20m > .local/p1-version-transfer/export.jsonl
+          python tools/p1_version_transfer_ci.py export
+      - uses: actions/upload-artifact@v4
+        with:
+          name: version-transfer-${{ matrix.platform }}
+          path: .local/transfer
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: version-export-results-${{ matrix.platform }}
+          path: .local/p1-version-transfer
+          include-hidden-files: true
+  import:
+    needs: export
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux
+          - os: windows-2025
+            platform: windows
+          - os: macos-15
+            platform: darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: .local/runtime
+      - name: Подготовка собственного runtime
+        run: python tools/p1_transfer_ci.py unpack
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: version-transfer-*
+          path: .local/sources
+      - name: Подготовка WASM-хоста для возобновления на Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          (cd experiments/extensions && go build -o /tmp/space-p1-publish-worker ./cmd/p1-worker)
+          sudo mkdir /sys/fs/cgroup/space-p1-version-archive
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-version-archive/cgroup.subtree_control'
+      - name: Перенос с двух других ОС
+        shell: bash
+        run: |
+          mkdir -p .local/p1-version-transfer
+          export SPACE_HOME_RUNTIME="$PWD/dist/home"
+          export SPACE_P1_VERSION_IMPORT="$PWD/.local/sources"
+          go test -race -json ./internal/home -run '^TestExtensionP1VersionArchiveImport$' -count=3 -timeout=20m > .local/p1-version-transfer/import.jsonl
+          python tools/p1_version_transfer_ci.py import
+          if [ "$RUNNER_OS" = Linux ]; then
+            export SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-version-archive
+            export SPACE_P1_WORKER=/tmp/space-p1-publish-worker
+            go test -race -json ./internal/home -run '^TestExtensionP1VersionArchiveResume$' -count=3 -timeout=15m > .local/p1-version-transfer/resume.jsonl
+            python tools/p1_version_transfer_ci.py resume
+            sudo rmdir /sys/fs/cgroup/space-p1-version-archive
+          fi
+          go vet ./internal/home
+          go mod verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./internal/home
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: version-import-results-${{ matrix.platform }}
+          path: .local/p1-version-transfer
+          include-hidden-files: true

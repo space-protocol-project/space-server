@@ -32,11 +32,22 @@ func corruptVersionRows(t *testing.T, address, kind string) {
 		"gap":    `DELETE FROM extension_p1_versions WHERE sequence=1`,
 		"module": `UPDATE extension_p1_upgrade_artifacts SET modules=convert_to('{}','UTF8')`,
 	}
+	if versionArchiveGroup() {
+		queries = map[string]string{
+			"digest": `UPDATE extension_p1_group_versions SET record_hash=repeat('0',64) WHERE sequence=1`,
+			"gap":    `DELETE FROM extension_p1_group_versions WHERE sequence=1`,
+			"module": `UPDATE extension_p1_group_jobs SET record=convert_to('{}','UTF8')`,
+		}
+	}
 	conn, err := pgx.Connect(context.Background(), address)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer conn.Close(context.Background())
+	if versionArchiveGroup() && kind == "module" {
+		corruptGroupArchiveModule(t, conn)
+		return
+	}
 	if _, err = conn.Exec(context.Background(), queries[kind]); err != nil {
 		t.Fatal(err)
 	}

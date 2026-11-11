@@ -18,10 +18,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var versionArchiveStates = []string{"published", "pending", "ready"}
+var versionArchiveStates = func() []string {
+	states := []string{"published", "pending", "ready"}
+	if versionArchiveGroup() {
+		states = append(states, "partial")
+	}
+	return states
+}()
 
 type versionArchiveFixture struct {
 	Registry registryTransferFixture
+	Group    bool
 	State    string
 	Snapshot map[string]string
 }
@@ -38,7 +45,7 @@ func versionArchiveSnapshot(t *testing.T, address string) map[string]string {
 		t.Fatal(err)
 	}
 	result := map[string]string{}
-	for _, name := range []string{"installations", "lifecycle_audit", "instances", "data", "receipts", "outbox", "versions", "upgrade_jobs", "upgrade_steps", "upgrade_artifacts"} {
+	for _, name := range []string{"installations", "lifecycle_audit", "instances", "data", "receipts", "outbox", "versions", "upgrade_jobs", "upgrade_steps", "upgrade_artifacts", "group_jobs", "group_versions"} {
 		expression := "to_jsonb(r)"
 		if name == "installations" {
 			expression += "-'generation'"
@@ -63,7 +70,7 @@ func readVersionArchive(t *testing.T, directory, state string) versionArchiveFix
 	if err = json.Unmarshal(raw, &m); err != nil {
 		t.Fatal(err)
 	}
-	if m.State != state || m.Registry.Format != 1 || m.Registry.SourceSHA != os.Getenv("GITHUB_SHA") || len(m.Registry.DevicePrivate) != ed25519.PrivateKeySize {
+	if m.Group != versionArchiveGroup() || m.State != state || m.Registry.Format != 1 || m.Registry.SourceSHA != os.Getenv("GITHUB_SHA") || len(m.Registry.DevicePrivate) != ed25519.PrivateKeySize {
 		t.Fatal("Неверный эталон архива")
 	}
 	return m
@@ -113,27 +120,32 @@ func checkVersionArchive(t *testing.T, destination string, m versionArchiveFixtu
 	}
 	member, token := backupExtensionLogin(t, store, id, m.Registry.Grant, ed25519.PrivateKey(m.Registry.DevicePrivate))
 	host := new(backupExtensionHost)
-	svc, err := store.NewExtensionP1ManagedService(ctx, host, backupExtensionBindings())
+	svc, err := store.NewExtensionP1ManagedService(ctx, host, versionArchiveBindings())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if svc.Generation() == m.Registry.Generation {
 		t.Fatal("Поколение не изменилось")
 	}
-	versions, err := svc.ListUpgradeVersions(ctx, token, "install", 0, 100)
-	count := 1
-	if m.State == "published" {
-		count = 2
-	}
-	if err != nil || len(versions) != count {
-		t.Fatal(versions, err)
-	}
-	progress, err := svc.ReadUpgrade(ctx, token, "install")
-	if err != nil || progress.Published != (m.State == "published") || progress.Ready() != (m.State != "pending") || progress.Plan.SchemaFrom != 2 || progress.Plan.SchemaTo != 3 {
-		t.Fatal(progress, err)
-	}
-	if _, err = svc.Change(ctx, token, m.Registry.Generation, "install", "enable", versions[len(versions)-1].Revision); status.Code(err) != codes.FailedPrecondition {
-		t.Fatal("Принято старое поколение", err)
+	if m.Group {
+		checkGroupArchive(t, address, svc, token, m)
+	} else {
+		versions, err := svc.ListUpgradeVersions(ctx, token, "install", 0, 100)
+		count := 1
+		if m.State == "published" {
+			count = 2
+		}
+		if err != nil || len(versions) != count {
+			t.Fatal(versions, err)
+		}
+		progress, err := svc.ReadUpgrade(ctx, token, "install")
+		if err != nil || progress.Published != (m.State == "published") || progress.Ready() != (m.State != "pending") || progress.Plan.SchemaFrom != 2 || progress.Plan.SchemaTo != 3 {
+			t.Fatal(progress, err)
+		}
+		if _, err = svc.Change(ctx, token, m.Registry.Generation, "install", "enable", versions[len(versions)-1].Revision); status.Code(err) != codes.FailedPrecondition {
+			t.Fatal("Принято старое поколение", err)
+		}
+
 	}
 	checkVersionArchiveReceipt(t, address, svc, member, m.Registry)
 	if delivery {

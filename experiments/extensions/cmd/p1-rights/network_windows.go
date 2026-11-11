@@ -26,6 +26,7 @@ func networkProbe(raw []byte) bool {
 	}
 	result := map[string]accessResult{
 		"startup":  resultOf(startup),
+		"socket":   resultOf(networkSocket(request.Network)),
 		"exchange": resultOf(networkExchange(request.Network, request.Address)),
 		"bind":     resultOf(networkBind(request.Network)),
 	}
@@ -33,6 +34,21 @@ func networkProbe(raw []byte) bool {
 		os.Exit(3)
 	}
 	return true
+}
+
+func networkSocket(network string) error {
+	family, kind, protocol := windows.AF_INET, windows.SOCK_STREAM, windows.IPPROTO_TCP
+	if strings.HasSuffix(network, "6") {
+		family = windows.AF_INET6
+	}
+	if strings.HasPrefix(network, "udp") {
+		kind, protocol = windows.SOCK_DGRAM, windows.IPPROTO_UDP
+	}
+	socket, err := windows.Socket(family, kind, protocol)
+	if err != nil {
+		return err
+	}
+	return windows.Closesocket(socket)
 }
 
 func networkExchange(network, address string) error {

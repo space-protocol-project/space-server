@@ -25,11 +25,11 @@ func (c *appContainer) profilePath() (string, error) {
 	}
 	defer windows.NewLazySystemDLL("ole32.dll").NewProc("CoTaskMemFree").Call(uintptr(unsafe.Pointer(path)))
 	folder := filepath.Clean(windows.UTF16PtrToString(path))
-	expected := filepath.Join(os.Getenv("LOCALAPPDATA"), "Packages", windows.UTF16PtrToString(c.name))
+	expected := filepath.Join(os.Getenv("LOCALAPPDATA"), "Packages", windows.UTF16PtrToString(c.name), "AC")
 	if !filepath.IsAbs(folder) || !strings.EqualFold(folder, expected) {
-		return "", ErrIsolation
+		return "", fmt.Errorf("%w: profile path %q does not match %q", ErrIsolation, folder, expected)
 	}
-	return folder, nil
+	return filepath.Dir(folder), nil
 }
 
 func (c *appContainer) readOnlyACL() (*windows.ACL, error) {

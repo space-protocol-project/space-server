@@ -79,7 +79,7 @@ func networkResults(t *testing.T, h *ProcessHost, network, address string) map[s
 	if err := json.Unmarshal(raw, &results); err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 3 {
+	if len(results) != 4 {
 		t.Fatal(string(raw))
 	}
 	t.Logf("%s %s", network, raw)
@@ -111,7 +111,7 @@ func TestWindowsRestrictedNetworkMatrix(t *testing.T) {
 func assertNetworkBoundary(t *testing.T, results map[string]resourceResult) {
 	t.Helper()
 	// Раздельно учитываем недоступный Winsock и отказ сетевого доступа.
-	for _, name := range []string{"exchange", "bind"} {
+	for _, name := range []string{"socket", "exchange", "bind"} {
 		result := results[name]
 		if result.Allowed {
 			t.Fatalf("LPAC %s succeeded", name)

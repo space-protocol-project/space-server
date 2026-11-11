@@ -66,6 +66,8 @@ jobs:
           test=[x for x in events if x['Action']=='pass' and x.get('Test')=='TestExtensionP1Load']
           assert len(test)==1 and test[0]['Elapsed']>=900,test
           rows=[json.loads(x) for x in Path('.local/p1-load/resources.jsonl').read_text().splitlines()]
+          assert max(x['cgroup_processes'] for x in rows)>0
+          assert rows[-1]['cgroup_processes']==0
           for phase in range(3):
               assert max(x['elapsed_seconds'] for x in rows if x['phase']==phase)>=300
           PY

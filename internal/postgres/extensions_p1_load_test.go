@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -116,7 +117,7 @@ func TestExtensionP1Load(t *testing.T) {
 		}
 	}
 	stats := host.Stats()
-	if stats.Active != 0 || stats.ReservedBytes != 0 || stats.OSProcesses != 0 {
+	if stats.Active != 0 || stats.ReservedBytes != 0 || loadProcesses(t) != 0 {
 		t.Fatal("Ресурсы не освобождены", stats)
 	}
 	var data, receipts, events, revisions int64
@@ -322,10 +323,40 @@ func loadResource(t *testing.T, f *channelFixture, host *extensions.ProcessHost,
 	if err = f.store.pool.QueryRow(f.ctx, "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'").Scan(&lockWaiters); err != nil {
 		t.Fatal(err)
 	}
-	row := map[string]any{"db_lock_waiters": lockWaiters, "phase": phase, "elapsed_seconds": time.Since(start).Seconds(), "host": host.Stats(), "server_memory": rss, "pool_total": pool.TotalConns(), "pool_acquired": pool.AcquiredConns(), "pool_max": pool.MaxConns(), "pool_acquire_duration_ns": pool.AcquireDuration().Nanoseconds(), "pool_empty_acquires": pool.EmptyAcquireCount(), "data_bytes": data, "receipt_bytes": receipts, "outbox_bytes": outbox}
+	row := map[string]any{"cgroup_processes": loadProcesses(t), "db_lock_waiters": lockWaiters, "phase": phase, "elapsed_seconds": time.Since(start).Seconds(), "host": host.Stats(), "server_memory": rss, "pool_total": pool.TotalConns(), "pool_acquired": pool.AcquiredConns(), "pool_max": pool.MaxConns(), "pool_acquire_duration_ns": pool.AcquireDuration().Nanoseconds(), "pool_empty_acquires": pool.EmptyAcquireCount(), "data_bytes": data, "receipt_bytes": receipts, "outbox_bytes": outbox}
 	if err = json.NewEncoder(file).Encode(row); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// Наблюдаемый снимок PID: общий OSProcesses на Linux не заполняется.
+// Окончательное отсутствие процессов доказывает успешное удаление cgroup.
+func loadProcesses(t *testing.T) int {
+	t.Helper()
+	pids := map[string]bool{}
+	err := filepath.WalkDir(os.Getenv("SPACE_P1_CGROUP"), func(path string, entry fs.DirEntry, err error) error {
+		if os.IsNotExist(err) {
+			return nil // Завершившийся вызов удалил свою группу.
+		}
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || entry.Name() != "cgroup.procs" {
+			return nil
+		}
+		raw, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		for _, pid := range strings.Fields(string(raw)) {
+			pids[pid] = true
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(pids)
 }
 
 func loadWrite(t *testing.T, out string, m *loadMetrics) {

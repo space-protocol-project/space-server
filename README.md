@@ -1,5 +1,7 @@
 # Space Server
 
+[Первый серверный срез P2](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P2-BUILTIN-REGISTRY.md). Начат P2: постоянный серверный реестр встроенных установок/экземпляров и четыре внутренних адаптера чтения (включая MLS) проверены в GitHub CI. Схема базы — 48; пользовательские данные не переносились. Команды, рабочий транспорт, навигация и архивная совместимость остаются открытыми. macOS E03/E06 отложены; релиз не выпускается.
+
 [Итоговая сверка P1 от 11 ноября](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-FINAL.md). Итоговая сверка E01–E07 выполнена: E01/E02/E04/E05 приняты, E03/E06 приняты для Linux/Windows, ограниченная нагрузка и отчёт E07 завершены. macOS E03/E06 остаются отложенным обязательством, поэтому P1 целиком для всех платформ не закрыт. Релиз не выпускается; рабочая интеграция — P2/P3.
 
 Исходный этап **P0 системы расширений завершён**: [отчёт B01–B10 и измерений](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P0-RESULTS.md), [TODO](https://github.com/space-protocol-project/space-protocol/blob/main/TODO.md). При проверке B07 исправлен транспортный предел SDP: вход через Connect больше не отклоняется общим ограничением 16 КиБ. Исправление проверено полным CI сервера и двумя нативными Flutter-клиентами через TURN TCP с ненулевым виртуальным аудио и восстановлением; пока находится в `main`, без нового выпуска runtime.

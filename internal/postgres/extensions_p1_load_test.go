@@ -87,6 +87,8 @@ func TestExtensionP1Load(t *testing.T) {
 	}
 	defer resources.Close()
 	for phase, clients := range []int{1, 2, 8} {
+		f.owner = f.ownerLogin()
+		t.Logf("load: phase=%d fresh session for the same owner/device", phase)
 		start := time.Now()
 		deadline := start.Add(5 * time.Minute)
 		var wg sync.WaitGroup

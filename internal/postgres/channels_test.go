@@ -31,18 +31,19 @@ import (
 )
 
 type channelFixture struct {
-	ctx      context.Context
-	url      string
-	store    *Store
-	identity Identity
-	conn     *grpc.ClientConn
-	auth     pb.AuthServiceClient
-	channels pb.ChannelServiceClient
-	contents pb.ContentServiceClient
-	sync     pb.SyncServiceClient
-	admin    pb.AdminServiceClient
-	owner    context.Context
-	ownerID  string
+	ctx        context.Context
+	url        string
+	store      *Store
+	identity   Identity
+	conn       *grpc.ClientConn
+	auth       pb.AuthServiceClient
+	channels   pb.ChannelServiceClient
+	contents   pb.ContentServiceClient
+	sync       pb.SyncServiceClient
+	admin      pb.AdminServiceClient
+	owner      context.Context
+	ownerID    string
+	ownerLogin func() context.Context
 }
 
 func TestDeleteChannelPermissionsRevisionAndHistory(t *testing.T) {
@@ -144,7 +145,7 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	}
 	t.Cleanup(func() { conn.Close() })
 	f := &channelFixture{ctx: ctx, url: url, store: store, identity: identity, conn: conn, auth: pb.NewAuthServiceClient(conn), channels: pb.NewChannelServiceClient(conn), contents: pb.NewContentServiceClient(conn), sync: pb.NewSyncServiceClient(conn), admin: pb.NewAdminServiceClient(conn)}
-	f.owner, f.ownerID = f.enroll(t, true)
+	f.owner, f.ownerID, f.ownerLogin = f.enrollWithLogin(t, true)
 	code, err := store.CreateSetupCode(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -157,12 +158,20 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 }
 
 func (f *channelFixture) enroll(t *testing.T, administrative bool) (context.Context, string) {
+	ctx, id, _ := f.enrollWithLogin(t, administrative)
+	return ctx, id
+}
+
+func (f *channelFixture) enrollWithLogin(t *testing.T, administrative bool) (context.Context, string, func() context.Context) {
 	t.Helper()
 	root, private, _ := ed25519.GenerateKey(rand.Reader)
 	device, devicePrivate, _ := ed25519.GenerateKey(rand.Reader)
 	grant := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "device.register", RootPublicKey: root, DevicePublicKey: device, Administrative: administrative}, private)
-	session := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "auth.login", GrantId: grant.GrantId}, devicePrivate)
-	return metadata.AppendToOutgoingContext(f.ctx, "authorization", "Bearer "+session.AccessToken), grant.PrincipalId
+	login := func() context.Context {
+		session := complete(t, f.ctx, f.auth, &pb.CreateChallengeRequest{Purpose: "auth.login", GrantId: grant.GrantId}, devicePrivate)
+		return metadata.AppendToOutgoingContext(f.ctx, "authorization", "Bearer "+session.AccessToken)
+	}
+	return login(), grant.PrincipalId, login
 }
 
 func permissions(visible, read, write, manage bool) *pb.ChannelPermissions {

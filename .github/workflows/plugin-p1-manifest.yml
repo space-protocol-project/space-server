@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-protocol
-          ref: b30eb8c2c17b73051adc714120d2cf5aa19f3dd7
+          ref: 01132931e1efde193130eb9d4702a816b8417475
           path: .local/protocol
       - uses: actions/download-artifact@v4
         with:

@@ -1,6 +1,15 @@
 name: P1 limited load acceptance
 on:
   workflow_dispatch:
+    inputs:
+      app_ref:
+        description: Ревизия приложения для итоговой сверки
+        required: true
+        default: '07fe307bed319afb221978940c1cc380d7ffeec2'
+      protocol_ref:
+        description: Ревизия контрактов для итоговой сверки
+        required: true
+        default: '01132931e1efde193130eb9d4702a816b8417475'
 permissions:
   contents: read
 jobs:
@@ -28,11 +37,15 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Фиксация стенда и расписания
+        env:
+          APP_REF: ${{ inputs.app_ref }}
+          PROTOCOL_REF: ${{ inputs.protocol_ref }}
         run: |
           mkdir -p .local/p1-load
           git rev-parse HEAD > .local/p1-load/server-sha.txt
-          echo 01558f35c1d704dcad286ca7f500d04343a4d604 > .local/p1-load/app-sha.txt
-          echo 4df076de4033f37a64d80cb76ea31f4c36c6e2e0 > .local/p1-load/protocol-sha.txt
+          [[ "$APP_REF" =~ ^[0-9a-f]{40}$ && "$PROTOCOL_REF" =~ ^[0-9a-f]{40}$ ]]
+          echo "$APP_REF" > .local/p1-load/app-sha.txt
+          echo "$PROTOCOL_REF" > .local/p1-load/protocol-sha.txt
           go version > .local/p1-load/toolchain.txt
           uname -a > .local/p1-load/runner.txt
           lscpu >> .local/p1-load/runner.txt
@@ -41,8 +54,7 @@ jobs:
       - name: Реальный WASM и прежние квоты
         working-directory: experiments/extensions
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wabt
+          bash ../../tools/install_p1_linux_deps.sh wabt
           python3 demo/build.py --mutation
           go build -o /tmp/space-p1-load-worker ./cmd/p1-worker
           sudo mkdir /sys/fs/cgroup/space-p1-load

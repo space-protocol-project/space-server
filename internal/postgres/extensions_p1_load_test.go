@@ -42,6 +42,7 @@ func TestExtensionP1Load(t *testing.T) {
 	f := newChannelFixtureTimeout(t, 19*time.Minute)
 	channel := f.create(t, "load_main")
 	independent := f.create(t, "load_other")
+	revocation := f.create(t, "load_revocation")
 	host, err := extensions.NewProcessHost(os.Getenv("SPACE_P1_CGROUP"), os.Getenv("SPACE_P1_WORKER"))
 	if err != nil {
 		t.Fatal(err)
@@ -66,6 +67,9 @@ func TestExtensionP1Load(t *testing.T) {
 	other := bindings["demo"]
 	other.Channel = independent.Id
 	bindings["other"] = other
+	revoked := bindings["demo"]
+	revoked.Channel = revocation.Id
+	bindings["revocation"] = revoked
 	bindings["quota"] = bindings["demo"]
 	service, err := f.store.NewExtensionP1MutationService(f.ctx, host, bindings)
 	if err != nil {
@@ -100,7 +104,7 @@ func TestExtensionP1Load(t *testing.T) {
 		}
 		for time.Now().Before(deadline) && !metrics.failed.Load() {
 			if time.Since(start) >= 30*time.Second && time.Since(start) < 35*time.Second {
-				loadRevokeDuringTraffic(t, f, api, channel)
+				loadRevokeDuringTraffic(t, f, api, revocation)
 			}
 			loadResource(t, f, host, resources, phase, start)
 			time.Sleep(min(5*time.Second, time.Until(deadline)))
@@ -144,8 +148,10 @@ func TestExtensionP1Load(t *testing.T) {
 
 func loadRevokeDuringTraffic(t *testing.T, f *channelFixture, api pb.ExtensionP1ServiceClient, c *pb.Channel) {
 	member, id := f.enroll(t, true)
+	query := extensionP1Query()
+	query.InstanceId = "revocation"
 	f.acl(t, c, roleRule("member", permissions(false, false, false, false)))
-	_, err := api.QueryExtension(member, extensionP1Query())
+	_, err := api.QueryExtension(member, query)
 	requireCode(t, err, codes.PermissionDenied)
 	f.acl(t, c, roleRule("member", permissions(true, true, true, false)))
 	var revision int64
@@ -156,7 +162,7 @@ func loadRevokeDuringTraffic(t *testing.T, f *channelFixture, api pb.ExtensionP1
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = api.QueryExtension(member, extensionP1Query())
+	_, err = api.QueryExtension(member, query)
 	requireCode(t, err, codes.PermissionDenied)
 	t.Log("load: ACL and membership revoked during traffic; both denied before WASM")
 }

@@ -79,6 +79,7 @@ func TestExtensionP1Load(t *testing.T) {
 		t.Fatal(err)
 	}
 	metrics := &loadMetrics{}
+	defer loadWrite(t, out, metrics)
 	loadAccess(t, f, api, channel)
 	loadQuota(t, f, api)
 	resources, err := os.Create(filepath.Join(out, "resources.jsonl"))
@@ -110,15 +111,6 @@ func TestExtensionP1Load(t *testing.T) {
 	if stats.Active != 0 || stats.ReservedBytes != 0 || stats.OSProcesses != 0 {
 		t.Fatal("Ресурсы не освобождены", stats)
 	}
-	entries, err := os.ReadDir(os.Getenv("SPACE_P1_CGROUP"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			t.Error("Осталась группа вызова", entry.Name())
-		}
-	}
 	var data, receipts, events, revisions int64
 	err = f.store.pool.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM extension_p1_data), (SELECT count(*) FROM extension_p1_receipts WHERE instance<>'quota'),(SELECT count(*) FROM extension_p1_outbox),(SELECT COALESCE(sum(revision),0) FROM extension_p1_instances)`).Scan(&data, &receipts, &events, &revisions)
 	want := metrics.committed.Load() + 1 // Контрольная независимая команда перед нагрузкой.
@@ -129,7 +121,18 @@ func TestExtensionP1Load(t *testing.T) {
 	if _, err = api.ExecuteExtensionCommand(f.owner, control); err != nil {
 		t.Fatal(err)
 	}
-	loadWrite(t, out, metrics)
+	if err = host.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(os.Getenv("SPACE_P1_CGROUP"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			t.Error("Осталась группа вызова", entry.Name())
+		}
+	}
 	if pool := f.store.pool.Stat(); pool.AcquiredConns() != 0 || pool.TotalConns() > pool.MaxConns() {
 		t.Fatal("Пул не освобождён", pool)
 	}
@@ -194,7 +197,7 @@ func loadOperation(f *channelFixture, api pb.ExtensionP1ServiceClient, r *pb.Exe
 		_, err := api.QueryExtension(f.owner, q)
 		return "query", err
 	case 7:
-		q := extensionP1Command()
+		q := mutationRequest("load-independent", 0)
 		q.InstanceId = "other"
 		_, err := api.ExecuteExtensionCommand(f.owner, q)
 		return "independent_command", err
@@ -216,7 +219,7 @@ func loadOperation(f *channelFixture, api pb.ExtensionP1ServiceClient, r *pb.Exe
 		r.Effect = pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_NONE
 		r.IdempotencyKey = ""
 		_, err := api.ExecuteExtensionCommand(f.owner, r)
-		return "stateless", err
+		return "invalid_effect", err
 	default:
 		response, err := api.ExecuteExtensionCommand(f.owner, r)
 		if err == nil && !response.Replayed {
@@ -231,6 +234,9 @@ func loadOperation(f *channelFixture, api pb.ExtensionP1ServiceClient, r *pb.Exe
 }
 
 func loadExpected(kind int, code codes.Code) bool {
+	if kind == 6 {
+		return code == codes.InvalidArgument
+	}
 	if kind == 5 {
 		return code == codes.Canceled
 	}

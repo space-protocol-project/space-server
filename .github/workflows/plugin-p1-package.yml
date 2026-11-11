@@ -31,7 +31,7 @@ jobs:
           cmp manifest/testdata/manifest.json ../../.local/protocol/docs/extensions/p1/manifest.json
           cmp payloadschema/testdata/form-payload.schema.json ../../.local/protocol/docs/extensions/p1/form-payload.schema.json
           cmp sdk/testdata/ui-form.json ../../.local/protocol/docs/extensions/p1/ui-form.json
-          go test -race -json ./manifest ./payloadschema ./packagep1 ./sdk ./demo -skip '^TestStarterIsolated$' -count=3 > .local/package/tests.jsonl
+          go test -race -json ./manifest ./payloadschema ./packagep1 ./sdk ./demo -skip '^(TestStarterIsolated|TestPackageIsolatedLimits)$' -count=3 > .local/package/tests.jsonl
           go vet ./manifest ./payloadschema ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
           go mod verify
           go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./manifest ./payloadschema ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
@@ -57,12 +57,11 @@ jobs:
           go test -c ./packagep1 -o .local/package/package.test
           sudo install -D -m 0755 .local/package/package.test /usr/local/libexec/space-p1-package-test
           sudo systemd-run --unit=space-p1-package-check --wait --pipe \
-            -p DynamicUser=yes -p NoNewPrivileges=yes -p PrivateNetwork=yes \
+            -p Environment=SPACE_P1_VERIFY_ISOLATION=1 -p DynamicUser=yes -p NoNewPrivileges=yes -p PrivateNetwork=yes \
             -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes \
             -p MemoryMax=128M -p MemorySwapMax=0 -p TasksMax=32 -p CPUQuota=100% -p RuntimeMaxSec=60 \
             /usr/local/libexec/space-p1-package-test -test.run '^TestPackage' -test.count=3 -test.v \
             | go tool test2json -p packagep1 > .local/package/package-isolated.jsonl
-          sudo systemctl show space-p1-package-check -p Result -p MemoryPeak -p MemoryMax -p TasksMax -p CPUQuotaPerSecUSec > .local/package/package-isolation.txt
           rm .local/package/package.test
       - name: Обязательные результаты
         run: |
@@ -79,7 +78,7 @@ jobs:
               assert sum(x['Action']=='pass' and x.get('Test')=='TestStarterIsolated' for x in events)==3
               events=[json.loads(x) for x in Path('.local/package/package-isolated.jsonl').read_text(encoding='utf-8').splitlines()]
               assert not any(x['Action'] in ('fail','skip') for x in events)
-              for name in ('Reproducible','Trust','ArchiveRejects','SignedInvalidManifest','Cryptography'):
+              for name in ('Reproducible','Trust','ArchiveRejects','SignedInvalidManifest','Cryptography','IsolatedLimits'):
                   assert sum(x['Action']=='pass' and x.get('Test')=='TestPackage'+name for x in events)==3
           PY
       - uses: actions/upload-artifact@v4

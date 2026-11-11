@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-protocol
-          ref: 987d227a8cb7afb479ed8f03535658241833b369
+          ref: 4df076de4033f37a64d80cb76ea31f4c36c6e2e0
           path: .local/protocol
       - uses: actions/setup-go@v5
         with:
@@ -29,10 +29,12 @@ jobs:
         run: |
           mkdir -p .local/package
           cmp manifest/testdata/manifest.json ../../.local/protocol/docs/extensions/p1/manifest.json
-          go test -race -json ./manifest ./packagep1 ./sdk ./demo -skip '^TestStarterIsolated$' -count=3 > .local/package/tests.jsonl
-          go vet ./manifest ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
+          cmp payloadschema/testdata/form-payload.schema.json ../../.local/protocol/docs/extensions/p1/form-payload.schema.json
+          cmp sdk/testdata/ui-form.json ../../.local/protocol/docs/extensions/p1/ui-form.json
+          go test -race -json ./manifest ./payloadschema ./packagep1 ./sdk ./demo -skip '^TestStarterIsolated$' -count=3 > .local/package/tests.jsonl
+          go vet ./manifest ./payloadschema ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
           go mod verify
-          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./manifest ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./manifest ./payloadschema ./packagep1 ./sdk ./demo ./cmd/p1-sdk ./cmd/p1-package-verify
       - name: Воспроизводимая сборка и подпись
         run: |
           go run ./cmd/p1-sdk -fixture -plugin org.example.starter -title Starter -license sdk/LICENSE -out .local/package/starter.zip > .local/package/build.json
@@ -69,7 +71,7 @@ jobs:
           from pathlib import Path
           events=[json.loads(x) for x in Path('.local/package/tests.jsonl').read_text(encoding='utf-8').splitlines()]
           assert not any(x['Action'] in ('fail','skip') for x in events)
-          for name in ('TestSharedManifest','TestManifestRequired','TestManifestRejects','TestPackageReproducible','TestPackageTrust','TestPackageArchiveRejects','TestPackageSignedInvalidManifest','TestStarterABI','TestFullManifestDispatcher','TestFullManifestUnsupported'):
+          for name in ('TestSharedManifest','TestManifestRequired','TestManifestRejects','TestPackageReproducible','TestPackageTrust','TestPackageArchiveRejects','TestPackageSignedInvalidManifest','TestStarterABI','TestFullManifestDispatcher','TestFullManifestUnsupported','TestSharedFormPayload','TestFormSchemaRejects','TestLegacyPayloadRejectedBeforeWASM','TestFormPayloadBeforeWASM'):
               assert sum(x['Action']=='pass' and x.get('Test')==name for x in events)==3,name
           if os.environ['RUNNER_OS']=='Linux':
               events=[json.loads(x) for x in Path('.local/package/isolated.jsonl').read_text(encoding='utf-8').splitlines()]

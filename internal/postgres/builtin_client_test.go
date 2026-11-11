@@ -27,7 +27,20 @@ func TestBuiltinClientFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	member, _ := f.enroll(t, false)
-	f.acl(t, channel, roleRule("member", permissions(true, true, false, false)))
+	f.acl(t, channel, roleRule("member", permissions(true, true, true, false)))
+	listing, err := f.channels.ListChannels(member, &pb.ListChannelsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writable := false
+	for _, item := range listing.Channels {
+		if item.Id == channel.Id {
+			writable = item.GetPermissions().GetWrite()
+		}
+	}
+	if !writable {
+		t.Fatal("Исходный допуск стенда должен разрешать запись")
+	}
 	handler := transport.WithConnect(http.NotFoundHandler(), f.conn, f.store)
 	var drop atomic.Bool
 	var commands atomic.Int32
@@ -80,9 +93,9 @@ func TestBuiltinClientFixture(t *testing.T) {
 		case "hide":
 			f.acl(t, channel, roleRule("member", permissions(false, false, false, false)))
 		case "restore":
-			f.acl(t, channel, roleRule("member", permissions(true, true, false, false)))
+			f.acl(t, channel, roleRule("member", permissions(true, true, true, false)))
 		case "readonly":
-			f.acl(t, channel, roleRule("member", permissions(true, false, false, false)))
+			f.acl(t, channel, roleRule("member", permissions(true, true, false, false)))
 		case "logout":
 			_, err = f.auth.Logout(member, &pb.LogoutRequest{})
 		case "verify":

@@ -16,6 +16,9 @@ const MaxRPCRequestBytes = 1024 * 1024
 const voiceJoinRequestBytes = 96 * 1024
 
 func requestMessageLimit(method string) int {
+	if method == rpc.BuiltinExtensionServiceExecuteBuiltinCommandProcedure {
+		return MaxRPCRequestBytes + 4096
+	}
 	if method == rpc.VoiceServiceJoinVoiceRoomProcedure {
 		return voiceJoinRequestBytes
 	}
@@ -40,7 +43,7 @@ func requestMessageLimit(method string) int {
 	return 16 * 1024
 }
 
-func checkMessageSize(method string, request any) error {
+func CheckMessageSize(method string, request any) error {
 	message, ok := request.(proto.Message)
 	if !ok {
 		return status.Error(codes.Internal, "Некорректный тип RPC-запроса")
@@ -53,7 +56,7 @@ func checkMessageSize(method string, request any) error {
 
 // MessageSizeLimit применяет предел метода до вызова прикладной службы.
 func MessageSizeLimit(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	if err := checkMessageSize(info.FullMethod, request); err != nil {
+	if err := CheckMessageSize(info.FullMethod, request); err != nil {
 		return nil, err
 	}
 	return handler(ctx, request)
@@ -68,7 +71,7 @@ func (s limitedServerStream) RecvMsg(message any) error {
 	if err := s.ServerStream.RecvMsg(message); err != nil {
 		return err
 	}
-	return checkMessageSize(s.method, message)
+	return CheckMessageSize(s.method, message)
 }
 
 // StreamMessageSizeLimit ограничивает запросы к потоковым RPC теми же правилами.

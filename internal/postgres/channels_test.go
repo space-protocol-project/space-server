@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"github.com/space-protocol-project/space-server/internal/builtin"
 	"io"
 	"net"
 	"net/http"
@@ -131,6 +132,7 @@ func newChannelFixtureTimeout(t *testing.T, timeout time.Duration) *channelFixtu
 	pb.RegisterPersonalNotificationServiceServer(server, store)
 	pb.RegisterChannelServiceServer(server, service)
 	pb.RegisterContentServiceServer(server, service)
+	pb.RegisterBuiltinExtensionServiceServer(server, builtin.NewService(builtin.New(store, voiceService), service, store, store, store, voiceService))
 	pb.RegisterMembershipServiceServer(server, store)
 	pb.RegisterAssetServiceServer(server, store)
 	pb.RegisterMlsServiceServer(server, store)

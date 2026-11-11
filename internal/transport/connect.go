@@ -282,6 +282,8 @@ func (s connectMembership) GetMembership(ctx context.Context, req *connect.Reque
 func WithConnect(base http.Handler, connection *grpc.ClientConn, verifier authn.Verifier) http.Handler {
 	options := []connect.HandlerOption{connect.WithReadMaxBytes(16 * 1024), connect.WithSendMaxBytes(1024 * 1024)}
 	mux := http.NewServeMux()
+	builtinPath, builtinHandler := rpc.NewBuiltinExtensionServiceHandler(connectBuiltin{client: pb.NewBuiltinExtensionServiceClient(connection)}, connect.WithReadMaxBytes(2*MaxRPCRequestBytes), connect.WithSendMaxBytes(8*1024*1024))
+	mux.Handle(builtinPath, builtinHandler)
 	backupPath, backupHandler := rpc.NewRemoteBackupServiceHandler(connectRemoteBackup{client: pb.NewRemoteBackupServiceClient(connection)}, connect.WithReadMaxBytes(6*1024*1024), connect.WithSendMaxBytes(6*1024*1024))
 	mux.Handle(backupPath, backupHandler)
 	directoryPath, directoryHandler := rpc.NewDirectoryPairingServiceHandler(connectDirectoryPairing{client: pb.NewDirectoryPairingServiceClient(connection)}, connect.WithReadMaxBytes(96*1024), connect.WithSendMaxBytes(96*1024))

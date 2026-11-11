@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/space-protocol-project/space-server/internal/builtin"
 	"io"
 	"log"
 	"net"
@@ -529,6 +530,7 @@ func configuredRPCServer(service *chat.Service, store *postgres.Store, serverID,
 	pb.RegisterContentServiceServer(server, service)
 	if store != nil {
 		pb.RegisterVoiceServiceServer(server, voiceService)
+		pb.RegisterBuiltinExtensionServiceServer(server, builtin.NewService(builtin.New(store, voiceService), service, store, store, store, voiceService))
 		pb.RegisterForumServiceServer(server, store)
 		pb.RegisterFeedServiceServer(server, store)
 		pb.RegisterCommunitySearchServiceServer(server, store)

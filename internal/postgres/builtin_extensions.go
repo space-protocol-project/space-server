@@ -5,13 +5,14 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	pb "github.com/space-protocol-project/space-server/gen/space/v1"
 	"github.com/space-protocol-project/space-server/internal/authn"
 	"github.com/space-protocol-project/space-server/internal/builtin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (s *Store) builtinTransaction(ctx context.Context) (pgx.Tx, error) {
+func (s *Store) builtinSessionTransaction(ctx context.Context) (pgx.Tx, error) {
 	// В отличие от старых служебных вызовов, профиль P2 не допускает анонимный context.
 	if authn.Token(ctx) == "" || authn.Actor(ctx) == "" {
 		return nil, denied()
@@ -29,6 +30,14 @@ func (s *Store) builtinTransaction(ctx context.Context) (pgx.Tx, error) {
 	}
 	if err = s.lockSession(ctx, tx); err != nil {
 		tx.Rollback(ctx)
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (s *Store) builtinTransaction(ctx context.Context) (pgx.Tx, error) {
+	tx, err := s.builtinSessionTransaction(ctx)
+	if err != nil {
 		return nil, err
 	}
 	m, err := membership(ctx, tx, authn.Actor(ctx), true)
@@ -100,4 +109,26 @@ func (s *Store) BuiltinSections(ctx context.Context) ([]builtin.Section, error) 
 		out = append(out, section)
 	}
 	return out, nil
+}
+
+// BuiltinReleaseSection разрешает только завершение собственной голосовой сессии.
+// ACL чтения мог быть отозван; владельца сессии проверяет прежняя VoiceService.
+func (s *Store) BuiltinReleaseSection(ctx context.Context, instance string) (builtin.Section, error) {
+	tx, err := s.builtinSessionTransaction(ctx)
+	if err != nil {
+		return builtin.Section{}, err
+	}
+	defer tx.Rollback(ctx)
+	if len(instance) == 0 || len(instance) > 100 {
+		return builtin.Section{}, status.Error(codes.InvalidArgument, "Некорректный экземпляр")
+	}
+	var channel string
+	err = tx.QueryRow(ctx, "SELECT channel_id FROM builtin_extension_instances WHERE id=$1 AND installation_id='builtin:voice_room' AND view_id='voice_room'", instance).Scan(&channel)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return builtin.Section{}, status.Error(codes.NotFound, "Раздел не найден")
+	}
+	if err != nil {
+		return builtin.Section{}, databaseError(ctx, err)
+	}
+	return builtin.Section{InstanceID: instance, Installation: builtin.Installation{PluginID: "space.rooms"}, Channel: &pb.Channel{Id: channel}}, nil
 }

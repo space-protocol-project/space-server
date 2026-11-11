@@ -21,6 +21,7 @@ type Section struct {
 type Backend interface {
 	BuiltinSections(context.Context) ([]Section, error)
 	BuiltinSection(context.Context, string) (Section, error)
+	BuiltinReleaseSection(context.Context, string) (Section, error)
 	List(context.Context, *pb.ListContentRequest) (*pb.ListContentResponse, error)
 	ListMlsEnvelopes(context.Context, *pb.ListMlsEnvelopesRequest) (*pb.ListMlsEnvelopesResponse, error)
 	ListForumThreads(context.Context, *pb.ListForumThreadsRequest) (*pb.ListForumThreadsResponse, error)
@@ -35,7 +36,7 @@ type Result struct {
 }
 type reader func(context.Context, *pb.Channel) (proto.Message, error)
 
-// Registry не предоставляет запись, установку пакетов или доступ к медиатранспорту.
+// Registry разрешает экземпляры для чтения и команд рабочего RPC.
 type Registry struct {
 	backend Backend
 	readers map[string]reader

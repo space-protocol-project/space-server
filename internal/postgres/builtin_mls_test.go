@@ -24,6 +24,24 @@ func TestBuiltinRegistryMLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	command := &pb.PublishMlsRequest{ChannelId: c.Channel.Id, RequestId: bytes.Repeat([]byte{2}, 16), ExpectedEpoch: 1, Kind: "application", Ciphertext: []byte("opaque-message")}
+	commands := pb.NewBuiltinExtensionServiceClient(f.conn)
+	request := builtinCommand(t, "builtin:"+c.Channel.Id+":chat", command)
+	result, err := commands.ExecuteBuiltinCommand(alice, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := api.PublishMls(alice, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var published pb.PublishMlsResponse
+	if err = result.Result.UnmarshalTo(&published); err != nil || !proto.Equal(&published, old) {
+		t.Fatalf("Нарушен повтор MLS: %v", err)
+	}
+	_, err = commands.ExecuteBuiltinCommand(outsider, request)
+	requireCode(t, err, codes.PermissionDenied)
 	registry := builtin.New(f.store, nil)
 	instance := "builtin:" + c.Channel.Id + ":chat"
 	for _, actor := range []struct {
@@ -42,7 +60,7 @@ func TestBuiltinRegistryMLS(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !proto.Equal(result.Content, expected) || len(expected.Envelopes) != 1 {
+		if !proto.Equal(result.Content, expected) || len(expected.Envelopes) != 2 {
 			t.Fatal("Нарушен паритет конвертов")
 		}
 		if (len(expected.Envelopes[0].Welcome) > 0) != actor.wantWelcome {

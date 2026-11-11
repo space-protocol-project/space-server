@@ -56,7 +56,7 @@ func TestExtensionP1ContributionsAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = api.ExecuteExtensionCommand(member, &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "refresh", PayloadJson: []byte(`{}`)})
+	_, err = api.ExecuteExtensionCommand(member, &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "refresh", PayloadJson: []byte(`{}`), Effect: pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_NONE})
 	requireCode(t, err, codes.PermissionDenied)
 	if h.calls.Load() != 1 {
 		t.Fatal("Запрещённая команда вызвала WASM")
@@ -67,7 +67,7 @@ func TestExtensionP1ContributionsAccess(t *testing.T) {
 	r.Kind = pb.ExtensionContributionKind_EXTENSION_CONTRIBUTION_KIND_UNSPECIFIED
 	r.InstanceId = "unknown"
 	_, err = api.ListExtensionContributions(member, r)
-	requireCode(t, err, codes.PermissionDenied)
+	requireCode(t, err, codes.Unauthenticated)
 	r.InstanceId = "demo"
 	f.acl(t, c, roleRule("member", permissions(false, false, false, false)))
 	result, err := api.ListExtensionContributions(member, r)
@@ -111,7 +111,7 @@ func TestExtensionP1ContributionsWASM(t *testing.T) {
 			t.Fatal(response, err)
 		}
 	}
-	_, err = api.ExecuteExtensionCommand(f.owner, &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "refresh", PayloadJson: []byte(`{}`)})
+	_, err = api.ExecuteExtensionCommand(f.owner, &pb.ExecuteExtensionCommandRequest{InstanceId: "demo", Command: "refresh", PayloadJson: []byte(`{}`), Effect: pb.ExtensionCommandEffect_EXTENSION_COMMAND_EFFECT_NONE})
 	if err != nil {
 		t.Fatal(err)
 	}

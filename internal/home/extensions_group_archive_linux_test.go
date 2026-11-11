@@ -5,6 +5,7 @@ package home
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -25,6 +26,7 @@ func runGroupArchive(t *testing.T, store *postgres.Store, host *extensions.Proce
 		members := groupArchiveMembers(t, address)
 		finishGroupArchive(t, svc, host, token, members, true)
 		verifyGroupArchivePublished(t, address)
+		repeatGroupArchive(t, address, host, token, members)
 		return
 	}
 	for schema := uint32(1); schema <= 2; schema++ {
@@ -114,9 +116,6 @@ func finishGroupArchive(t *testing.T, svc *postgres.ExtensionP1ManagedService, h
 	if err = svc.PublishGroupUpgrade(ctx, token, "install", digest, evidence); err != nil {
 		t.Fatal(err)
 	}
-	if err = svc.PublishGroupUpgrade(ctx, token, "install", digest, evidence); err != nil {
-		t.Fatal("Повтор публикации", err)
-	}
 }
 
 func verifyGroupArchivePublished(t *testing.T, address string) {
@@ -133,5 +132,26 @@ func verifyGroupArchivePublished(t *testing.T, address string) {
 	}
 	if err = postgres.CheckExtensionP1Backup(ctx, address, false); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func repeatGroupArchive(t *testing.T, address string, host *extensions.ProcessHost, token string, members []postgres.ExtensionP1GroupMember) {
+	t.Helper()
+	before := versionArchiveSnapshot(t, address)
+	store, _, err := postgres.Open(context.Background(), address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	svc, err := store.NewExtensionP1ManagedService(context.Background(), host, versionArchiveBindings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest, evidence := groupArchiveEvidence(t, members)
+	if err = svc.PublishGroupUpgrade(context.Background(), token, "install", digest, evidence); err != nil {
+		t.Fatal("Повтор после открытия", err)
+	}
+	if !reflect.DeepEqual(before, versionArchiveSnapshot(t, address)) {
+		t.Fatal("Повтор изменил историю или данные")
 	}
 }

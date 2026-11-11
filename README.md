@@ -220,3 +220,5 @@ Workflow `home-runtime.yml` проверит сервер, соберёт арх
 Проверка транспорта P1: [медленный HTTP/2-получатель, окно потока и независимые параллельные запросы](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-FLOW.md).
 
 Продолжение транспорта P1: [общее окно HTTP/2-соединения и два независимых медленных клиента](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-DELIVERY-CONNECTION.md).
+
+[Сводная ревизия P1 от 11 ноября: E01–E07 и конечный план закрытия](https://github.com/space-protocol-project/space-protocol/blob/main/docs/SPACE-PLUGINS-P1-AUDIT.md). Следующий блок — архив групповой истории нескольких экземпляров; стабильный 0.9.0 требует завершения P1–P3 и остаётся отложенным.

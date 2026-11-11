@@ -1,0 +1,61 @@
+name: P1 реестр элементов расширений
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  registry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.11
+        env:
+          POSTGRES_DB: space_test
+          POSTGRES_USER: space
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U space -d space_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Настоящий worker и прежние квоты
+        run: |
+          mkdir -p .local/p1-contributions
+          git rev-parse HEAD > .local/p1-contributions/server-sha.txt
+          go version > .local/p1-contributions/toolchain.txt
+          (cd experiments/extensions && go build -o /tmp/space-p1-contributions-worker ./cmd/p1-worker)
+          sudo mkdir /sys/fs/cgroup/space-p1-contributions
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/cgroup.subtree_control'
+          sudo sh -c 'echo "+memory +pids +cpu" > /sys/fs/cgroup/space-p1-contributions/cgroup.subtree_control'
+      - name: Сессии, ACL, жизненный цикл и отзыв до отправки
+        env:
+          SPACE_TEST_DATABASE_URL: postgres://space:ci-only-password@127.0.0.1:5432/space_test?sslmode=disable
+        run: |
+          sudo env PATH="$PATH" HOME="$HOME" SPACE_TEST_DATABASE_URL="$SPACE_TEST_DATABASE_URL" \
+            SPACE_P1_WORKER=/tmp/space-p1-contributions-worker SPACE_P1_CGROUP=/sys/fs/cgroup/space-p1-contributions \
+            go test -race -json ./internal/postgres -run '^TestExtensionP1Contributions' -count=3 -timeout=10m > .local/p1-contributions/registry.jsonl
+          sudo rmdir /sys/fs/cgroup/space-p1-contributions
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events=[json.loads(x) for x in Path('.local/p1-contributions/registry.jsonl').read_text().splitlines()]
+          assert not any(e['Action'] in ('skip','fail') for e in events)
+          for name in ('Access','WASM','Delivery','Sessions'):
+              assert sum(e['Action']=='pass' and e.get('Test')=='TestExtensionP1Contributions'+name for e in events)==3,name
+          for mode in ('http1','tls1','tls2'):
+              for change in ('acl','logout','registry'):
+                  name=f'TestExtensionP1ContributionsDelivery/{mode}/{change}'
+                  assert sum(e['Action']=='pass' and e.get('Test')==name for e in events)==3,name
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-contributions
+          path: .local/p1-contributions
+          include-hidden-files: true
+          retention-days: 7

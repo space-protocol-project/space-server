@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// ExtensionP1ServiceListExtensionContributionsProcedure is the fully-qualified name of the
+	// ExtensionP1Service's ListExtensionContributions RPC.
+	ExtensionP1ServiceListExtensionContributionsProcedure = "/space.v1.ExtensionP1Service/ListExtensionContributions"
 	// ExtensionP1ServiceQueryExtensionProcedure is the fully-qualified name of the ExtensionP1Service's
 	// QueryExtension RPC.
 	ExtensionP1ServiceQueryExtensionProcedure = "/space.v1.ExtensionP1Service/QueryExtension"
@@ -61,6 +64,7 @@ const (
 
 // ExtensionP1ServiceClient is a client for the space.v1.ExtensionP1Service service.
 type ExtensionP1ServiceClient interface {
+	ListExtensionContributions(context.Context, *connect.Request[v1.ListExtensionContributionsRequest]) (*connect.Response[v1.ListExtensionContributionsResponse], error)
 	QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error)
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
@@ -82,6 +86,12 @@ func NewExtensionP1ServiceClient(httpClient connect.HTTPClient, baseURL string, 
 	baseURL = strings.TrimRight(baseURL, "/")
 	extensionP1ServiceMethods := v1.File_space_v1_extensions_p1_proto.Services().ByName("ExtensionP1Service").Methods()
 	return &extensionP1ServiceClient{
+		listExtensionContributions: connect.NewClient[v1.ListExtensionContributionsRequest, v1.ListExtensionContributionsResponse](
+			httpClient,
+			baseURL+ExtensionP1ServiceListExtensionContributionsProcedure,
+			connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionContributions")),
+			connect.WithClientOptions(opts...),
+		),
 		queryExtension: connect.NewClient[v1.QueryExtensionRequest, v1.QueryExtensionResponse](
 			httpClient,
 			baseURL+ExtensionP1ServiceQueryExtensionProcedure,
@@ -135,6 +145,7 @@ func NewExtensionP1ServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // extensionP1ServiceClient implements ExtensionP1ServiceClient.
 type extensionP1ServiceClient struct {
+	listExtensionContributions     *connect.Client[v1.ListExtensionContributionsRequest, v1.ListExtensionContributionsResponse]
 	queryExtension                 *connect.Client[v1.QueryExtensionRequest, v1.QueryExtensionResponse]
 	executeExtensionCommand        *connect.Client[v1.ExecuteExtensionCommandRequest, v1.ExecuteExtensionCommandResponse]
 	reconcileExtensionCommand      *connect.Client[v1.ReconcileExtensionCommandRequest, v1.ReconcileExtensionCommandResponse]
@@ -143,6 +154,11 @@ type extensionP1ServiceClient struct {
 	getExtensionInstallation       *connect.Client[v1.GetExtensionInstallationRequest, v1.GetExtensionInstallationResponse]
 	changeExtensionInstallation    *connect.Client[v1.ChangeExtensionInstallationRequest, v1.ChangeExtensionInstallationResponse]
 	listExtensionInstallationAudit *connect.Client[v1.ListExtensionInstallationAuditRequest, v1.ListExtensionInstallationAuditResponse]
+}
+
+// ListExtensionContributions calls space.v1.ExtensionP1Service.ListExtensionContributions.
+func (c *extensionP1ServiceClient) ListExtensionContributions(ctx context.Context, req *connect.Request[v1.ListExtensionContributionsRequest]) (*connect.Response[v1.ListExtensionContributionsResponse], error) {
+	return c.listExtensionContributions.CallUnary(ctx, req)
 }
 
 // QueryExtension calls space.v1.ExtensionP1Service.QueryExtension.
@@ -187,6 +203,7 @@ func (c *extensionP1ServiceClient) ListExtensionInstallationAudit(ctx context.Co
 
 // ExtensionP1ServiceHandler is an implementation of the space.v1.ExtensionP1Service service.
 type ExtensionP1ServiceHandler interface {
+	ListExtensionContributions(context.Context, *connect.Request[v1.ListExtensionContributionsRequest]) (*connect.Response[v1.ListExtensionContributionsResponse], error)
 	QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error)
 	ExecuteExtensionCommand(context.Context, *connect.Request[v1.ExecuteExtensionCommandRequest]) (*connect.Response[v1.ExecuteExtensionCommandResponse], error)
 	ReconcileExtensionCommand(context.Context, *connect.Request[v1.ReconcileExtensionCommandRequest]) (*connect.Response[v1.ReconcileExtensionCommandResponse], error)
@@ -204,6 +221,12 @@ type ExtensionP1ServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	extensionP1ServiceMethods := v1.File_space_v1_extensions_p1_proto.Services().ByName("ExtensionP1Service").Methods()
+	extensionP1ServiceListExtensionContributionsHandler := connect.NewUnaryHandler(
+		ExtensionP1ServiceListExtensionContributionsProcedure,
+		svc.ListExtensionContributions,
+		connect.WithSchema(extensionP1ServiceMethods.ByName("ListExtensionContributions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	extensionP1ServiceQueryExtensionHandler := connect.NewUnaryHandler(
 		ExtensionP1ServiceQueryExtensionProcedure,
 		svc.QueryExtension,
@@ -254,6 +277,8 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 	)
 	return "/space.v1.ExtensionP1Service/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ExtensionP1ServiceListExtensionContributionsProcedure:
+			extensionP1ServiceListExtensionContributionsHandler.ServeHTTP(w, r)
 		case ExtensionP1ServiceQueryExtensionProcedure:
 			extensionP1ServiceQueryExtensionHandler.ServeHTTP(w, r)
 		case ExtensionP1ServiceExecuteExtensionCommandProcedure:
@@ -278,6 +303,10 @@ func NewExtensionP1ServiceHandler(svc ExtensionP1ServiceHandler, opts ...connect
 
 // UnimplementedExtensionP1ServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedExtensionP1ServiceHandler struct{}
+
+func (UnimplementedExtensionP1ServiceHandler) ListExtensionContributions(context.Context, *connect.Request[v1.ListExtensionContributionsRequest]) (*connect.Response[v1.ListExtensionContributionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.ListExtensionContributions is not implemented"))
+}
 
 func (UnimplementedExtensionP1ServiceHandler) QueryExtension(context.Context, *connect.Request[v1.QueryExtensionRequest]) (*connect.Response[v1.QueryExtensionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("space.v1.ExtensionP1Service.QueryExtension is not implemented"))

@@ -47,7 +47,7 @@ func TestFullManifestUnsupported(t *testing.T) {
 			case "permission":
 				m["permissions"] = []string{"storage.own"}
 			case "command":
-				m["commands"] = map[string]string{"vote": "schemas/empty.json"}
+				m["commands"] = map[string]string{"vote": "schemas/missing.json"}
 			case "schema":
 				m["data_schema"] = 2
 			case "missing_schema":

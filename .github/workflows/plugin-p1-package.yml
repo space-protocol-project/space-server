@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: space-protocol-project/space-protocol
-          ref: 4df076de4033f37a64d80cb76ea31f4c36c6e2e0
+          ref: 28b667bde3dd66e904c2409a35ddafdc43efa93a
           path: .local/protocol
       - uses: actions/setup-go@v5
         with:
@@ -28,6 +28,8 @@ jobs:
       - name: Общий manifest и отрицательные сценарии
         run: |
           mkdir -p .local/package
+          cmp manifest/testdata/manifest-contributions.json ../../.local/protocol/docs/extensions/p1/manifest-contributions.json
+          cmp sdk/testdata/manifest-contributions.json ../../.local/protocol/docs/extensions/p1/manifest-contributions.json
           cmp manifest/testdata/manifest.json ../../.local/protocol/docs/extensions/p1/manifest.json
           cmp payloadschema/testdata/form-payload.schema.json ../../.local/protocol/docs/extensions/p1/form-payload.schema.json
           cmp sdk/testdata/ui-form.json ../../.local/protocol/docs/extensions/p1/ui-form.json

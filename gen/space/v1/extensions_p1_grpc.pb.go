@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ExtensionP1Service_ListExtensionContributions_FullMethodName     = "/space.v1.ExtensionP1Service/ListExtensionContributions"
 	ExtensionP1Service_QueryExtension_FullMethodName                 = "/space.v1.ExtensionP1Service/QueryExtension"
 	ExtensionP1Service_ExecuteExtensionCommand_FullMethodName        = "/space.v1.ExtensionP1Service/ExecuteExtensionCommand"
 	ExtensionP1Service_ReconcileExtensionCommand_FullMethodName      = "/space.v1.ExtensionP1Service/ReconcileExtensionCommand"
@@ -35,6 +36,7 @@ const (
 //
 // Эксперимент P1. Отдельная регистрация, без публичной capability v1.
 type ExtensionP1ServiceClient interface {
+	ListExtensionContributions(ctx context.Context, in *ListExtensionContributionsRequest, opts ...grpc.CallOption) (*ListExtensionContributionsResponse, error)
 	QueryExtension(ctx context.Context, in *QueryExtensionRequest, opts ...grpc.CallOption) (*QueryExtensionResponse, error)
 	ExecuteExtensionCommand(ctx context.Context, in *ExecuteExtensionCommandRequest, opts ...grpc.CallOption) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(ctx context.Context, in *ReconcileExtensionCommandRequest, opts ...grpc.CallOption) (*ReconcileExtensionCommandResponse, error)
@@ -51,6 +53,16 @@ type extensionP1ServiceClient struct {
 
 func NewExtensionP1ServiceClient(cc grpc.ClientConnInterface) ExtensionP1ServiceClient {
 	return &extensionP1ServiceClient{cc}
+}
+
+func (c *extensionP1ServiceClient) ListExtensionContributions(ctx context.Context, in *ListExtensionContributionsRequest, opts ...grpc.CallOption) (*ListExtensionContributionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListExtensionContributionsResponse)
+	err := c.cc.Invoke(ctx, ExtensionP1Service_ListExtensionContributions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *extensionP1ServiceClient) QueryExtension(ctx context.Context, in *QueryExtensionRequest, opts ...grpc.CallOption) (*QueryExtensionResponse, error) {
@@ -139,6 +151,7 @@ func (c *extensionP1ServiceClient) ListExtensionInstallationAudit(ctx context.Co
 //
 // Эксперимент P1. Отдельная регистрация, без публичной capability v1.
 type ExtensionP1ServiceServer interface {
+	ListExtensionContributions(context.Context, *ListExtensionContributionsRequest) (*ListExtensionContributionsResponse, error)
 	QueryExtension(context.Context, *QueryExtensionRequest) (*QueryExtensionResponse, error)
 	ExecuteExtensionCommand(context.Context, *ExecuteExtensionCommandRequest) (*ExecuteExtensionCommandResponse, error)
 	ReconcileExtensionCommand(context.Context, *ReconcileExtensionCommandRequest) (*ReconcileExtensionCommandResponse, error)
@@ -157,6 +170,9 @@ type ExtensionP1ServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedExtensionP1ServiceServer struct{}
 
+func (UnimplementedExtensionP1ServiceServer) ListExtensionContributions(context.Context, *ListExtensionContributionsRequest) (*ListExtensionContributionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExtensionContributions not implemented")
+}
 func (UnimplementedExtensionP1ServiceServer) QueryExtension(context.Context, *QueryExtensionRequest) (*QueryExtensionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method QueryExtension not implemented")
 }
@@ -200,6 +216,24 @@ func RegisterExtensionP1ServiceServer(s grpc.ServiceRegistrar, srv ExtensionP1Se
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ExtensionP1Service_ServiceDesc, srv)
+}
+
+func _ExtensionP1Service_ListExtensionContributions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExtensionContributionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ExtensionP1ServiceServer).ListExtensionContributions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ExtensionP1Service_ListExtensionContributions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ExtensionP1ServiceServer).ListExtensionContributions(ctx, req.(*ListExtensionContributionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ExtensionP1Service_QueryExtension_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -353,6 +387,10 @@ var ExtensionP1Service_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "space.v1.ExtensionP1Service",
 	HandlerType: (*ExtensionP1ServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListExtensionContributions",
+			Handler:    _ExtensionP1Service_ListExtensionContributions_Handler,
+		},
 		{
 			MethodName: "QueryExtension",
 			Handler:    _ExtensionP1Service_QueryExtension_Handler,

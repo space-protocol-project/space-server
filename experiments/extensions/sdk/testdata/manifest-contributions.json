@@ -1,0 +1,43 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "org.example.polls",
+  "version": "0.1.0",
+  "host_api": "space.plugin.p1",
+  "wasm_abi": "space_plugin_p1",
+  "ui_api": "space.ui.p1",
+  "entrypoint": "server.wasm",
+  "data_schema": 1,
+  "permissions": [],
+  "required_components": [
+    "section.v1",
+    "text.v1",
+    "button.v1"
+  ],
+  "commands": {
+    "refresh": "schemas/empty.json"
+  },
+  "queries": {
+    "summary": "schemas/empty.json",
+    "details": "schemas/empty.json"
+  },
+  "contributions": [
+    {
+      "id": "summary",
+      "kind": "overview",
+      "title": {
+        "en": "Summary",
+        "ru": "Сводка"
+      },
+      "query": "summary"
+    },
+    {
+      "id": "details",
+      "kind": "section",
+      "title": {
+        "en": "Details",
+        "ru": "Подробности"
+      },
+      "query": "details"
+    }
+  ]
+}

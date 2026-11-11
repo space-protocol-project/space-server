@@ -29,6 +29,7 @@ type Manifest struct {
 	RequiredComponents []string          `json:"required_components"`
 	Commands           map[string]string `json:"commands"`
 	Queries            map[string]string `json:"queries"`
+	Contributions      []Contribution    `json:"contributions,omitzero"`
 }
 
 func Decode(raw []byte) (Manifest, error) {
@@ -37,7 +38,14 @@ func Decode(raw []byte) (Manifest, error) {
 		return m, ErrManifest
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil || len(fields) != 12 {
+	if json.Unmarshal(raw, &fields) != nil || (len(fields) != 12 && len(fields) != 13) {
+		return m, ErrManifest
+	}
+	contributions, hasContributions := fields["contributions"]
+	if len(fields) == 13 && !hasContributions {
+		return m, ErrManifest
+	}
+	if hasContributions && !contributionFields(contributions) {
 		return m, ErrManifest
 	}
 	for _, name := range []string{"manifest_version", "plugin_id", "version", "host_api", "wasm_abi", "ui_api", "entrypoint", "data_schema", "permissions", "required_components", "commands", "queries"} {
@@ -49,6 +57,9 @@ func Decode(raw []byte) (Manifest, error) {
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
 	if d.Decode(&m) != nil || !m.valid() {
+		return Manifest{}, ErrManifest
+	}
+	if !validContributions(m.Contributions, m.Queries) {
 		return Manifest{}, ErrManifest
 	}
 	return m, nil

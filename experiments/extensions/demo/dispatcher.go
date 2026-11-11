@@ -120,7 +120,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, credential string, request Re
 	if !ok {
 		return nil, ErrDenied
 	}
-	if !allowed(request, registration.Manifest) {
+	if !allowedRegistration(request, registration) {
 		return nil, ErrRequest
 	}
 	if err := validatePayload(registration, request); err != nil {

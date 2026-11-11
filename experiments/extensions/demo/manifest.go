@@ -17,8 +17,8 @@ func FromManifest(raw, module []byte, schemas map[string][]byte) (Registration, 
 		return Registration{}, err
 	}
 	expected := map[string]bool{}
-	structured := false
-	for _, path := range []string{m.Commands["acknowledge"], m.Queries["overview"]} {
+	structured := !legacyOperations(m)
+	for _, path := range operationSchemas(m) {
 		expected[path] = true
 		s, err := payloadschema.Decode(schemas[path])
 		if err != nil {
@@ -41,7 +41,7 @@ func supportedManifest(raw []byte) (manifest.Manifest, error) {
 	if err != nil {
 		return m, ErrRequest
 	}
-	if m.DataSchema != 1 || len(m.Permissions) != 0 || len(m.Commands) != 1 || len(m.Queries) != 1 || m.Commands["acknowledge"] == "" || m.Queries["overview"] == "" {
+	if m.DataSchema != 1 || len(m.Permissions) != 0 {
 		return m, ErrVersion
 	}
 	return m, nil
@@ -59,7 +59,36 @@ func checkSourceManifest(r Registration) error {
 		_, err = FromManifest(r.SourceManifest, r.Module, r.SourceSchemas)
 		return err
 	}
+	if !legacyOperations(m) {
+		return ErrRequest
+	}
 	return nil
+}
+
+func legacyOperations(m manifest.Manifest) bool {
+	return len(m.Commands) == 1 && len(m.Queries) == 1 && m.Commands["acknowledge"] != "" && m.Queries["overview"] != ""
+}
+
+func operationSchemas(m manifest.Manifest) []string {
+	paths := make([]string, 0, len(m.Commands)+len(m.Queries))
+	for _, path := range m.Commands {
+		paths = append(paths, path)
+	}
+	for _, path := range m.Queries {
+		paths = append(paths, path)
+	}
+	return paths
+}
+
+func allowedRegistration(request Request, r Registration) bool {
+	if len(r.SourceManifest) == 0 {
+		return allowed(request, r.Manifest)
+	}
+	m, err := supportedManifest(r.SourceManifest)
+	if err != nil {
+		return false
+	}
+	return (request.Kind == "query" && m.Queries[request.Name] != "") || (request.Kind == "command" && m.Commands[request.Name] != "")
 }
 
 func cloneSchemas(source map[string][]byte) map[string][]byte {

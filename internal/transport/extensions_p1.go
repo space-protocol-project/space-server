@@ -16,6 +16,10 @@ func NewExtensionP1Handler(client pb.ExtensionP1ServiceClient) (string, http.Han
 
 type connectExtensionP1 struct{ client pb.ExtensionP1ServiceClient }
 
+func (s connectExtensionP1) ListExtensionContributions(ctx context.Context, req *connect.Request[pb.ListExtensionContributionsRequest]) (*connect.Response[pb.ListExtensionContributionsResponse], error) {
+	return bridgeUnary(ctx, req, s.client.ListExtensionContributions)
+}
+
 func (s connectExtensionP1) QueryExtension(ctx context.Context, req *connect.Request[pb.QueryExtensionRequest]) (*connect.Response[pb.QueryExtensionResponse], error) {
 	return bridgeUnary(ctx, req, s.client.QueryExtension)
 }

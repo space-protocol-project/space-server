@@ -55,6 +55,7 @@ func (s *ExtensionP1ManagedService) NewDeliveryHandler() (string, http.Handler) 
 }
 func (s *ExtensionP1ManagedService) deliveryMux() http.Handler {
 	mux := http.NewServeMux()
+	mux.Handle(extensionDeliveryPath+"ListExtensionContributions", deliveryUnary(extensionDeliveryPath+"ListExtensionContributions", s.ListExtensionContributions))
 	mux.Handle(extensionDeliveryPath+"QueryExtension", deliveryUnary(extensionDeliveryPath+"QueryExtension", s.QueryExtension))
 	mux.Handle(extensionDeliveryPath+"ExecuteExtensionCommand", deliveryUnary(extensionDeliveryPath+"ExecuteExtensionCommand", s.ExecuteExtensionCommand))
 	mux.Handle(extensionDeliveryPath+"GetExtensionMutationContext", deliveryUnary(extensionDeliveryPath+"GetExtensionMutationContext", s.GetExtensionMutationContext))
@@ -131,7 +132,7 @@ func (s *ExtensionP1ManagedService) sendHTTPDelivery(ctx context.Context, snapsh
 
 func bufferedDeliveryPath(path string) bool {
 	switch path {
-	case extensionDeliveryPath + "QueryExtension", extensionDeliveryPath + "ExecuteExtensionCommand", extensionDeliveryPath + "GetExtensionMutationContext":
+	case extensionDeliveryPath + "ListExtensionContributions", extensionDeliveryPath + "QueryExtension", extensionDeliveryPath + "ExecuteExtensionCommand", extensionDeliveryPath + "GetExtensionMutationContext":
 		return true
 	default:
 		return false

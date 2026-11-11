@@ -44,6 +44,9 @@ func main() {
 	if networkProbe(wire.Request) {
 		return
 	}
+	if profileDiskProbe(wire.Request) {
+		return
+	}
 	if boundaryProbe(wire.Request) {
 		return
 	}

@@ -22,7 +22,7 @@ jobs:
           go build -o p1-rights.exe ./cmd/p1-rights
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:P1_RIGHTS = Join-Path $PWD 'p1-rights.exe'
-          go test -race -count=1 -timeout=120s -json -run '^TestWindowsRestricted(WinsockReady|NetworkMatrix)$' . > windows-boundary.jsonl
+          go test -race -count=1 -timeout=120s -json -run '^TestWindowsRestricted(WinsockReady|NetworkMatrix|ProfileReadOnly|SeparateProfiles)$' . > windows-boundary.jsonl
           exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()

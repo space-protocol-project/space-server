@@ -176,17 +176,16 @@ func checkProfileFiles(t *testing.T, h *ProcessHost, folder string, allowed bool
 	}
 	for _, name := range []string{"read", "write", "create"} {
 		result, exists := results[name]
+		permitted := allowed && name == "read"
 		code := uint32(5)
-		if allowed {
+		if permitted {
 			code = 0
 		}
-		if !exists || result.Allowed != allowed || result.Code != code {
+		if !exists || result.Allowed != permitted || result.Code != code {
 			t.Fatalf("%s: %+v", name, result)
 		}
 	}
-	if !allowed {
-		assertProfileUnchanged(t, folder)
-	}
+	assertProfileUnchanged(t, folder)
 }
 
 func assertProfileUnchanged(t *testing.T, folder string) {

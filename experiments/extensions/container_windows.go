@@ -79,6 +79,13 @@ func prepareContainer(root, executable string) (*appContainer, error) {
 		}
 		return nil, err
 	}
+	if err := c.sealProfile(); err != nil {
+		_ = c.close()
+		if c.lock != nil {
+			_ = c.lock.Close()
+		}
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -95,21 +102,12 @@ func (c *appContainer) stage(root, executable string) error {
 	if err := os.Mkdir(directory, 0700); err != nil {
 		return err
 	}
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	acl, err := c.readOnlyACL()
 	if err != nil {
 		return err
 	}
 	// Меняем ACL только собственного нового каталога; исходный executable не трогаем.
-	sddl := fmt.Sprintf("D:P(A;OICI;FA;;;%s)(A;OICI;FA;;;SY)(A;OICI;FRFX;;;%s)", user.User.Sid.String(), c.sid.String())
-	sd, err := windows.SecurityDescriptorFromString(sddl)
-	if err != nil {
-		return err
-	}
-	acl, _, err := sd.DACL()
-	if err != nil {
-		return err
-	}
-	if err := windows.SetNamedSecurityInfo(directory, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+	if err := setContainerACL(directory, acl); err != nil {
 		return err
 	}
 	return copyContainerExecutable(executable, filepath.Join(directory, "worker.exe"))
@@ -185,7 +183,8 @@ func (c *appContainer) verify(process windows.Handle) error {
 			return ErrIsolation
 		}
 	}
-	var buffer [1024]byte
+	var storage [128]uintptr
+	buffer := unsafe.Slice((*byte)(unsafe.Pointer(&storage[0])), int(unsafe.Sizeof(storage)))
 	var size uint32
 	if err := windows.GetTokenInformation(token, 31, &buffer[0], uint32(len(buffer)), &size); err != nil {
 		return fmt.Errorf("token SID: %w", err)
